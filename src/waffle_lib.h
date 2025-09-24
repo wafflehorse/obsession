@@ -1,0 +1,495 @@
+#ifndef WAFFLE_LIB_H
+#define WAFFLE_LIB_H
+
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include "math.h"
+
+#define Kilobytes(Value) ((Value)*1024LL)
+#define Megabytes(Value) (Kilobytes(Value)*1024LL)
+
+#ifdef DEBUG
+#define ASSERT(exp, explain) if(!(exp)) { printf("Assertion failed: %s\n", explain); *(volatile int*)0 = 0; }
+#else
+#define ASSERT(exp, explain) ((void)0)
+#endif
+
+#define ArraySize(array) (sizeof(array) / sizeof(array[0]))
+
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+typedef int32 bool32;
+
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
+
+typedef uint32 flags;
+
+#define is_set(flags, flag) (flags & flag)
+#define set(flags, flag) (flags |= flag)
+#define unset(flags, flag) (flags &= ~flag)
+#define toggle(flags, flag) (flags ^= flag)
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+struct Vec2 {
+	float x;
+	float y;
+};
+
+struct Vec4 {
+	float x;
+	float y;
+	float z;
+	float w;
+};
+
+struct Rect {
+	float x;
+	float y;
+	float w;
+	float h;
+};
+
+struct Arena {
+	char* data;
+	char* next;
+	long long size;
+};
+
+#define COLOR_WHITE ((Vec4){ 255, 255, 255, 1 })
+
+//~~~~~~~~~~~~~~~~~~~~~~~~ FILE UTILITY TYPES ~~~~~~~~~~~~~~~~~~~~~~~//
+
+struct FileContents {
+    char* data;
+    uint64 size_bytes;
+};
+
+struct WavFileHeader {
+    uint32 riff_code;
+    uint32 chunk_size;
+    uint32 wav_id;
+};
+
+struct WavChunkHeader {
+    uint32 id;
+    uint32 size_bytes;
+};
+
+struct WavFmtChunk {
+    uint16 format_tag; // This tells us whether it's compressed or not
+    uint16 num_channels;
+    uint32 sample_rate;
+    uint32 byte_rate;
+    uint16 block_align;
+    uint16 bits_per_sample;
+    // There are more optional fields in the case that format_tag != 1
+};
+
+struct WavFile {
+    WavFileHeader* header;
+    WavFmtChunk* fmt_chunk;
+    int16* samples;
+    uint32 num_sample_bytes;
+};
+
+struct RiffIterator {
+    char* at;
+    char* stop;
+};
+
+
+#endif
+
+#ifdef WAFFLE_LIB_IMPLEMENTATION
+
+static char i_base_path[W_PATH_MAX] = {};
+
+double w_max(double a, double b) {
+	if ((a - b) > 0) {
+		return a;
+	}
+	return b;
+}
+
+double w_min(double a, double b) {
+	if ((a - b) > 0) {
+		return b;
+	}
+	return a;
+}
+
+float w_abs(float a) {
+	return a > 0 ? a : -a;
+}
+
+float w_square(float a) {
+	return a * a;
+}
+
+double w_avg(double* nums, uint32 count) {
+	double result = 0;
+	for(uint32 i = 0; i < count; i++) {
+		result += nums[i];
+	}
+
+	if(count != 0) {
+		result = result / count;
+	}
+
+	return result;
+}
+
+float w_avg(float* nums, uint32 count) {
+	float result = 0;
+	for(uint32 i = 0; i < count; i++) {
+		result += nums[i];
+	}
+
+	if(count != 0) {
+		result = result / count;
+	}
+
+	return result;
+}
+
+Vec2 w_add_vec(Vec2 a, Vec2 b) {
+	return Vec2{ a.x + b.x, a.y + b.y };
+}
+
+Vec4 w_add_vec(Vec4 a, Vec4 b) {
+	return Vec4{ a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
+}
+
+Vec2 w_sub_vec(Vec2 a, Vec2 b) {
+	return Vec2{ a.x - b.x, a.y - b.y };
+}
+
+Vec4 w_sub_vec(Vec4 a, Vec4 b) {
+	return Vec4{ a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+}
+
+Vec2 w_mult_vec(Vec2 a, float b) {
+	return Vec2{ a.x * b, a.y * b };
+}
+
+Vec4 w_mult_vec(Vec4 a, float b) {
+	return Vec4{ a.x * b, a.y * b, a.z * b, a.w * b};
+}
+
+Vec2 w_invert_vec(Vec2 a) {
+	return Vec2{ a.x * -1.0f, a.y * -1.0f };
+}
+
+Vec2 w_norm(Vec2 a) {
+	float length = sqrtf(w_square(a.x) + w_square(a.y));
+
+	Vec2 result = { 0, 0 };
+	if (length != 0) {
+		result = {
+			a.x / length,
+			a.y / length
+		};
+	};
+
+	return result;
+}
+
+float w_vec_length(Vec2 a) {
+	return sqrtf(w_square(a.x) + w_square(a.y));
+}
+
+float w_dot_product(Vec2 a, Vec2 b) {
+	return a.x * b.x + a.y * b.y;
+}
+
+float w_euclid_dist(Vec2 a, Vec2 b) {
+	return sqrtf(w_square(a.x - b.x) + w_square(a.y - b.y));
+}
+
+int w_str_length(char* str) {
+	int result = 0;
+	while (str[result] != '\0') {
+		result++;
+	}
+	return result;
+}
+
+// TODO: make this more safe
+void w_str_copy(char* dest, const char* source) {
+	int i = 0;
+	while (source[i] != '\0') {
+		dest[i] = source[i];
+		i++;
+	}
+	dest[i] = '\0';
+}
+
+void w_str_concat(char* dest, const char* source) {
+	int old_length = w_str_length(dest);
+	int i = 0;
+	while (source[i] != '\0') {
+		dest[old_length + i] = source[i];
+		i++;
+	}
+	dest[old_length + i] = '\0';
+}
+
+bool w_str_match(char* a, const char* b) {
+	int i = 0;
+	while (a[i] != '\0' && b[i] != '\0') {
+		if (a[i] != b[i]) {
+			return false;
+		}
+		i++;
+	}
+
+	return a[i] == b[i];
+}
+
+float w_round(float a) {
+	float offset = 0.5f;
+	if (a < 0) {
+		offset = -0.5f;
+	}
+	return (float)(int)(a + offset);
+}
+
+float w_deg_to_rads(float degrees) {
+	return degrees * (M_PI / 180.0f);
+}
+
+float w_randf() {
+	return (float)rand() / RAND_MAX;
+}
+
+float w_random_between(float a, float b) {
+	return a + (float)rand() / (float)RAND_MAX * (b - a);
+}
+
+float w_clamp_max(float a, float clamp_max) {
+	return w_min(a, clamp_max);
+}
+
+float w_clamp_min(float a, float clamp_min) {
+	return w_max(a, clamp_min);
+}
+
+float w_clamp_between(float a, float clamp_min, float clamp_max) {
+	return w_min(w_max(a, clamp_min), clamp_max);
+}
+
+float w_clamp_01(float a) {
+	return w_clamp_between(a, 0, 1);
+}
+
+Vec2 w_calc_position(Vec2 acceleration, Vec2 velocity, Vec2 position, double dt_s) {
+	return w_add_vec(w_add_vec(w_mult_vec(acceleration, 0.5f*w_square(dt_s)), w_mult_vec(velocity, dt_s)), position);
+}
+
+Vec2 w_calc_velocity(Vec2 acceleration, Vec2 velocity, double dt_s) {
+	return w_add_vec(w_mult_vec(acceleration, dt_s), velocity);
+}
+
+bool w_check_aabb_collision(Rect subject, Rect target)
+{
+	Vec2 subject_top_left = { subject.x - (subject.w / 2), subject.y + (subject.h / 2) };
+	Vec2 target_top_left = { target.x - (target.w / 2), target.y + (target.h / 2) };
+	if (subject_top_left.x <= target_top_left.x + target.w &&
+		subject_top_left.x + subject.w >= target_top_left.x &&
+		subject_top_left.y >= target_top_left.y - target.h &&
+		subject_top_left.y - subject.h <= target_top_left.y)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool w_test_wall_collision(float start_x, float start_y, float delta_x, float delta_y,
+						 float wall_x, float wall_min_y, float wall_max_y, float* t_min) {
+	if (delta_x == 0.0f) {
+		return false;
+	}
+
+	float t = (wall_x - start_x) / delta_x;
+
+	if (t < *t_min && t >= 0) {
+		float collision_y = (delta_y * t) + start_y;
+
+		if (collision_y <= wall_max_y && collision_y >= wall_min_y) {
+			*t_min = w_max(0.0f, t);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void w_rect_collision(Rect subject, Vec2 subject_delta, Rect target, Vec2 target_delta, float* t_collision, Vec2* collision_normal) {
+	// Uses minkowski sums
+	float wall_top_y = target.y + (target.h / 2) + (subject.h / 2);
+	float wall_bottom_y = target.y - (target.h / 2) - (subject.h / 2);
+	float wall_left_x = target.x - (target.w / 2) - (subject.w / 2);
+	float wall_right_x = target.x + (target.w / 2) + (subject.w / 2);
+	Vec2 start_pos = { subject.x, subject.y };
+	Vec2 rel_delta = w_sub_vec(subject_delta, target_delta);
+
+	if (w_test_wall_collision(start_pos.x, start_pos.y, rel_delta.x, rel_delta.y,
+						 wall_left_x, wall_bottom_y, wall_top_y, t_collision)) {
+		*collision_normal = Vec2{ -1, 0 };
+	}
+	if (w_test_wall_collision(start_pos.x, start_pos.y, rel_delta.x, rel_delta.y,
+						 wall_right_x, wall_bottom_y, wall_top_y, t_collision)) {
+		*collision_normal = Vec2{ 1, 0 };
+	}
+	if (w_test_wall_collision(start_pos.y, start_pos.x, rel_delta.y, rel_delta.x,
+						 wall_top_y, wall_left_x, wall_right_x, t_collision)) {
+		*collision_normal = Vec2{ 0, 1 };
+	}
+	if (w_test_wall_collision(start_pos.y, start_pos.x, rel_delta.y, rel_delta.x,
+						 wall_bottom_y, wall_left_x, wall_right_x, t_collision)) {
+		*collision_normal = Vec2{ 0, -1 };
+	}
+}
+
+Vec2 w_rotate_around_pivot(Vec2 position, Vec2 pivot, float radians) {
+	// here, we are basically creating a new coordinate system as if we rotated the x and y axis by theta. We then scale our new axis by the entities position which gets the new position relative to the pivot.
+	Vec2 relative_pos = w_sub_vec(position, pivot);
+	Vec2 basis_x = w_mult_vec((Vec2){ cosf(radians), sinf(radians) }, relative_pos.x);
+	Vec2 basis_y = w_mult_vec((Vec2){ -sinf(radians), cosf(radians) }, relative_pos.y);
+	Vec2 relative_rotated_pos = w_add_vec(basis_x, basis_y);
+
+	return w_add_vec(pivot, relative_rotated_pos);
+}
+
+void w_get_absolute_path(char* dest, char* base_path, const char* rel_path) {
+	w_str_copy(dest, base_path);
+	w_str_concat(dest, rel_path);
+}
+
+char* w_arena_alloc(Arena* arena, long long size) {
+	uintptr_t block = (uintptr_t)arena->next;
+
+	// align to default alignment for better cache usage
+	uintptr_t mod = block % (uintptr_t)DEFAULT_ALIGNMENT;
+
+	if(mod != 0) {
+		block += ((uintptr_t)DEFAULT_ALIGNMENT - mod);
+	}
+
+	arena->next = (char*)(block + (uintptr_t)size);
+
+	ASSERT((uintptr_t)arena->next <= ((uintptr_t)arena->data + arena->size), "Arena has reached max capacity");
+
+	memset((char*)block, 0, size);
+
+	return (char*)block;
+}
+
+char* w_get_arena_marker(Arena* arena) {
+	return arena->next;
+}
+
+void w_arena_restore(Arena* arena, char* marker) {
+	arena->next = marker;
+} 
+
+// Note: t should be between 0 and 1
+float w_animate_ease_out_quad(float t) {
+	return 1.0f - (1.0f - t)*(1.0f - t);
+} 
+
+void w_init_waffle_lib(char* base_path) {
+	w_str_copy(i_base_path, base_path);
+}
+
+//~~~~~~~~~~~~~~~~ FILE UTILITIES ~~~~~~~~~~~~~~~~~~//
+#define RIFF_CODE(a, b, c, d) ((uint32)a << 0 | (uint32)b << 8 | (uint32)c << 16 | (uint32)d << 24)
+
+int w_read_file_abs(const char* file_path, FileContents* file_contents, Arena* arena) {
+    FILE* file = fopen(file_path, "rb");
+
+    fseek(file, 0, SEEK_END);
+    uint32 file_size_bytes = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+	char* data = w_arena_alloc(arena, file_size_bytes + 1);
+
+    uint32 bytes_read = fread(data, 1, file_size_bytes, file);
+    if (bytes_read != file_size_bytes) {
+        fprintf(stderr, "There was an issue reading file: %s", file_path);
+        return -1;
+    }
+	
+	data[file_size_bytes] = '\0';
+
+    fclose(file);
+
+    file_contents->data = data;
+    file_contents->size_bytes = file_size_bytes;
+    return 0;
+}
+
+int w_read_file(const char* rel_path, FileContents* file_contents, Arena* arena) {
+	char abs_path[W_PATH_MAX];
+	w_get_absolute_path(abs_path, i_base_path, rel_path);
+	return w_read_file_abs(abs_path, file_contents, arena);
+}
+
+int w_read_wav_file(const char* file_path, WavFile* wav_file, Arena* arena) {
+    FileContents file_contents;
+    int read_file_result = w_read_file(file_path, &file_contents, arena);
+    if (read_file_result != 0) {
+        fprintf(stderr, "There was an issue reading wav file: %s", file_path);
+        return -1;
+    }
+
+    WavFileHeader* wav_file_header = (WavFileHeader*)file_contents.data;
+    ASSERT(wav_file_header->riff_code == RIFF_CODE('R', 'I', 'F', 'F'), "Wav file riff code is incorrect\n");
+    ASSERT(wav_file_header->chunk_size == (file_contents.size_bytes - 8), "Wav file chunk size does not match file size\n");
+    ASSERT(wav_file_header->wav_id == RIFF_CODE('W', 'A', 'V', 'E'), "Wav file wav id does not match \"WAVE\"\n");
+
+    wav_file->header = wav_file_header;
+
+    RiffIterator riff_iterator;
+    riff_iterator.stop = (file_contents.data + file_contents.size_bytes);
+    riff_iterator.at = (char*)(wav_file_header + 1);
+
+    WavChunkHeader* chunk_header;
+
+    while (riff_iterator.at < riff_iterator.stop) {
+        chunk_header = (WavChunkHeader*)riff_iterator.at;
+        switch (chunk_header->id) {
+        case RIFF_CODE('f', 'm', 't', ' '): {
+            WavFmtChunk* wav_fmt_chunk = (WavFmtChunk*)(chunk_header + 1);
+            ASSERT(wav_fmt_chunk->format_tag == 1, "wav fmt format_tag must be 1");
+            ASSERT(wav_fmt_chunk->num_channels == 2 || wav_fmt_chunk->num_channels == 1, "wav fmt num channels must be 1 or 2");
+            ASSERT(wav_fmt_chunk->sample_rate == 44100, "wav file must have a sample rate of 44100");
+            ASSERT(wav_fmt_chunk->bits_per_sample == 16, "wav file must have bits per sample of 16");
+            ASSERT(wav_fmt_chunk->block_align == wav_fmt_chunk->num_channels * (wav_fmt_chunk->bits_per_sample / 8), "wav file block align must be correct");
+            wav_file->fmt_chunk = wav_fmt_chunk;
+            break;
+        }
+        case RIFF_CODE('d', 'a', 't', 'a'): {
+            wav_file->samples = (int16*)(chunk_header + 1);
+            wav_file->num_sample_bytes = chunk_header->size_bytes;
+            break;
+        }
+        }
+
+        riff_iterator.at = (char*)(chunk_header + 1) + chunk_header->size_bytes;
+    }
+
+    return 0;
+}
+
+#endif

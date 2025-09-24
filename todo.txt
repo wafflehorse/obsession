@@ -1,0 +1,1 @@
+[] Update RenderQuad struct to remove Rect

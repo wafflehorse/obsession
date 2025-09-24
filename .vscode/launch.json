@@ -1,0 +1,34 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Platform Main",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build_debug/platform_main",  // Path to your compiled executable
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "MIMode": "lldb", // Or "gdb" if you are using gdb
+      "preLaunchTask": "Build C++ Program",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+    },
+    {
+        "name": "Debug Windows LLDB-DAP",
+        "type": "lldb-dap",
+        "request": "launch",
+        "program": "${workspaceFolder}\\build_debug\\platform_main.exe",
+        "preLaunchTask": "Build C++ Windows Program",
+    }
+  ]
+}

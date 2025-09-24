@@ -1,0 +1,10 @@
+scratch/
+build_debug/
+build_release/
+build.app
+build_web/
+.DS_Store
+assets/.DS_Store
+.cache/
+tools/font_processor/process_fonts
+tools/font_processor/process_fonts.dSYM
