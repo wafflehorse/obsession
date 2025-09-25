@@ -1,1 +1,6 @@
 [x] Update RenderQuad struct to remove Rect
+[x] Add basic tilemap
+[] Create player entity
+[] Add player movement
+[] Add gamepad support
+

@@ -14,6 +14,9 @@
 char* g_base_path;
 uint32 g_pixels_per_unit;
 
+#define WORLD_TILE_WIDTH 8
+#define WORLD_TILE_HEIGHT 8 
+
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	GameState* game_state = (GameState*)game_memory->memory;
 	g_base_path = game_memory->base_path;
@@ -21,6 +24,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	PushRenderGroup* push_render_group = game_memory->push_render_group;
 
 	w_init_waffle_lib(g_base_path);
+
+	RenderGroup background_render_group = {};
+	background_render_group.id = RENDER_GROUP_ID_BACKGROUND;
+	RenderGroup main_render_group = {};
+	main_render_group.id = RENDER_GROUP_ID_MAIN;
 
 #ifdef DEBUG
 	RenderGroup debug_render_group = {};
@@ -34,7 +42,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		game_state->main_arena.data = (char*)game_memory->memory + sizeof(GameState);
 		game_state->main_arena.next = game_state->main_arena.data;
 
-		game_state->frame_arena.size = MAX_ENTITIES * 100;
+		game_state->frame_arena.size = Megabytes(10);
 		game_state->frame_arena.data = w_arena_alloc(&game_state->main_arena, game_state->frame_arena.size);
 		game_state->frame_arena.next = game_state->frame_arena.data;
 
@@ -61,10 +69,60 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	}
 
 	init_ui(&game_state->font_data, g_pixels_per_unit);
-
 	game_state->frame_arena.next = game_state->frame_arena.data;
 
+	background_render_group.size = 5000;
+	background_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, background_render_group.size * sizeof(RenderQuad));
+	main_render_group.size = 5000;
+	main_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, main_render_group.size * sizeof(RenderQuad));
+
+	uint32 tilemap[WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT] = {
+		2, 2, 2, 2, 2, 2, 2, 2,
+		2, 1, 1, 1, 1, 1, 1, 2,
+		2, 1, 1, 1, 1, 1, 1, 2,
+		2, 1, 1, 1, 1, 1, 1, 2,
+		2, 1, 1, 1, 1, 1, 1, 2,
+		2, 1, 1, 1, 1, 1, 1, 2,
+		2, 1, 1, 1, 1, 1, 1, 2,
+		2, 2, 2, 2, 2, 2, 2, 2
+	};
+
+	Vec2 world_top_left_tile_position = {
+		-WORLD_TILE_WIDTH / 2 + 0.5,
+		WORLD_TILE_HEIGHT / 2 - 0.5
+	};
+
+	for(int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
+		uint32 col = i % WORLD_TILE_WIDTH;
+		uint32 row = i / WORLD_TILE_HEIGHT;
+		Vec2 position = {
+			world_top_left_tile_position.x + col,
+			world_top_left_tile_position.y - row
+		};
+		switch(tilemap[i]) {
+			case 1: {
+				RenderQuad* quad = get_next_quad(&background_render_group);
+				quad->world_position = position;
+				quad->world_size = { 1, 1 };
+				quad->rgba = { 0, 255, 0, 1 };
+				quad->draw_colored_rect = 1;
+				break;
+			}
+			case 2: {
+				RenderQuad* quad = get_next_quad(&main_render_group);
+				quad->world_position = position;
+				quad->world_size = { 1, 1 };
+				quad->rgba = { 255, 0, 0, 1 };
+				quad->draw_colored_rect = 1;
+				break;
+			}
+		}
+	}
+
 	game_memory->push_audio_samples(&game_state->audio_player);
+
+	push_render_group(background_render_group.quads, background_render_group.count, game_state->camera.position, background_render_group.opts);
+	push_render_group(main_render_group.quads, main_render_group.count, game_state->camera.position, main_render_group.opts);
 
 #ifdef DEBUG
 	debug_render_group.size = 500;
