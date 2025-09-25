@@ -422,7 +422,6 @@ int main(int argc, char* argv[]) {
     memset(game_memory.memory, 0, game_memory.size);
     game_memory.initialize_renderer = initialize_renderer;
 	game_memory.load_texture = load_texture;
-    game_memory.initialize_render_group = initialize_render_group;
     game_memory.push_render_group = push_render_group;
     game_memory.get_performance_counter = get_performance_counter;
     game_memory.start_text_input = start_text_input;

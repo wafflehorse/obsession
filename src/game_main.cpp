@@ -47,8 +47,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		game_memory->initialize_renderer(game_memory->screen_size, game_state->camera.size, &game_state->main_arena);
 		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png");
 
-		game_memory->initialize_render_group(RENDER_GROUP_ID_DEBUG);
-
 		game_memory->init_audio(&game_state->audio_player);
 		setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60, game_state->sounds, &game_state->main_arena);
 
@@ -99,6 +97,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	};
 	ui_draw_container(debug_text_container, &debug_render_group, UI_CONTAINER_DRAW_F_LEFT_ALIGN);
 
-	push_render_group(debug_render_group.id, debug_render_group.quads, debug_render_group.count, game_state->camera.position, debug_render_group.opts);
+	push_render_group(debug_render_group.quads, debug_render_group.count, game_state->camera.position, debug_render_group.opts);
 #endif
 }

@@ -64,7 +64,6 @@ struct GameMemory {
 
     InitializeRenderer* initialize_renderer;
 	LoadTexture* load_texture;
-    InitializeRenderGroup* initialize_render_group;
     PushRenderGroup* push_render_group;
     InitAudio* init_audio;
     PushAudioSamples* push_audio_samples;

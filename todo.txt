@@ -1,1 +1,1 @@
-[] Update RenderQuad struct to remove Rect
+[x] Update RenderQuad struct to remove Rect

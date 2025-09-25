@@ -12,7 +12,7 @@
 #include "stb_image.h"
 #pragma clang diagnostic pop
 
-#define MAX_VBO_INSTANCE_COUNT 500
+#define MAX_VBO_INSTANCE_COUNT 5000
 
 void get_path_with_base(const char* file_path, char* result);
 
@@ -24,20 +24,15 @@ struct OpenGLTexture {
 	bool initialized;
 };
 
-struct OpenGLRenderGroup {
-    uint32 external_id;
-    uint32 quad_vao_id;
-    uint32 quad_local_vbo_id;
-    uint32 quad_instance_vbo_id;
-    bool active;
-};
-
 struct OpenGLRenderData {
     uint32 shader_program_id;
 
-    OpenGLRenderGroup render_groups[MAX_RENDER_GROUPS];
     OpenGLTexture textures[MAX_LOADED_TEXTURES];
 	uint32 texture_count;
+
+    uint32 quad_vao_id;
+    uint32 quad_local_vbo_id;
+    uint32 quad_instance_vbo_id;
 };
 
 static OpenGLRenderData render_data = {};
@@ -146,6 +141,90 @@ INITIALIZE_RENDERER(initialize_renderer) {
     // Maps from our world space to opengl clip space (NDC)
     set_projection_matrix(camera_size.x, camera_size.y);
 
+    glGenVertexArrays(1, &render_data.quad_vao_id);
+    glGenBuffers(1, &render_data.quad_local_vbo_id);
+    glGenBuffers(1, &render_data.quad_instance_vbo_id);
+
+    glBindVertexArray(render_data.quad_vao_id);
+
+    // defines local space used for both geometry and texture
+    float vertices[] = {
+        -0.5f, 0.5f, 0.0f, // top left
+        0.5f, 0.5f, 0.0f, // top right
+        -0.5f, -0.5f, 0.0f, // bottom left
+        0.5f, 0.5f, 0.0f, // top right
+        -0.5f, -0.5f, 0.0f, // bottom left
+        0.5f, -0.5f, 0.0f  // bottom right
+    };
+
+    // Setup local space vertex buffer
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.quad_local_vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // have to do glVertexAttribPointer before unbinding the VBO, because they refer to the currently bound GL_ARRAY_BUFFER
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Setup instance vbo: Will store each entity rect for use in model matrix
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.quad_instance_vbo_id);
+
+    // Initialize vbo instance buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(RenderQuad) * MAX_VBO_INSTANCE_COUNT, NULL, GL_DYNAMIC_DRAW);
+
+    /// world_position
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, world_position));
+    glEnableVertexAttribArray(1);
+    glVertexAttribDivisor(1, 1); // This ensures that the instance data changes for each instance
+
+    // world_size
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, world_size));
+    glEnableVertexAttribArray(2);
+    glVertexAttribDivisor(2, 1);
+
+    // sprite_position
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, sprite_position));
+    glEnableVertexAttribArray(3);
+    glVertexAttribDivisor(3, 1);
+
+    // sprite_size
+    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, sprite_size));
+    glEnableVertexAttribArray(4);
+    glVertexAttribDivisor(4, 1);
+
+	// rotation_rads
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, rotation_rads));
+    glEnableVertexAttribArray(5);
+    glVertexAttribDivisor(5, 1);
+
+    // rgba
+    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, rgba));
+    glEnableVertexAttribArray(6);
+    glVertexAttribDivisor(6, 1);
+
+    // texture_unit
+    glVertexAttribIPointer(7, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, texture_unit));
+    glEnableVertexAttribArray(7);
+    glVertexAttribDivisor(7, 1);
+
+    // draw_colored_rect
+    glVertexAttribIPointer(8, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, draw_colored_rect));
+    glEnableVertexAttribArray(8);
+    glVertexAttribDivisor(8, 1);
+	
+    // tint
+    glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, tint));
+    glEnableVertexAttribArray(9);
+    glVertexAttribDivisor(9, 1);
+
+	// flip_x
+    glVertexAttribIPointer(10, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, flip_x));
+    glEnableVertexAttribArray(10);
+    glVertexAttribDivisor(10, 1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glBindVertexArray(0);
+
     return 0;
 }
 
@@ -217,124 +296,14 @@ LOAD_TEXTURE(load_texture) {
     return 0;
 }
 
-INITIALIZE_RENDER_GROUP(initialize_render_group) {
-    OpenGLRenderGroup* render_group;
-    {
-        uint32 i = 0;
-        while (render_data.render_groups[i].active == true && i < MAX_RENDER_GROUPS) {
-            i++;
-        }
-        ASSERT(i < MAX_RENDER_GROUPS, "We exceeded the MAX_RENDER_GROUPS limit\n");
-        render_group = &render_data.render_groups[i];
-    }
-
-    render_group->active = true;
-    render_group->external_id = render_group_id;
-
-    glGenVertexArrays(1, &render_group->quad_vao_id);
-    glGenBuffers(1, &render_group->quad_local_vbo_id);
-    glGenBuffers(1, &render_group->quad_instance_vbo_id);
-
-    glBindVertexArray(render_group->quad_vao_id);
-
-    // defines local space used for both geometry and texture
-    float vertices[] = {
-        -0.5f, 0.5f, 0.0f, // top left
-        0.5f, 0.5f, 0.0f, // top right
-        -0.5f, -0.5f, 0.0f, // bottom left
-        0.5f, 0.5f, 0.0f, // top right
-        -0.5f, -0.5f, 0.0f, // bottom left
-        0.5f, -0.5f, 0.0f  // bottom right
-    };
-
-    // Setup local space vertex buffer
-    glBindBuffer(GL_ARRAY_BUFFER, render_group->quad_local_vbo_id);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // have to do glVertexAttribPointer before unbinding the VBO, because they refer to the currently bound GL_ARRAY_BUFFER
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Setup instance vbo: Will store each entity rect for use in model matrix
-    glBindBuffer(GL_ARRAY_BUFFER, render_group->quad_instance_vbo_id);
-
-    // Initialize vbo instance buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(RenderQuad) * MAX_VBO_INSTANCE_COUNT, NULL, GL_DYNAMIC_DRAW);
-
-    /// world_position
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, world_position));
-    glEnableVertexAttribArray(1);
-    glVertexAttribDivisor(1, 1); // This ensures that the instance data changes for each instance
-
-    // world_size
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, world_size));
-    glEnableVertexAttribArray(2);
-    glVertexAttribDivisor(2, 1);
-
-    // sprite_position
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, sprite_position));
-    glEnableVertexAttribArray(3);
-    glVertexAttribDivisor(3, 1);
-
-    // sprite_size
-    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, sprite_size));
-    glEnableVertexAttribArray(4);
-    glVertexAttribDivisor(4, 1);
-
-	// rotation_rads
-    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, rotation_rads));
-    glEnableVertexAttribArray(5);
-    glVertexAttribDivisor(5, 1);
-
-    // rgba
-    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, rgba));
-    glEnableVertexAttribArray(6);
-    glVertexAttribDivisor(6, 1);
-
-    // texture_unit
-    glVertexAttribIPointer(7, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, texture_unit));
-    glEnableVertexAttribArray(7);
-    glVertexAttribDivisor(7, 1);
-
-    // draw_colored_rect
-    glVertexAttribIPointer(8, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, draw_colored_rect));
-    glEnableVertexAttribArray(8);
-    glVertexAttribDivisor(8, 1);
-	
-    // tint
-    glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, tint));
-    glEnableVertexAttribArray(9);
-    glVertexAttribDivisor(9, 1);
-
-	// flip_x
-    glVertexAttribIPointer(10, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, flip_x));
-    glEnableVertexAttribArray(10);
-    glVertexAttribDivisor(10, 1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glBindVertexArray(0);
-    return 0;
-}
-
 PUSH_RENDER_GROUP(push_render_group) {
-    OpenGLRenderGroup* render_group;
-    {
-        uint32 i = 0;
-        while (render_data.render_groups[i].external_id != render_group_id && i < MAX_RENDER_GROUPS) {
-            i++;
-        }
-        ASSERT(i < MAX_RENDER_GROUPS, "Render group passed to PUSH_RENDER_GROUP not found\n");
-        render_group = &render_data.render_groups[i];
-    }
-
     if (opts.flags & RENDER_OPTION_SCISSOR_F) {
         glScissor(opts.scissor_rect.x, opts.scissor_rect.y, opts.scissor_rect.w, opts.scissor_rect.h);
         glEnable(GL_SCISSOR_TEST);
     }
 
-    glBindVertexArray(render_group->quad_vao_id);
-    glBindBuffer(GL_ARRAY_BUFFER, render_group->quad_instance_vbo_id);
+    glBindVertexArray(render_data.quad_vao_id);
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.quad_instance_vbo_id);
 
 	float texture_matrices[MAX_LOADED_TEXTURES][16];
 	int texture_num_channels[MAX_LOADED_TEXTURES];
