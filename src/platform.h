@@ -63,6 +63,7 @@ struct GameMemory {
     char base_path[W_PATH_MAX];
 
     InitializeRenderer* initialize_renderer;
+	SetViewport* set_viewport;
 	LoadTexture* load_texture;
     PushRenderGroup* push_render_group;
     InitAudio* init_audio;

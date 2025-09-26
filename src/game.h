@@ -3,6 +3,10 @@
 
 #define GAME_STATE_F_INITIALIZED (1 << 0)
 
+#define BASE_RESOLUTION_WIDTH 320 
+#define BASE_RESOLUTION_HEIGHT 180
+#define BASE_PIXELS_PER_UNIT 8 
+
 struct FontData {
     uint32 ascent;
     uint32 descent;
@@ -55,4 +59,5 @@ struct GameState {
 	Arena main_arena;
 	Arena frame_arena;
 	FontData font_data;
+	uint32 viewport_scale_factor;
 };

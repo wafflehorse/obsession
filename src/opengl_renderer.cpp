@@ -102,9 +102,18 @@ void set_projection_matrix(float width, float height) {
     glUniformMatrix4fv(glGetUniformLocation(render_data.shader_program_id, "projection_matrix"), 1, GL_FALSE, projection_matrix);
 }
 
+SET_VIEWPORT(set_viewport) {
+	Vec2 size_diff = w_sub_vec(screen_size, viewport);
+	Vec2 viewport_position = {
+		size_diff.x / 2,
+		size_diff.y / 2
+	};
+
+    glViewport(viewport_position.x, viewport_position.y, viewport.x, viewport.y);
+}
+
 INITIALIZE_RENDERER(initialize_renderer) {
-    // Note: in the future when we have a window that is resizable, we'd need to recall this. Can use a callback of some kind
-    glViewport(0, 0, view_port.x, view_port.y);
+	set_viewport(viewport, screen_size);
 
     // This enables transparency in our texture
     glEnable(GL_BLEND);

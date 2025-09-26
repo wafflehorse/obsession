@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <sys/stat.h>
 #include "math.h"
 
 #define Kilobytes(Value) ((Value)*1024LL)
@@ -491,5 +493,20 @@ int w_read_wav_file(const char* file_path, WavFile* wav_file, Arena* arena) {
 
     return 0;
 }
+
+time_t get_last_file_write_time(const char* file_path_rel) {
+    struct stat file_stat;
+
+    char file_path_abs[W_PATH_MAX];
+    w_get_absolute_path(file_path_abs, i_base_path, file_path_rel);
+
+    if (stat(file_path_abs, &file_stat) == 0) {
+        return file_stat.st_mtime;
+    }
+    else {
+        return -1;
+    }
+}
+
 
 #endif

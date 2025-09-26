@@ -9,7 +9,7 @@
 
 #define TEXTURE_WIDTH 256
 #define TEXTURE_HEIGHT 256
-#define BAKED_FONT_SIZE 8
+#define BAKED_FONT_SIZE 8 
 #define TTF_FILE_PATH "/Users/parkerpestana/Library/Fonts/PressStart2P-Regular.ttf"
 #define OUTPUT_TEXTURE_FILE_PATH "./resources/assets/font_texture.png"
 #define OUTPUT_FONT_DATA_BIN_PATH "./resources/assets/font_data"

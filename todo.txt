@@ -1,5 +1,6 @@
 [x] Update RenderQuad struct to remove Rect
 [x] Add basic tilemap
+[x] Create a base resolution in the game and allow for window resizing that scales quads to the right resolution
 [] Create player entity
 [] Add player movement
 [] Add gamepad support

@@ -17,11 +17,31 @@ uint32 g_pixels_per_unit;
 #define WORLD_TILE_WIDTH 8
 #define WORLD_TILE_HEIGHT 8 
 
+uint32 get_viewport_scale_factor(Vec2 screen_size) {
+	uint32 width_scale = screen_size.x / BASE_RESOLUTION_WIDTH;
+	uint32 height_scale = screen_size.y / BASE_RESOLUTION_HEIGHT;
+
+	return w_min(width_scale, height_scale);
+}
+
+Vec2 get_viewport(uint32 scale) {
+	return {
+		(float)scale * BASE_RESOLUTION_WIDTH,
+		(float)scale * BASE_RESOLUTION_HEIGHT
+	};
+}
+
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	GameState* game_state = (GameState*)game_memory->memory;
 	g_base_path = game_memory->base_path;
-	g_pixels_per_unit = 32;
-	PushRenderGroup* push_render_group = game_memory->push_render_group;
+
+	game_state->viewport_scale_factor = get_viewport_scale_factor(game_memory->screen_size);
+
+	g_pixels_per_unit = BASE_PIXELS_PER_UNIT * game_state->viewport_scale_factor;
+
+	Vec2 viewport = get_viewport(game_state->viewport_scale_factor);
+
+	game_memory->set_viewport(viewport, game_memory->screen_size);
 
 	w_init_waffle_lib(g_base_path);
 
@@ -52,7 +72,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			game_memory->screen_size.y / g_pixels_per_unit
 		};
 
-		game_memory->initialize_renderer(game_memory->screen_size, game_state->camera.size, &game_state->main_arena);
+		game_memory->initialize_renderer(game_memory->screen_size, viewport, game_state->camera.size, &game_state->main_arena);
 		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png");
 
 		game_memory->init_audio(&game_state->audio_player);
@@ -81,7 +101,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		2, 1, 1, 1, 1, 1, 1, 2,
 		2, 1, 1, 1, 1, 1, 1, 2,
 		2, 1, 1, 1, 1, 1, 1, 2,
-		2, 1, 1, 1, 1, 1, 1, 2,
+		2, 2, 2, 2, 2, 2, 2, 2,
 		2, 1, 1, 1, 1, 1, 1, 2,
 		2, 1, 1, 1, 1, 1, 1, 2,
 		2, 2, 2, 2, 2, 2, 2, 2
@@ -121,8 +141,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	game_memory->push_audio_samples(&game_state->audio_player);
 
-	push_render_group(background_render_group.quads, background_render_group.count, game_state->camera.position, background_render_group.opts);
-	push_render_group(main_render_group.quads, main_render_group.count, game_state->camera.position, main_render_group.opts);
+	game_memory->push_render_group(background_render_group.quads, background_render_group.count, game_state->camera.position, background_render_group.opts);
+	game_memory->push_render_group(main_render_group.quads, main_render_group.count, game_state->camera.position, main_render_group.opts);
 
 #ifdef DEBUG
 	debug_render_group.size = 500;
@@ -155,6 +175,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	};
 	ui_draw_container(debug_text_container, &debug_render_group, UI_CONTAINER_DRAW_F_LEFT_ALIGN);
 
-	push_render_group(debug_render_group.quads, debug_render_group.count, game_state->camera.position, debug_render_group.opts);
+	game_memory->push_render_group(debug_render_group.quads, debug_render_group.count, game_state->camera.position, debug_render_group.opts);
 #endif
 }
