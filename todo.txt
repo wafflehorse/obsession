@@ -1,6 +1,16 @@
 [x] Update RenderQuad struct to remove Rect
 [x] Add basic tilemap
 [x] Create a base resolution in the game and allow for window resizing that scales quads to the right resolution
+[x] Figure out how pixels_per_units actually scales things up and down as screen size changes
+	- right now we set the camera size once based on pixels per unit, but we don't update it. We also only set the projection matrix once.
+	- So how is tilemap scaling up?
+	- And what's interesting, is our ui gets updated with the new pixels per unit each frame and the text seems to stay the same size
+	- Revelation: Projection matrix maps our world coordinates to the ndc coords [-1, 1], the viewport stretches those coords to our screen size. 
+		- what this means, we set projection and camera once. Then, our internal world units will always scale up correctly with the screen size increasing as long as we update the viewport. 
+		- So, we currently have an issue because we update pixels per unit every frame based on the viewport (based on the screen size), but really, the game should never be thinking about pixels per unit really. It should be used to set the camera size, which sets the projection matrix and then scaling happens automatically by the viewport. 
+
+[] Remove pixels per unit from ui.cpp (viewport should handle the scaling)
+	- Although, with fonts, we might be able to cheat a bit and use smaller fonts than our simulated resolution?
 [] Create player entity
 [] Add player movement
 [] Add gamepad support
