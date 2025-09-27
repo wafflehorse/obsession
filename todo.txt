@@ -9,8 +9,9 @@
 		- what this means, we set projection and camera once. Then, our internal world units will always scale up correctly with the screen size increasing as long as we update the viewport. 
 		- So, we currently have an issue because we update pixels per unit every frame based on the viewport (based on the screen size), but really, the game should never be thinking about pixels per unit really. It should be used to set the camera size, which sets the projection matrix and then scaling happens automatically by the viewport. 
 
-[] Remove pixels per unit from ui.cpp (viewport should handle the scaling)
+[x] Remove pixels per unit from ui.cpp (viewport should handle the scaling)
 	- Although, with fonts, we might be able to cheat a bit and use smaller fonts than our simulated resolution?
+[x] Remove screen_size from camera size. Camera size should be based on base resolution
 [] Create player entity
 [] Add player movement
 [] Add gamepad support

@@ -68,8 +68,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		game_state->camera.position = { 0, 0 };
 		game_state->camera.size = {
-			game_memory->screen_size.x / g_pixels_per_unit,
-			game_memory->screen_size.y / g_pixels_per_unit
+			BASE_RESOLUTION_WIDTH / BASE_PIXELS_PER_UNIT,
+			BASE_RESOLUTION_HEIGHT / BASE_PIXELS_PER_UNIT
 		};
 
 		game_memory->initialize_renderer(game_memory->screen_size, viewport, game_state->camera.size, &game_state->main_arena);
@@ -88,7 +88,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		play_sound(&game_state->sounds[SOUND_BACKGROUND_MUSIC], &game_state->audio_player);
 	}
 
-	init_ui(&game_state->font_data, g_pixels_per_unit);
+	init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
 	game_state->frame_arena.next = game_state->frame_arena.data;
 
 	background_render_group.size = 5000;
