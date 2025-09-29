@@ -1,0 +1,30 @@
+{
+  "configurations": [
+      {
+          "name": "Linux",
+          "includePath": [
+              "${workspaceFolder}/**",
+              "${workspaceFolder}/lib/glad/include"
+          ],
+          "compilerPath": "/usr/bin/clang++",
+          "cStandard": "c17",
+          "cppStandard": "c++14",
+          "intelliSenseMode": "clang-x64",
+          "defines": ["DEBUG=1"],
+          "compilerArgs": ["-std=c++14", "-DDEBUG=1"]
+      },
+      {
+        "name": "Windows",
+        "includePath": [
+            "${workspaceFolder}/**",
+            "${workspaceFolder}/lib/glad/include",
+            "${workspaceFolder}/lib/win32/include"
+        ],
+        "cppStandard": "c++14",
+        "intelliSenseMode": "windows-clang-x64",  // or "windows-gcc-x64" for MinGW
+        "defines": ["_WIN32", "DEBUG=1"],
+        "compilerArgs": ["-std=c++14", "-DDEBUG=1", "-include", "${workspaceFolder}/src/game_main.cpp"]
+    }
+  ],
+  "version": 4
+}

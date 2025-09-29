@@ -8,3 +8,4 @@ assets/.DS_Store
 .cache/
 tools/font_processor/process_fonts
 tools/font_processor/process_fonts.dSYM
+*.dSYM/

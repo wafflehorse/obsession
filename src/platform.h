@@ -1,15 +1,5 @@
 #pragma once
 
-#include <limits.h>
-
-#ifdef _WIN32
-#define W_PATH_MAX 500//260 is standard 
-#else 
-#define W_PATH_MAX PATH_MAX
-#endif
-
-#define DEFAULT_ALIGNMENT (uint32)(2 * sizeof(void*))
-
 #include "waffle_lib.h"
 #include "renderer.h"
 #include "audio.h"

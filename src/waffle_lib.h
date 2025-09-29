@@ -6,7 +6,16 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <limits.h>
 #include "math.h"
+
+#ifdef _WIN32
+#define W_PATH_MAX 500//260 is standard 
+#else 
+#define W_PATH_MAX PATH_MAX
+#endif
+
+#define DEFAULT_ALIGNMENT (uint32)(2 * sizeof(void*))
 
 #define Kilobytes(Value) ((Value)*1024LL)
 #define Megabytes(Value) (Kilobytes(Value)*1024LL)
@@ -41,6 +50,8 @@ typedef uint32 flags;
 #define M_PI 3.14159265358979323846
 #endif
 
+#define ANIMATION_MAX_FRAME_COUNT 16
+
 struct Vec2 {
 	float x;
 	float y;
@@ -64,6 +75,29 @@ struct Arena {
 	char* data;
 	char* next;
 	long long size;
+};
+
+struct Sprite {
+	float x;
+	float y;
+	float width;
+	float height;
+};
+
+struct AnimationState {
+	uint32 animation_id;
+	uint32 current_frame;
+	float elapsed_ms;
+};
+
+struct AnimationFrame {
+	uint32 sprite_id;
+	float duration_ms;
+};
+
+struct Animation {
+	AnimationFrame frames[ANIMATION_MAX_FRAME_COUNT];
+	uint32 total_frames;
 };
 
 #define COLOR_WHITE ((Vec4){ 255, 255, 255, 1 })
@@ -107,7 +141,6 @@ struct RiffIterator {
     char* at;
     char* stop;
 };
-
 
 #endif
 
@@ -373,7 +406,7 @@ Vec2 w_rotate_around_pivot(Vec2 position, Vec2 pivot, float radians) {
 	return w_add_vec(pivot, relative_rotated_pos);
 }
 
-void w_get_absolute_path(char* dest, char* base_path, const char* rel_path) {
+void w_get_absolute_path(char* dest, const char* base_path, const char* rel_path) {
 	w_str_copy(dest, base_path);
 	w_str_concat(dest, rel_path);
 }

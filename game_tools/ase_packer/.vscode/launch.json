@@ -8,7 +8,7 @@
       "name": "Debug Platform Main",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build_debug/platform_main",  // Path to your compiled executable
+      "program": "${workspaceFolder}/parser",  // Path to your compiled executable
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
@@ -27,27 +27,8 @@
         "name": "Debug Windows LLDB-DAP",
         "type": "lldb-dap",
         "request": "launch",
-        "program": "${workspaceFolder}\\build_debug\\platform_main.exe",
+        "program": "${workspaceFolder}\\parser.exe",
         "preLaunchTask": "Build C++ Windows Program",
-    },
-    {
-      "name": "Debug Ase Parser",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/game_tools/ase_packer/parser",  // Path to your compiled executable
-      "args": [],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "environment": [],
-      "MIMode": "lldb", // Or "gdb" if you are using gdb
-      "preLaunchTask": "Build Ase Parser",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ],
     }
   ]
 }

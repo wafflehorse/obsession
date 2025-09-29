@@ -11,6 +11,16 @@
       }
     },
     {
+      "label": "Build Ase Parser",
+      "type": "shell",
+      "command": "./game_tools/ase_packer/build.sh",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+
+    },
+    {
       "label": "Build C++ Windows Program",
       "type": "shell",
       "command": "./build_sdl_win.sh",
