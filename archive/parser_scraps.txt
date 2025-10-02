@@ -1,0 +1,86 @@
+// int parse_string(FileContents* file_contents, int start_idx, char* string) {
+//     ASSERT(file_contents->data[start_idx] == '"', "Keys must start with \"");
+
+//     int i = start_idx + 1;
+//     char character = file_contents->data[i++];
+//     uint32 string_length = 0;
+
+//     while (character != '"') {
+//         string[string_length++] = character;
+//         character = file_contents->data[i++];
+//     }
+
+//     return i + 1;
+// }
+
+// int parse_array(FileContents* file_contents, int i) {
+//     ASSERT(file_contents->data[i] == '[', "Arrays must start with [");
+
+//     while (file_contents->data[i++] != ']') {
+
+
+//     }
+
+//     return i + 1;
+// }
+
+// int parse_numeric(FileContents* file_contents, int i, float* number) {
+//     ASSERT(isdigit(file_contents->data[i]), "numerics must start with a digit");
+
+//     char number_string[MAX_VALUE_LENGTH];
+//     uint32 num_str_len = 0;
+
+//     while (isdigit(file_contents->data[i]) || file_contents->data[i] == '.') {
+//         number_string[num_str_len++] = file_contents->data[i++];
+//     }
+//     number_string[num_str_len] = '\0';
+
+//     char* end;
+//     *number = strtof(number_string, &end);
+
+//     return i + 1;
+// }
+
+// int parse_object(FileContents* file_contents, int start_idx) {
+//     ASSERT(file_contents->data[start_idx] == '{', "Objects must start with {");
+//     bool left_side = true;
+//     int i = start_idx + 1;
+
+//     while (file_contents->data[i] != '}') {
+// 		// printf("char: %c\n", file_contents->data[i]);
+//         if (file_contents->data[i] == '"' && left_side) {
+//             char string[MAX_KEY_LENGTH] = {};
+//             i = parse_string(file_contents, i, string);
+//             left_side = false;
+//             printf("key: %s\n", string);
+//         }
+//         else if (file_contents->data[i] == '"' && !left_side) {
+//             char string[MAX_VALUE_LENGTH] = {};
+//             i = parse_string(file_contents, i, string);
+//             left_side = true;
+//             printf("value: %s\n", string);
+//         }
+//         else if (file_contents->data[i] == '{') {
+//             printf("parsing an object\n");
+//             i = parse_object(file_contents, i);
+//             left_side = true;
+// 			printf("done parsing object\n");
+//         }
+//         else if (isdigit(file_contents->data[i])) {
+//             float number;
+//             i = parse_numeric(file_contents, i, &number);
+//             left_side = true;
+//             printf("numeric: %f\n", number);
+//         }
+// 		else if (file_contents->data[i] == '[') {
+// 			printf("parsing array\n");
+// 			i = parse_array(file_contents, i);
+// 			left_side = true;
+// 		}
+// 		else {
+//         	i++;
+// 		}
+//     }
+
+//     return i + 1;
+// }

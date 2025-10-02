@@ -34,7 +34,7 @@
       "name": "Debug Ase Parser",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/game_tools/ase_packer/parser",  // Path to your compiled executable
+      "program": "${workspaceFolder}/game_tools/asset_manager/parser",  // Path to your compiled executable
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

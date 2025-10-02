@@ -13,7 +13,7 @@
     {
       "label": "Build Ase Parser",
       "type": "shell",
-      "command": "./game_tools/ase_packer/build.sh",
+      "command": "./game_tools/asset_manager/build.sh",
       "group": {
         "kind": "build",
         "isDefault": true

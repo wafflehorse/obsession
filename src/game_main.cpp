@@ -10,6 +10,7 @@
 #include "renderer.cpp"
 #include "ui.cpp"
 #include "sound.cpp"
+#include "sprite_assets.h"
 
 char* g_base_path;
 uint32 g_pixels_per_unit;
@@ -79,7 +80,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60, game_state->sounds, &game_state->main_arena);
 
 		// TODO: The arena marker / restore interface can be improved. Some way to defer?
-		char* arena_marker = w_get_arena_marker(&game_state->main_arena);
+		char* arena_marker = w_arena_marker(&game_state->main_arena);
 		FileContents font_data_file_contents;
 		w_read_file("resources/assets/font_data", &font_data_file_contents, &game_state->main_arena);
 		memcpy(&game_state->font_data, font_data_file_contents.data, sizeof(FontData));

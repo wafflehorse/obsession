@@ -40,6 +40,15 @@ if [ ! -e ./resources/assets/font_data -o ! -e ./resources/assets/font_texture.p
 	./game_tools/font_render/font_render
 fi
 
+if [ ! -e ./assets/sprite_assets.h -o ! -e ./assets/sprite_atlas.png ]; then
+	./game_tools/asset_manager/ase_bmp_extract.sh
+	./game_tools/asset_manager/build.sh
+	./game_tools/asset_manager/pack
+fi
+
+cp ./assets/sprite_assets.h src
+cp ./assets/sprite_atlas.png ./resources/assets
+
 cp -r ./resources/* $BUILD_DIR/resources
 
 # Capture the start time in nanoseconds using gdate

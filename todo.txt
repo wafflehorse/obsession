@@ -12,6 +12,18 @@
 [x] Remove pixels per unit from ui.cpp (viewport should handle the scaling)
 	- Although, with fonts, we might be able to cheat a bit and use smaller fonts than our simulated resolution?
 [x] Remove screen_size from camera size. Camera size should be based on base resolution
+[x] bash script to output pngs from aseprite file
+[x] implment bitmap packer with stb_rect_pack
+[x] Add bitmap trimming to packer
+[x] Add token split function to waffle_lib.h
+[x] Add w_to_uppercase function
+[x] Add sort algorithm (just ended up using qsort)
+[x] Maybe rename the ase_packer tool as its contains the following tools
+	- Aseprite export bash script
+	- bitmap packer
+	- will eventually construct sprite and animations into a header file
+[x] Finish up Asepacker tool
+[x] Update w_str_length to w_str_len
 [] Create player entity
 [] Add player movement
 [] Add gamepad support
