@@ -3,9 +3,9 @@
 
 #define GAME_STATE_F_INITIALIZED (1 << 0)
 
-#define BASE_RESOLUTION_WIDTH 320 
-#define BASE_RESOLUTION_HEIGHT 180
-#define BASE_PIXELS_PER_UNIT 8 
+#define BASE_RESOLUTION_WIDTH 640 
+#define BASE_RESOLUTION_HEIGHT 360 
+#define BASE_PIXELS_PER_UNIT 16 
 
 struct FontData {
     uint32 ascent;
@@ -51,6 +51,23 @@ struct Camera {
 	Vec2 size;
 };
 
+#define ENTITY_F_ACTIVE (1 << 0)
+
+struct Entity {
+	flags flags;
+
+	Vec2 position;
+	Vec2 velocity;
+	Vec2 acceleration;
+	AnimationState anim_state;
+};
+
+struct EntityArray {
+	Entity entities[MAX_ENTITIES];
+	uint32 count;
+	uint32 cap;
+};
+
 struct GameState {
 	flags flags;
 	Camera camera;
@@ -60,4 +77,5 @@ struct GameState {
 	Arena frame_arena;
 	FontData font_data;
 	uint32 viewport_scale_factor;
+	EntityArray entity_array;
 };

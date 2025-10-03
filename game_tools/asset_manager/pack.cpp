@@ -42,7 +42,7 @@ struct AsepriteAnimationExtract {
     uint32 animation_count;
 };
 
-void aseprite_anim_parse(FileContents* file_contents, const char* filename, AnimationExtraction* anim_extractions, uint32* anim_count) {
+void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, AnimationExtraction* anim_extractions, uint32* anim_count) {
     char* cursor = file_contents->data;
     uint32 all_frame_durations[512] = {};
     uint32 all_frames_count = 0;
@@ -104,14 +104,14 @@ void aseprite_anim_parse(FileContents* file_contents, const char* filename, Anim
 
         AnimationExtraction* anim_extract = &anim_extractions[(*anim_count)++];
         char* animation_label = anim_extract->animation_label;
-        snprintf(animation_label, sizeof(anim_extract->animation_label), "ANIM_%s_%s", filename, name);
+        snprintf(animation_label, sizeof(anim_extract->animation_label), "ANIM_%s_%s", entity_name, name);
         w_to_uppercase(animation_label);
 
         for (int i = start_idx; i < end_idx + 1; i++) {
             anim_extract->frame_durations[anim_extract->frame_count] = all_frame_durations[i];
             char* sprite_label = anim_extract->sprite_labels[anim_extract->frame_count];
             w_str_copy(sprite_label, "SPRITE_");
-            w_str_concat(sprite_label, filename);
+            w_str_concat(sprite_label, entity_name);
             w_str_concat(sprite_label, "_");
             w_str_concat(sprite_label, name);
             char frame_index_str[64] = {};
@@ -368,8 +368,10 @@ int main(int argc, char* argv[]) {
 
         char filename_no_ext[64] = {};
         w_filename_no_ext_from_path(json_filepaths[i], filename_no_ext);
+		char* cursor = filename_no_ext;
+		char* entity_name = w_next_token(&cursor, "_anim");
 
-        aseprite_anim_parse(&file_contents, filename_no_ext, animation_extracts, &anim_count);
+        aseprite_anim_parse(&file_contents, entity_name, animation_extracts, &anim_count);
 
         w_arena_restore(&arena, marker);
     }

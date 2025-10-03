@@ -14,6 +14,7 @@
 
 char* g_base_path;
 uint32 g_pixels_per_unit;
+double g_sim_dt_s;
 
 #define WORLD_TILE_WIDTH 8
 #define WORLD_TILE_HEIGHT 8 
@@ -32,12 +33,46 @@ Vec2 get_viewport(uint32 scale) {
 	};
 }
 
+Entity* get_new_entity(EntityArray* entity_array) {
+	Entity* entity = &entity_array->entities[entity_array->count++];
+	memset(entity, 0, sizeof(Entity));
+	set(entity->flags, ENTITY_F_ACTIVE);
+
+	ASSERT(entity_array->count < entity_array->cap, "MAX_ENTITIES has been reached!");
+
+	return entity;
+}
+
+uint32 create_player_entity(EntityArray* entity_array, Vec2 position) {
+	Entity* entity = get_new_entity(entity_array);
+	
+	entity->position = position;
+	entity->anim_state = {
+		ANIM_HERO_IDLE,
+		0
+	};
+
+	return entity_array->count - 1;
+}
+
+RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* render_group) {
+	RenderQuad* quad = get_next_quad(render_group);
+	quad->world_position = world_position;
+	Sprite sprite = sprite_table[sprite_id];
+
+	quad->world_size = w_vec_mult((Vec2){ sprite.w, sprite.h }, 1.0 / BASE_PIXELS_PER_UNIT);
+	quad->sprite_position = { sprite.x, sprite.y };
+	quad->sprite_size = { sprite.w, sprite.h };
+
+	return quad;
+}
+
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	GameState* game_state = (GameState*)game_memory->memory;
 	g_base_path = game_memory->base_path;
+	g_sim_dt_s = frame_dt_s;
 
 	game_state->viewport_scale_factor = get_viewport_scale_factor(game_memory->screen_size);
-
 	g_pixels_per_unit = BASE_PIXELS_PER_UNIT * game_state->viewport_scale_factor;
 
 	Vec2 viewport = get_viewport(game_state->viewport_scale_factor);
@@ -45,6 +80,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	game_memory->set_viewport(viewport, game_memory->screen_size);
 
 	w_init_waffle_lib(g_base_path);
+	w_init_animation(animation_table);
 
 	RenderGroup background_render_group = {};
 	background_render_group.id = RENDER_GROUP_ID_BACKGROUND;
@@ -73,8 +109,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			BASE_RESOLUTION_HEIGHT / BASE_PIXELS_PER_UNIT
 		};
 
+		game_state->entity_array.cap = MAX_ENTITIES;
+
 		game_memory->initialize_renderer(game_memory->screen_size, viewport, game_state->camera.size, &game_state->main_arena);
 		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png");
+		game_memory->load_texture(TEXTURE_ID_SPRITE, "resources/assets/sprite_atlas.png");
 
 		game_memory->init_audio(&game_state->audio_player);
 		setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60, game_state->sounds, &game_state->main_arena);
@@ -85,6 +124,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		w_read_file("resources/assets/font_data", &font_data_file_contents, &game_state->main_arena);
 		memcpy(&game_state->font_data, font_data_file_contents.data, sizeof(FontData));
 		w_arena_restore(&game_state->main_arena, arena_marker);
+
+		create_player_entity(&game_state->entity_array, { 0, 0 });
 
 		play_sound(&game_state->sounds[SOUND_BACKGROUND_MUSIC], &game_state->audio_player);
 	}
@@ -98,20 +139,29 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	main_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, main_render_group.size * sizeof(RenderQuad));
 
 	uint32 tilemap[WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT] = {
-		2, 2, 2, 2, 2, 2, 2, 2,
-		2, 1, 1, 1, 1, 1, 1, 2,
-		2, 1, 1, 1, 1, 1, 1, 2,
-		2, 1, 1, 1, 1, 1, 1, 2,
-		2, 2, 2, 2, 2, 2, 2, 2,
-		2, 1, 1, 1, 1, 1, 1, 2,
-		2, 1, 1, 1, 1, 1, 1, 2,
-		2, 2, 2, 2, 2, 2, 2, 2
+		0, 0, 0, 0, 0, 0, 2, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 2, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 2, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
 	};
 
 	Vec2 world_top_left_tile_position = {
 		-WORLD_TILE_WIDTH / 2 + 0.5,
 		WORLD_TILE_HEIGHT / 2 - 0.5
 	};
+
+	{
+		RenderQuad* ground = get_next_quad(&background_render_group);
+		ground->world_position = { 0, 0 };
+		ground->world_size = { 64, 64 };
+		Sprite ground_sprite = sprite_table[SPRITE_GROUND_1];
+		ground->sprite_position = { ground_sprite.x, ground_sprite.y };
+		ground->sprite_size = { ground_sprite.w, ground_sprite.h };
+	}
 
 	for(int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
 		uint32 col = i % WORLD_TILE_WIDTH;
@@ -122,22 +172,27 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		};
 		switch(tilemap[i]) {
 			case 1: {
-				RenderQuad* quad = get_next_quad(&background_render_group);
-				quad->world_position = position;
-				quad->world_size = { 1, 1 };
-				quad->rgba = { 0, 255, 0, 1 };
-				quad->draw_colored_rect = 1;
+				render_sprite(position, SPRITE_BLOCK_1, &background_render_group);
 				break;
 			}
 			case 2: {
-				RenderQuad* quad = get_next_quad(&main_render_group);
-				quad->world_position = position;
-				quad->world_size = { 1, 1 };
-				quad->rgba = { 255, 0, 0, 1 };
-				quad->draw_colored_rect = 1;
+				render_sprite(position, SPRITE_PLANT_1, &main_render_group);
 				break;
 			}
 		}
+	}
+
+	for(int i = 0; i < game_state->entity_array.count; i++) {
+		Entity* entity = &game_state->entity_array.entities[i];
+		Vec2 new_position {};
+		new_position = w_vec_add(w_vec_mult(w_vec_mult(entity->acceleration, 0.5), w_square(g_sim_dt_s)), new_position);
+		new_position = w_vec_add(w_vec_mult(entity->velocity, g_sim_dt_s), new_position);
+		new_position = w_vec_add(new_position, entity->position);
+		entity->position = new_position;
+		entity->velocity = w_vec_add(w_vec_mult(entity->acceleration, g_sim_dt_s), entity->velocity);
+
+		SpriteID sprite = (SpriteID)w_update_animation(&entity->anim_state, g_sim_dt_s);
+		render_sprite(entity->position, (uint32)sprite, &main_render_group);
 	}
 
 	game_memory->push_audio_samples(&game_state->audio_player);

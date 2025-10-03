@@ -31,8 +31,8 @@ static char base_path[W_PATH_MAX];
 #define MIN_FRAME_TIME_S 1 / MAX_FRAME_RATE
 #define MAX_FRAME_TIME_S 1 / 30.f
 
-#define MIN_SCREEN_WIDTH 320
-#define MIN_SCREEN_HEIGHT 180
+#define MIN_SCREEN_WIDTH 640 
+#define MIN_SCREEN_HEIGHT 360 
 
 static SDL_Window* window;
 
@@ -417,12 +417,13 @@ int main(int argc, char* argv[]) {
     game_memory.init_audio = init_audio;
     game_memory.push_audio_samples = push_audio_samples;
     game_memory.performance_frequency = SDL_GetPerformanceFrequency();
-    game_memory.screen_size = { MIN_SCREEN_WIDTH * 3, MIN_SCREEN_HEIGHT * 3 };
+    game_memory.screen_size = { MIN_SCREEN_WIDTH * 2, MIN_SCREEN_HEIGHT * 2 };
     w_str_copy(game_memory.base_path, (char*)SDL_GetBasePath());
 
 	w_init_waffle_lib(game_memory.base_path);
 
-    window = SDL_CreateWindow("Obsession", game_memory.screen_size.x, game_memory.screen_size.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	// TODO: Should always be on top be kept?
+    window = SDL_CreateWindow("Obsession", game_memory.screen_size.x, game_memory.screen_size.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
     if (!window)
     {
         fprintf(stderr, "SDL_CreateWindow Error: %s\n", SDL_GetError());
@@ -510,7 +511,7 @@ int main(int argc, char* argv[]) {
         SDL_GL_SwapWindow(window);
 
         frame_end_count = SDL_GetPerformanceCounter();
-        double frame_dt_s = (frame_end_count - frame_start_count) / (double)game_memory.performance_frequency;
+        frame_dt_s = (frame_end_count - frame_start_count) / (double)game_memory.performance_frequency;
         while (frame_dt_s < MIN_FRAME_TIME_S) {
             frame_end_count = SDL_GetPerformanceCounter();
             frame_dt_s = (frame_end_count - frame_start_count) / (double)game_memory.performance_frequency;

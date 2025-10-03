@@ -24,7 +24,13 @@
 	- will eventually construct sprite and animations into a header file
 [x] Finish up Asepacker tool
 [x] Update w_str_length to w_str_len
-[] Create player entity
+[x] Figure out how to manage aseprite file with sprite atlas in it
+	- Need to somehow label and extract individual bmps
+	- Just using slices and a separate aseprite cli call
+[x] import basic tileset from stranded
+[x] Render basic tileset
+[x] Create player entity w/ animation
 [] Add player movement
 [] Add gamepad support
+[] Get LSP working for gd and autocorrect
 
