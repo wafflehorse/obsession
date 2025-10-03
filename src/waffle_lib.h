@@ -84,7 +84,10 @@ struct Sprite {
     float h;
 };
 
+#define ANIMATION_STATE_F_FLIP_X (1 << 0)
+
 struct AnimationState {
+	flags flags;
     uint32 animation_id;
     uint32 current_frame;
     uint32 elapsed_frame_ms;
@@ -634,6 +637,15 @@ uint32 w_update_animation(AnimationState* anim_state, double dt_s) {
 	}
 	
 	return curr_anim.frames[anim_state->current_frame].sprite_id;
+}
+
+void w_play_animation(uint32 animation_id, AnimationState* anim_state, flags opts) {
+	if(anim_state->animation_id != animation_id || opts != anim_state->flags) {
+		anim_state->animation_id = animation_id;
+		anim_state->current_frame = 0;
+		anim_state->elapsed_frame_ms = 0;
+		anim_state->flags = opts;
+	}
 }
 
 #endif

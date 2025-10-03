@@ -30,7 +30,10 @@
 [x] import basic tileset from stranded
 [x] Render basic tileset
 [x] Create player entity w/ animation
-[] Add player movement
+[x] Add player input
+[x] Add player movement
+[x] Handle movement animations
+[] Fix player idle flip handling
 [] Add gamepad support
-[] Get LSP working for gd and autocorrect
+[x] Get LSP working for gd and autocorrect
 

@@ -46,6 +46,7 @@ Entity* get_new_entity(EntityArray* entity_array) {
 uint32 create_player_entity(EntityArray* entity_array, Vec2 position) {
 	Entity* entity = get_new_entity(entity_array);
 	
+	entity->type = ENTITY_TYPE_PLAYER;
 	entity->position = position;
 	entity->anim_state = {
 		ANIM_HERO_IDLE,
@@ -55,7 +56,9 @@ uint32 create_player_entity(EntityArray* entity_array, Vec2 position) {
 	return entity_array->count - 1;
 }
 
-RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* render_group) {
+#define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
+
+RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* render_group, uint32 opts) { 
 	RenderQuad* quad = get_next_quad(render_group);
 	quad->world_position = world_position;
 	Sprite sprite = sprite_table[sprite_id];
@@ -64,7 +67,39 @@ RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* re
 	quad->sprite_position = { sprite.x, sprite.y };
 	quad->sprite_size = { sprite.w, sprite.h };
 
+	if(is_set(opts, RENDER_SPRITE_OPT_FLIP_X)) {
+		quad->flip_x = 1;
+	}
+
 	return quad;
+}
+
+RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* render_group) {
+	return render_sprite(world_position, sprite_id, render_group, 0);
+}
+
+RenderQuad* render_animation_sprite(Vec2 world_position, SpriteID sprite_id, AnimationState* anim_state, RenderGroup* render_group) {
+	flags opts = {};
+	if(is_set(anim_state->flags, ANIMATION_STATE_F_FLIP_X)) {
+		set(opts, RENDER_SPRITE_OPT_FLIP_X);
+	}
+	
+	return render_sprite(world_position, sprite_id, render_group, opts);
+} 
+
+struct PlayerWorldInput {
+	KeyInputState move_up;
+	KeyInputState move_down;
+	KeyInputState move_left;
+	KeyInputState move_right;
+};
+
+void update_player_world_input(GameInput* game_input, PlayerWorldInput* input) {
+	KeyInputState* key_input_states = game_input->key_input_states;
+	input->move_up = key_input_states[KEY_W];
+	input->move_down = key_input_states[KEY_S];
+	input->move_left = key_input_states[KEY_A];
+	input->move_right = key_input_states[KEY_D];
 }
 
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
@@ -182,17 +217,58 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		}
 	}
 
+	PlayerWorldInput player_world_input = {};
+	update_player_world_input(game_input, &player_world_input);
+
 	for(int i = 0; i < game_state->entity_array.count; i++) {
 		Entity* entity = &game_state->entity_array.entities[i];
-		Vec2 new_position {};
-		new_position = w_vec_add(w_vec_mult(w_vec_mult(entity->acceleration, 0.5), w_square(g_sim_dt_s)), new_position);
-		new_position = w_vec_add(w_vec_mult(entity->velocity, g_sim_dt_s), new_position);
-		new_position = w_vec_add(new_position, entity->position);
-		entity->position = new_position;
+		if(entity->type == ENTITY_TYPE_PLAYER) {
+			Vec2 acceleration = {};
+			if(player_world_input.move_up.is_held) {
+				acceleration.y = 1;
+			}
+			if(player_world_input.move_down.is_held) {
+				acceleration.y = -1;
+			}
+			if(player_world_input.move_left.is_held) {
+				acceleration.x = -1;
+			}
+			if(player_world_input.move_right.is_held) {
+				acceleration.x = 1;
+			}
+			float acceleration_mag = 20;
+			acceleration = w_vec_mult(w_vec_norm(acceleration), acceleration_mag);
+			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -3.0));
+		}
+		entity->position =	w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
 		entity->velocity = w_vec_add(w_vec_mult(entity->acceleration, g_sim_dt_s), entity->velocity);
 
+		float mag_y_velocity = w_abs(entity->velocity.y);
+		float mag_x_velocity = w_abs(entity->velocity.x);
+		if(mag_y_velocity < .5 && mag_x_velocity < .5) {
+			// TODO: This setting of animations state flip flag if previous state had it doesn't exactly work 
+			w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, is_set(entity->anim_state.flags, ANIMATION_STATE_F_FLIP_X)); 
+		}
+		else if(mag_y_velocity > mag_x_velocity) {
+			if(entity->velocity.y > 0) {
+				w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state, 0);		
+			}
+			else {
+				w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state, 0);		
+			}
+		}
+		else {
+			if(entity->velocity.x > 0) {
+				w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
+			}
+			else {
+				w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, 0);		
+			}
+		}
+
 		SpriteID sprite = (SpriteID)w_update_animation(&entity->anim_state, g_sim_dt_s);
-		render_sprite(entity->position, (uint32)sprite, &main_render_group);
+
+		render_animation_sprite(entity->position, sprite, &entity->anim_state, &main_render_group);
 	}
 
 	game_memory->push_audio_samples(&game_state->audio_player);

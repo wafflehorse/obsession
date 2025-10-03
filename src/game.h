@@ -51,11 +51,16 @@ struct Camera {
 	Vec2 size;
 };
 
+enum EntityType {
+	ENTITY_TYPE_PLAYER
+};
+
 #define ENTITY_F_ACTIVE (1 << 0)
 
 struct Entity {
 	flags flags;
 
+	EntityType type;
 	Vec2 position;
 	Vec2 velocity;
 	Vec2 acceleration;
