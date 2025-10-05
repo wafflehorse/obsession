@@ -65,6 +65,7 @@ struct Entity {
 	Vec2 velocity;
 	Vec2 acceleration;
 	AnimationState anim_state;
+	Vec2 facing_direction;
 };
 
 struct EntityArray {

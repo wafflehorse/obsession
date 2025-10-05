@@ -33,7 +33,9 @@
 [x] Add player input
 [x] Add player movement
 [x] Handle movement animations
-[] Fix player idle flip handling
-[] Add gamepad support
+[x] Fix player idle flip handling
+[x] Fix typing issues around sprite id and animation id
+    - Had to separate sprite_assets.h into asset_ids.h and asset_tables.h
+[x] Add gamepad support
 [x] Get LSP working for gd and autocorrect
 

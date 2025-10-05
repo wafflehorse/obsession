@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include "math.h"
+#include "asset_ids.h"
 
 #ifdef _WIN32
 #define W_PATH_MAX 500//260 is standard 
@@ -88,13 +89,13 @@ struct Sprite {
 
 struct AnimationState {
 	flags flags;
-    uint32 animation_id;
+    AnimationID animation_id;
     uint32 current_frame;
     uint32 elapsed_frame_ms;
 };
 
 struct AnimationFrame {
-    uint32 sprite_id;
+    SpriteID sprite_id;
     uint32 duration_ms;
 };
 
@@ -626,7 +627,7 @@ void w_init_animation(Animation* animation_table) {
 
 // ~~~~~~~~~~~~~~~~ Sprites & Animations ~~~~~~~~~~~~~~~~~//
 
-uint32 w_update_animation(AnimationState* anim_state, double dt_s) {
+SpriteID w_update_animation(AnimationState* anim_state, double dt_s) {
 	anim_state->elapsed_frame_ms += dt_s * 1000; 	
 	Animation curr_anim = i_animation_table[anim_state->animation_id];
 	AnimationFrame curr_frame = curr_anim.frames[anim_state->current_frame];
@@ -639,13 +640,17 @@ uint32 w_update_animation(AnimationState* anim_state, double dt_s) {
 	return curr_anim.frames[anim_state->current_frame].sprite_id;
 }
 
-void w_play_animation(uint32 animation_id, AnimationState* anim_state, flags opts) {
+void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flags opts) {
 	if(anim_state->animation_id != animation_id || opts != anim_state->flags) {
 		anim_state->animation_id = animation_id;
 		anim_state->current_frame = 0;
 		anim_state->elapsed_frame_ms = 0;
 		anim_state->flags = opts;
 	}
+}
+
+void w_play_animation(AnimationID animation_id, AnimationState* anim_state) {
+	w_play_animation(animation_id, anim_state, 0);
 }
 
 #endif

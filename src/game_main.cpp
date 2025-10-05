@@ -10,7 +10,8 @@
 #include "renderer.cpp"
 #include "ui.cpp"
 #include "sound.cpp"
-#include "sprite_assets.h"
+#include "asset_ids.h"
+#include "asset_tables.h"
 
 char* g_base_path;
 uint32 g_pixels_per_unit;
@@ -48,17 +49,15 @@ uint32 create_player_entity(EntityArray* entity_array, Vec2 position) {
 	
 	entity->type = ENTITY_TYPE_PLAYER;
 	entity->position = position;
-	entity->anim_state = {
-		ANIM_HERO_IDLE,
-		0
-	};
+	entity->facing_direction.x = 1;
+	entity->facing_direction.y = 0;
 
 	return entity_array->count - 1;
 }
 
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
 
-RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* render_group, uint32 opts) { 
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, uint32 opts) { 
 	RenderQuad* quad = get_next_quad(render_group);
 	quad->world_position = world_position;
 	Sprite sprite = sprite_table[sprite_id];
@@ -74,7 +73,7 @@ RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* re
 	return quad;
 }
 
-RenderQuad* render_sprite(Vec2 world_position, uint32 sprite_id, RenderGroup* render_group) {
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group) {
 	return render_sprite(world_position, sprite_id, render_group, 0);
 }
 
@@ -88,18 +87,31 @@ RenderQuad* render_animation_sprite(Vec2 world_position, SpriteID sprite_id, Ani
 } 
 
 struct PlayerWorldInput {
-	KeyInputState move_up;
-	KeyInputState move_down;
-	KeyInputState move_left;
-	KeyInputState move_right;
+	Vec2 movement_vec;
 };
 
 void update_player_world_input(GameInput* game_input, PlayerWorldInput* input) {
-	KeyInputState* key_input_states = game_input->key_input_states;
-	input->move_up = key_input_states[KEY_W];
-	input->move_down = key_input_states[KEY_S];
-	input->move_left = key_input_states[KEY_A];
-	input->move_right = key_input_states[KEY_D];
+	if(game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
+		KeyInputState* key_input_states = game_input->key_input_states;
+		Vec2 movement_vec = {};
+		if(key_input_states[KEY_W].is_held) {
+			movement_vec.y = 1;
+		}
+		if(key_input_states[KEY_A].is_held) {
+			movement_vec.x = -1;
+		}
+		if(key_input_states[KEY_S].is_held) {
+			movement_vec.y = -1;
+		}
+		if(key_input_states[KEY_D].is_held) {
+			movement_vec.x = 1;
+		}
+		input->movement_vec = w_vec_norm(movement_vec);
+	}
+	else if(game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
+		GamepadState* gamepad_state = &game_input->gamepad_state;
+		input->movement_vec = w_vec_norm({ gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_X], -gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_Y] });
+	}
 }
 
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
@@ -223,38 +235,33 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	for(int i = 0; i < game_state->entity_array.count; i++) {
 		Entity* entity = &game_state->entity_array.entities[i];
 		if(entity->type == ENTITY_TYPE_PLAYER) {
-			Vec2 acceleration = {};
-			if(player_world_input.move_up.is_held) {
-				acceleration.y = 1;
-			}
-			if(player_world_input.move_down.is_held) {
-				acceleration.y = -1;
-			}
-			if(player_world_input.move_left.is_held) {
-				acceleration.x = -1;
-			}
-			if(player_world_input.move_right.is_held) {
-				acceleration.x = 1;
-			}
-			float acceleration_mag = 20;
-			acceleration = w_vec_mult(w_vec_norm(acceleration), acceleration_mag);
-			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -3.0));
+			float acceleration_mag = 30;
+			Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
+			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
 		}
 		entity->position =	w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
 		entity->velocity = w_vec_add(w_vec_mult(entity->acceleration, g_sim_dt_s), entity->velocity);
 
+		if(w_vec_length(entity->velocity) >= 0.1) {
+			entity->facing_direction = w_vec_norm(entity->velocity);
+		}
+
 		float mag_y_velocity = w_abs(entity->velocity.y);
 		float mag_x_velocity = w_abs(entity->velocity.x);
+
 		if(mag_y_velocity < .5 && mag_x_velocity < .5) {
-			// TODO: This setting of animations state flip flag if previous state had it doesn't exactly work 
-			w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, is_set(entity->anim_state.flags, ANIMATION_STATE_F_FLIP_X)); 
+			flags opts = 0;
+			if(entity->facing_direction.x > 0) {
+				set(opts, ANIMATION_STATE_F_FLIP_X);
+			}
+			w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, opts); 
 		}
 		else if(mag_y_velocity > mag_x_velocity) {
 			if(entity->velocity.y > 0) {
-				w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state, 0);		
+				w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state);		
 			}
 			else {
-				w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state, 0);		
+				w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state);		
 			}
 		}
 		else {
@@ -262,11 +269,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
 			}
 			else {
-				w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, 0);		
+				w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state);		
 			}
 		}
 
-		SpriteID sprite = (SpriteID)w_update_animation(&entity->anim_state, g_sim_dt_s);
+		SpriteID sprite = w_update_animation(&entity->anim_state, g_sim_dt_s);
 
 		render_animation_sprite(entity->position, sprite, &entity->anim_state, &main_render_group);
 	}

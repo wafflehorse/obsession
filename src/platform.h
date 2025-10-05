@@ -64,6 +64,13 @@ struct GameMemory {
 	DebugInfo debug_info;
 };
 
+enum InputType {
+	INPUT_TYPE_UNKNOWN,
+	INPUT_TYPE_KEYBOARD_MOUSE,
+	INPUT_TYPE_GAMEPAD,
+	INPUT_TYPE_COUNT
+};
+
 struct KeyInputState
 {
     bool is_pressed;
@@ -214,11 +221,56 @@ struct MouseState {
     KeyInputState input_states[MOUSE_INPUT_COUNT];
 };
 
+struct ButtonInputState {
+	bool is_pressed;
+	bool is_held;
+};
+
+enum GamepadButtonID {
+	GAMEPAD_BUTTON_SOUTH,
+	GAMEPAD_BUTTON_NORTH,
+	GAMEPAD_BUTTON_EAST,
+	GAMEPAD_BUTTON_WEST,
+	GAMEPAD_BUTTON_LEFT_STICK,
+	GAMEPAD_BUTTON_RIGHT_STICK,
+	GAMEPAD_BUTTON_LEFT_SHOULDER,
+	GAMEPAD_BUTTON_RIGHT_SHOULDER,
+	GAMEPAD_BUTTON_DPAD_UP,
+	GAMEPAD_BUTTON_DPAD_DOWN,
+	GAMEPAD_BUTTON_DPAD_LEFT,
+	GAMEPAD_BUTTON_DPAD_RIGHT,
+	GAMEPAD_BUTTON_START,
+	GAMEPAD_BUTTON_BACK,
+	GAMEPAD_BUTTON_GUIDE,
+	GAMEPAD_BUTTON_COUNT
+};
+
+enum GamepadAxisID {
+	GAMEPAD_AXIS_LEFT_STICK_X,
+	GAMEPAD_AXIS_LEFT_STICK_Y,
+	GAMEPAD_AXIS_RIGHT_STICK_X,
+	GAMEPAD_AXIS_RIGHT_STICK_Y,
+	GAMEPAD_AXIS_LEFT_TRIGGER,
+	GAMEPAD_AXIS_RIGHT_TRIGGER,
+	GAMEPAD_AXIS_COUNT
+};
+
+struct GamepadState {
+	ButtonInputState buttons[GAMEPAD_BUTTON_COUNT];
+	float axes[GAMEPAD_AXIS_COUNT];
+};
+
+#define GAME_INPUT_F_KEYBOARD_MOUSE_ACTIVE (1 << 0)
+#define GAME_INPUT_F_GAMEPAD_ACTIVE (1 << 1)
+
 struct GameInput {
+	flags flags;
     KeyInputState key_input_states[KEY_INPUT_COUNT];
     bool text_input_states[TEXT_INPUT_COUNT]; // not sure if we still need this
     char text_buffer[100];
     MouseState mouse_state;
+	GamepadState gamepad_state;
+	InputType active_input_type;
 };
 
 #define GAME_UPDATE_AND_RENDER(name) void name(GameMemory *game_memory, GameInput *game_input, double frame_dt_s)
