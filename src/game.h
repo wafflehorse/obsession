@@ -51,27 +51,48 @@ struct Camera {
 	Vec2 size;
 };
 
-enum EntityType {
-	ENTITY_TYPE_PLAYER
+struct EntityLookup {
+	uint32 idx;
+	uint32 generation;
 };
 
-#define ENTITY_F_ACTIVE (1 << 0)
+struct EntityHandle {
+	uint32 id;
+	uint32 generation;
+};
+
+enum EntityType {
+	ENTITY_TYPE_PLAYER,
+	ENTITY_TYPE_GUN
+};
+
+#define ENTITY_FLAG_MARK_FOR_DELETION (1 << 0)
+#define ENTITY_FLAG_EQUIPPED (1 << 1)
+#define ENTITY_FLAG_OWNED (1 << 2)
 
 struct Entity {
 	flags flags;
 
 	EntityType type;
+	uint32 id;
+
 	Vec2 position;
 	Vec2 velocity;
 	Vec2 acceleration;
+
 	AnimationState anim_state;
+	SpriteID sprite_id;
+	float z_index;
+
 	Vec2 facing_direction;
+	EntityHandle owner_handle;
 };
 
-struct EntityArray {
+struct EntityData {
 	Entity entities[MAX_ENTITIES];
-	uint32 count;
-	uint32 cap;
+	uint32 entity_count;
+	uint32 entity_ids[MAX_ENTITIES];
+	EntityLookup entity_lookups[MAX_ENTITIES];
 };
 
 struct GameState {
@@ -83,5 +104,5 @@ struct GameState {
 	Arena frame_arena;
 	FontData font_data;
 	uint32 viewport_scale_factor;
-	EntityArray entity_array;
+	EntityData entity_data;
 };

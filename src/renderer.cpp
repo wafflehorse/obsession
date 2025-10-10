@@ -8,8 +8,22 @@ RenderQuad* get_next_quad(RenderGroup* render_group) {
     ASSERT(render_group->count <= render_group->size, assert_message);
 
     quad->tint = { 1, 1, 1, 1 };
+	quad->z_index = 1.0;
 
     return quad;
+}
+
+int render_group_cmp(const void* a, const void* b) {
+	const RenderQuad* quad_a = (const RenderQuad*)a;
+	const RenderQuad* quad_b = (const RenderQuad*)b;
+	
+	if (quad_a->z_index < quad_b->z_index) return -1;
+    if (quad_a->z_index > quad_b->z_index) return  1;
+    return 0;
+}
+
+void sort_render_group(RenderGroup* render_group) {
+	qsort(render_group->quads, render_group->count, sizeof(RenderQuad), render_group_cmp);
 }
 
 // TODO: are we going to use this?

@@ -38,4 +38,25 @@
     - Had to separate sprite_assets.h into asset_ids.h and asset_tables.h
 [x] Add gamepad support
 [x] Get LSP working for gd and autocorrect
+[x] Get entity management working, lookups, ids, etc.
+	- What if we free an entity in the entity loop, which causes us to move the last entity to that position,
+	which would mean that entity would not get updated?
+		- What if we instead had the loop operate on ids? Would that change anything?
+[x] Add z_indexing to render groups and entities
+[x] Add gun entity with sprite
+[x] Update gun z_index based on player (when facing up, gun should render under player)
+[x] Updating window settings to not always be on top and to take mouse input focus
+
+
+[] Add warrior entity
+[] Add pathfinding to player when in range
+[] Add warrior attacks
+[] Add gun to player sprite
+[] Add gun projectile
+[] Add screen shake [Polish/Fun]
+[] Add gun sound
+[] Add projectile collision with warrior
+[] Add warrior attack collision with player
+[] Add player health
+[] Add warrior health
 

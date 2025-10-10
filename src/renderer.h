@@ -18,6 +18,7 @@ struct RenderQuad
     uint32 draw_colored_rect;
     Vec4 tint;
 	uint32 flip_x;
+	float z_index;
 };
 
 struct RenderGroupOptions {

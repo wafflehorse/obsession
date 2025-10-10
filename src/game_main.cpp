@@ -20,6 +20,8 @@ double g_sim_dt_s;
 #define WORLD_TILE_WIDTH 8
 #define WORLD_TILE_HEIGHT 8 
 
+#define DEFAULT_Z_INDEX 1.0f
+
 uint32 get_viewport_scale_factor(Vec2 screen_size) {
 	uint32 width_scale = screen_size.x / BASE_RESOLUTION_WIDTH;
 	uint32 height_scale = screen_size.y / BASE_RESOLUTION_HEIGHT;
@@ -34,30 +36,99 @@ Vec2 get_viewport(uint32 scale) {
 	};
 }
 
-Entity* get_new_entity(EntityArray* entity_array) {
-	Entity* entity = &entity_array->entities[entity_array->count++];
-	memset(entity, 0, sizeof(Entity));
-	set(entity->flags, ENTITY_F_ACTIVE);
+void init_entity_data(EntityData* entity_data) {
+	for(int i = 0; i < MAX_ENTITIES; i++) {
+		entity_data->entity_ids[i] = i;
 
-	ASSERT(entity_array->count < entity_array->cap, "MAX_ENTITIES has been reached!");
+		EntityLookup* lookup = &entity_data->entity_lookups[i];
+		lookup->generation = 0;
+		lookup->idx = i;
+	}
+}
+
+Entity* get_new_entity(EntityData* entity_data) {
+	uint32 idx = entity_data->entity_count;
+	Entity* entity = &entity_data->entities[entity_data->entity_count++];
+	memset(entity, 0, sizeof(Entity));
+
+	ASSERT(entity_data->entity_count < MAX_ENTITIES, "MAX_ENTITIES has been reached!");
+
+	entity->id = entity_data->entity_ids[idx];
+	entity->z_index = 1;
 
 	return entity;
 }
 
-uint32 create_player_entity(EntityArray* entity_array, Vec2 position) {
-	Entity* entity = get_new_entity(entity_array);
+void free_entity(uint32 id, EntityData* entity_data) {
+	EntityLookup* freed_lookup = &entity_data->entity_lookups[id];
+
+	uint32 last_idx = entity_data->entity_count - 1;
+	Entity* last_entity = &entity_data->entities[last_idx];
+	if(last_entity->id != id) {
+		entity_data->entities[freed_lookup->idx] = *last_entity;
+
+		entity_data->entity_ids[freed_lookup->idx] = last_entity->id;
+		entity_data->entity_ids[last_idx] = id;
+
+		EntityLookup* last_lookup = &entity_data->entity_lookups[last_entity->id];
+		last_lookup->idx = freed_lookup->idx;
+
+		freed_lookup->idx = last_idx;
+	}
+
+	freed_lookup->generation++;
+
+	entity_data->entity_count--;
+}
+
+EntityHandle get_entity_handle(Entity* entity, EntityData* entity_data) {
+	EntityHandle handle = {
+		.id = entity->id,
+		.generation = entity_data->entity_lookups[entity->id].generation,
+	};
+
+	return handle;
+}
+
+EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
+	Entity* entity = get_new_entity(entity_data);
 	
 	entity->type = ENTITY_TYPE_PLAYER;
 	entity->position = position;
 	entity->facing_direction.x = 1;
 	entity->facing_direction.y = 0;
 
-	return entity_array->count - 1;
+	return get_entity_handle(entity, entity_data);
+}
+
+EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
+	Entity* entity = get_new_entity(entity_data);
+
+	entity->type = ENTITY_TYPE_GUN;
+	set(entity->flags, ENTITY_FLAG_OWNED);
+	set(entity->flags, ENTITY_FLAG_EQUIPPED);
+	entity->owner_handle = owner;
+	entity->sprite_id = SPRITE_GUN_GREEN;
+
+	return get_entity_handle(entity, entity_data);
+}
+
+Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
+	ASSERT(handle.id < MAX_ENTITIES, "Entity handle has id greater than max entities");
+	Entity* entity = NULL;
+
+	EntityLookup lookup = entity_data->entity_lookups[handle.id];
+	if(lookup.generation == handle.generation) {
+		entity = &entity_data->entities[lookup.idx];
+	}
+
+	return entity;
 }
 
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
 
-RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, uint32 opts) { 
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index, uint32 opts) { 
+	ASSERT(sprite_id != SPRITE_UNKNOWN, "sprite unknown passed to render sprite");
 	RenderQuad* quad = get_next_quad(render_group);
 	quad->world_position = world_position;
 	Sprite sprite = sprite_table[sprite_id];
@@ -65,6 +136,7 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	quad->world_size = w_vec_mult((Vec2){ sprite.w, sprite.h }, 1.0 / BASE_PIXELS_PER_UNIT);
 	quad->sprite_position = { sprite.x, sprite.y };
 	quad->sprite_size = { sprite.w, sprite.h };
+	quad->z_index = z_index;
 
 	if(is_set(opts, RENDER_SPRITE_OPT_FLIP_X)) {
 		quad->flip_x = 1;
@@ -73,18 +145,59 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	return quad;
 }
 
-RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group) {
-	return render_sprite(world_position, sprite_id, render_group, 0);
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index) {
+	return render_sprite(world_position, sprite_id, render_group, z_index, 0);
 }
 
-RenderQuad* render_animation_sprite(Vec2 world_position, SpriteID sprite_id, AnimationState* anim_state, RenderGroup* render_group) {
+RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_state, RenderGroup* render_group, float z_index) {
+	ASSERT(anim_state->animation_id != ANIM_UNKNOWN, "anim unknown passed to render animation sprite");
+
 	flags opts = {};
 	if(is_set(anim_state->flags, ANIMATION_STATE_F_FLIP_X)) {
 		set(opts, RENDER_SPRITE_OPT_FLIP_X);
 	}
+
+	// TODO: might want to create util methods for this with assertions and bounds checking?
+	Animation animation = animation_table[anim_state->animation_id];
+	SpriteID sprite_id = animation.frames[anim_state->current_frame].sprite_id;
 	
-	return render_sprite(world_position, sprite_id, render_group, opts);
+	return render_sprite(world_position, sprite_id, render_group, z_index, opts);
 } 
+
+Vec2 get_discrete_facing_direction(Vec2 facing_direction, Vec2 velocity) {
+	float mag_y_direction = w_abs(facing_direction.y);
+	float mag_x_direction = w_abs(facing_direction.x);
+	Vec2 result = {};
+
+	if(w_vec_length(velocity) >= 0.1) {
+		if(mag_y_direction > mag_x_direction) {
+			if(facing_direction.y > 0) {
+				result.y = 1;
+			}
+			else {
+				result.y = -1;
+			}
+		}
+		else {
+			if(facing_direction.x > 0) {
+				result.x = 1;
+			}
+			else {
+				result.x = -1;
+			}
+		}
+	}
+	else {
+		if(facing_direction.x > 0) {
+			result.x = 1;
+		}
+		else {
+			result.x = -1;
+		}
+	}
+
+	return result;
+}
 
 struct PlayerWorldInput {
 	Vec2 movement_vec;
@@ -156,8 +269,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			BASE_RESOLUTION_HEIGHT / BASE_PIXELS_PER_UNIT
 		};
 
-		game_state->entity_array.cap = MAX_ENTITIES;
-
 		game_memory->initialize_renderer(game_memory->screen_size, viewport, game_state->camera.size, &game_state->main_arena);
 		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png");
 		game_memory->load_texture(TEXTURE_ID_SPRITE, "resources/assets/sprite_atlas.png");
@@ -172,7 +283,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		memcpy(&game_state->font_data, font_data_file_contents.data, sizeof(FontData));
 		w_arena_restore(&game_state->main_arena, arena_marker);
 
-		create_player_entity(&game_state->entity_array, { 0, 0 });
+		init_entity_data(&game_state->entity_data);
+
+		EntityHandle player_handle = create_player_entity(&game_state->entity_data, { 1, 0 });
+		create_gun_entity(&game_state->entity_data, player_handle);
+
 
 		play_sound(&game_state->sounds[SOUND_BACKGROUND_MUSIC], &game_state->audio_player);
 	}
@@ -219,11 +334,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		};
 		switch(tilemap[i]) {
 			case 1: {
-				render_sprite(position, SPRITE_BLOCK_1, &background_render_group);
+				render_sprite(position, SPRITE_BLOCK_1, &background_render_group, DEFAULT_Z_INDEX);
 				break;
 			}
 			case 2: {
-				render_sprite(position, SPRITE_PLANT_1, &main_render_group);
+				render_sprite(position, SPRITE_PLANT_1, &main_render_group, DEFAULT_Z_INDEX);
 				break;
 			}
 		}
@@ -232,53 +347,84 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	PlayerWorldInput player_world_input = {};
 	update_player_world_input(game_input, &player_world_input);
 
-	for(int i = 0; i < game_state->entity_array.count; i++) {
-		Entity* entity = &game_state->entity_array.entities[i];
+	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
+		Entity* entity = &game_state->entity_data.entities[i];
 		if(entity->type == ENTITY_TYPE_PLAYER) {
 			float acceleration_mag = 30;
 			Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
 			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
 		}
+
+		//~~~~~~~~~~~ Physics update ~~~~~~~~~~~//
 		entity->position =	w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
 		entity->velocity = w_vec_add(w_vec_mult(entity->acceleration, g_sim_dt_s), entity->velocity);
 
-		if(w_vec_length(entity->velocity) >= 0.1) {
-			entity->facing_direction = w_vec_norm(entity->velocity);
-		}
+		//~~~~~~~~~~~ Facing direction update ~~~~~~~~~ //
 
-		float mag_y_velocity = w_abs(entity->velocity.y);
-		float mag_x_velocity = w_abs(entity->velocity.x);
+		if(entity->type == ENTITY_TYPE_PLAYER) {
+			if(w_vec_length(entity->velocity) >= 0.1) {
+				entity->facing_direction = w_vec_norm(entity->velocity);
 
-		if(mag_y_velocity < .5 && mag_x_velocity < .5) {
-			flags opts = 0;
-			if(entity->facing_direction.x > 0) {
-				set(opts, ANIMATION_STATE_F_FLIP_X);
-			}
-			w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, opts); 
-		}
-		else if(mag_y_velocity > mag_x_velocity) {
-			if(entity->velocity.y > 0) {
-				w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state);		
+				Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
+				if(disc_facing_direction.x > 0) {
+					w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
+				}
+				else if(disc_facing_direction.x < 0) {
+					w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state);		
+				}
+				else if(disc_facing_direction.y > 0) {
+					w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state);		
+				}
+				else {
+					w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state);		
+				}
 			}
 			else {
-				w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state);		
+				if(entity->facing_direction.x > 0) {
+					w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);
+				}
+				else {
+					w_play_animation(ANIM_HERO_IDLE, &entity->anim_state);
+				}
 			}
+		}
+
+		if(is_set(entity->flags, ENTITY_FLAG_OWNED) && is_set(entity->flags, ENTITY_FLAG_EQUIPPED)) {
+			Entity* owner = get_entity(entity->owner_handle, &game_state->entity_data);
+			entity->position = { owner->position.x + 0.3f, owner->position.y };
+			Vec2 owner_facing_direction = get_discrete_facing_direction(owner->facing_direction, owner->velocity);
+			if(owner_facing_direction.y > 0) {
+				entity->z_index = owner->z_index - 0.1;
+			}
+			else {
+				entity->z_index = owner->z_index + 0.1;
+			}
+		}
+
+		w_update_animation(&entity->anim_state, g_sim_dt_s);
+
+		ASSERT(entity->sprite_id != SPRITE_UNKNOWN || entity->anim_state.animation_id != ANIM_UNKNOWN, "Cannot determine entity sprite");
+
+		if(entity->anim_state.animation_id != ANIM_UNKNOWN) {
+			render_animation_sprite(entity->position, &entity->anim_state, &main_render_group, entity->z_index);
 		}
 		else {
-			if(entity->velocity.x > 0) {
-				w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
-			}
-			else {
-				w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state);		
-			}
+			render_sprite(entity->position, entity->sprite_id, &main_render_group, entity->z_index, 0);
 		}
+	}
 
-		SpriteID sprite = w_update_animation(&entity->anim_state, g_sim_dt_s);
-
-		render_animation_sprite(entity->position, sprite, &entity->anim_state, &main_render_group);
+	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
+		Entity* entity = &game_state->entity_data.entities[i];
+		if(is_set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION)) {
+			free_entity(entity->id, &game_state->entity_data);
+			// Ensures we process the element that was inserted to replace the freed entity
+			i--;
+		}
 	}
 
 	game_memory->push_audio_samples(&game_state->audio_player);
+
+	sort_render_group(&main_render_group);
 
 	game_memory->push_render_group(background_render_group.quads, background_render_group.count, game_state->camera.position, background_render_group.opts);
 	game_memory->push_render_group(main_render_group.quads, main_render_group.count, game_state->camera.position, main_render_group.opts);

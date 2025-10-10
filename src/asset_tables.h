@@ -5,28 +5,31 @@
 
 Sprite sprite_table[SPRITE_COUNT] = {
 	[SPRITE_BLOCK_1] = {
-		444, 0, 23, 21
-	},
-	[SPRITE_BLOCK_2] = {
 		398, 0, 23, 21
 	},
-	[SPRITE_BLOCK_3] = {
-		421, 0, 23, 21
-	},
-	[SPRITE_BLOCK_4] = {
+	[SPRITE_BLOCK_2] = {
 		375, 0, 23, 21
 	},
+	[SPRITE_BLOCK_3] = {
+		444, 0, 23, 21
+	},
+	[SPRITE_BLOCK_4] = {
+		467, 0, 23, 21
+	},
 	[SPRITE_BLOCK_5] = {
-		490, 0, 23, 21
+		421, 0, 23, 21
 	},
 	[SPRITE_BLOCK_6] = {
-		467, 0, 23, 21
+		490, 0, 23, 21
 	},
 	[SPRITE_CABLE_1] = {
 		773, 18, 30, 12
 	},
 	[SPRITE_GROUND_1] = {
 		917, 0, 16, 16
+	},
+	[SPRITE_GUN_GREEN] = {
+		738, 19, 12, 3
 	},
 	[SPRITE_HERO_DEAD_0] = {
 		115, 0, 13, 26
@@ -41,10 +44,10 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		42, 0, 19, 30
 	},
 	[SPRITE_HERO_DEAD_4] = {
-		0, 0, 21, 31
+		21, 0, 21, 31
 	},
 	[SPRITE_HERO_DEAD_5] = {
-		21, 0, 21, 31
+		0, 0, 21, 31
 	},
 	[SPRITE_HERO_DEAD_6] = {
 		61, 0, 22, 29
@@ -53,7 +56,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		727, 19, 7, 4
 	},
 	[SPRITE_HERO_DEAD_8] = {
-		744, 19, 3, 2
+		756, 19, 3, 2
 	},
 	[SPRITE_HERO_DEAD_9] = {
 		961, 16, 1, 1
@@ -62,13 +65,13 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		528, 0, 14, 21
 	},
 	[SPRITE_HERO_HIT_1] = {
-		626, 0, 14, 21
+		612, 0, 14, 21
 	},
 	[SPRITE_HERO_IDLE_0] = {
-		288, 0, 13, 23
+		275, 0, 13, 23
 	},
 	[SPRITE_HERO_IDLE_1] = {
-		275, 0, 13, 23
+		288, 0, 13, 23
 	},
 	[SPRITE_HERO_IDLE_2] = {
 		128, 0, 13, 24
@@ -77,13 +80,13 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		141, 0, 13, 24
 	},
 	[SPRITE_HERO_IDLE_4] = {
-		314, 0, 13, 22
+		301, 0, 13, 22
 	},
 	[SPRITE_HERO_MOVE_DOWN_0] = {
-		542, 0, 14, 21
+		598, 0, 14, 21
 	},
 	[SPRITE_HERO_MOVE_DOWN_1] = {
-		327, 0, 12, 22
+		339, 0, 12, 22
 	},
 	[SPRITE_HERO_MOVE_DOWN_2] = {
 		179, 0, 12, 24
@@ -92,7 +95,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		191, 0, 12, 24
 	},
 	[SPRITE_HERO_MOVE_DOWN_4] = {
-		556, 0, 14, 21
+		570, 0, 14, 21
 	},
 	[SPRITE_HERO_MOVE_DOWN_5] = {
 		363, 0, 12, 22
@@ -104,40 +107,40 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		215, 0, 12, 24
 	},
 	[SPRITE_HERO_MOVE_LEFT_0] = {
-		584, 0, 14, 21
+		626, 0, 14, 21
 	},
 	[SPRITE_HERO_MOVE_LEFT_1] = {
-		301, 0, 13, 22
+		314, 0, 13, 22
 	},
 	[SPRITE_HERO_MOVE_LEFT_2] = {
-		167, 0, 12, 24
+		227, 0, 12, 24
 	},
 	[SPRITE_HERO_MOVE_LEFT_3] = {
 		154, 0, 13, 24
 	},
 	[SPRITE_HERO_MOVE_UP_0] = {
-		612, 0, 14, 21
+		584, 0, 14, 21
 	},
 	[SPRITE_HERO_MOVE_UP_1] = {
-		339, 0, 12, 22
-	},
-	[SPRITE_HERO_MOVE_UP_2] = {
-		227, 0, 12, 24
-	},
-	[SPRITE_HERO_MOVE_UP_3] = {
-		239, 0, 12, 24
-	},
-	[SPRITE_HERO_MOVE_UP_4] = {
-		570, 0, 14, 21
-	},
-	[SPRITE_HERO_MOVE_UP_5] = {
 		351, 0, 12, 22
 	},
-	[SPRITE_HERO_MOVE_UP_6] = {
+	[SPRITE_HERO_MOVE_UP_2] = {
+		239, 0, 12, 24
+	},
+	[SPRITE_HERO_MOVE_UP_3] = {
 		251, 0, 12, 24
 	},
-	[SPRITE_HERO_MOVE_UP_7] = {
+	[SPRITE_HERO_MOVE_UP_4] = {
+		556, 0, 14, 21
+	},
+	[SPRITE_HERO_MOVE_UP_5] = {
+		327, 0, 12, 22
+	},
+	[SPRITE_HERO_MOVE_UP_6] = {
 		263, 0, 12, 24
+	},
+	[SPRITE_HERO_MOVE_UP_7] = {
+		167, 0, 12, 24
 	},
 	[SPRITE_PLANT_1] = {
 		682, 19, 14, 9
@@ -152,13 +155,13 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		907, 17, 10, 8
 	},
 	[SPRITE_PLANT_13] = {
-		738, 19, 3, 3
+		753, 19, 3, 3
 	},
 	[SPRITE_PLANT_14] = {
 		721, 19, 6, 5
 	},
 	[SPRITE_PLANT_2] = {
-		741, 19, 3, 3
+		750, 19, 3, 3
 	},
 	[SPRITE_PLANT_3] = {
 		836, 18, 2, 3
@@ -185,19 +188,19 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		838, 17, 23, 13
 	},
 	[SPRITE_SHORT_BLOCK_2] = {
-		917, 16, 23, 13
-	},
-	[SPRITE_SHORT_BLOCK_3] = {
 		884, 17, 23, 13
 	},
-	[SPRITE_SHORT_BLOCK_4] = {
+	[SPRITE_SHORT_BLOCK_3] = {
 		861, 17, 23, 13
 	},
+	[SPRITE_SHORT_BLOCK_4] = {
+		917, 16, 23, 13
+	},
 	[SPRITE_SHORT_BLOCK_5] = {
-		962, 14, 23, 13
+		992, 13, 23, 13
 	},
 	[SPRITE_SHORT_BLOCK_6] = {
-		992, 13, 23, 13
+		962, 14, 23, 13
 	},
 	[SPRITE_SMALL_BLOCK_1] = {
 		818, 18, 15, 10
@@ -212,7 +215,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		655, 19, 15, 10
 	},
 	[SPRITE_WARRIOR_ATTACK_0] = {
-		598, 0, 14, 21
+		542, 0, 14, 21
 	},
 	[SPRITE_WARRIOR_ATTACK_1] = {
 		513, 0, 15, 21

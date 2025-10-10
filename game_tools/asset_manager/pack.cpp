@@ -300,6 +300,7 @@ int main(int argc, char* argv[]) {
 	//~~~~~~~~~~~~~~~~~~~~~~ Sprite ID writing ~~~~~~~~~~~~~~~~~~~//
 	
 	enum_begin("SpriteID", file);
+	enum_add("SPRITE_UNKNOWN", file);
 
     char (*enum_labels)[256] = (char(*)[256])w_arena_alloc(&arena, MAX_BITMAPS * 256 * sizeof(char));
 
@@ -382,6 +383,7 @@ int main(int argc, char* argv[]) {
 	//~~~~~~~~~~~~~~~~~~~~ Write Animation IDs ~~~~~~~~~~~~~~~~~~~//
 
 	enum_begin("AnimationID", file);
+	enum_add("ANIM_UNKNOWN", file);
 
     for (int i = 0; i < anim_count; i++) {
         AnimationExtraction* anim_ext = &animation_extracts[i];

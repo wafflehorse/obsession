@@ -533,8 +533,7 @@ int main(int argc, char* argv[]) {
 
     w_init_waffle_lib(game_memory.base_path);
 
-    // TODO: Should always be on top be kept?
-    window = SDL_CreateWindow("Obsession", game_memory.screen_size.x, game_memory.screen_size.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
+    window = SDL_CreateWindow("Obsession", game_memory.screen_size.x, game_memory.screen_size.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MOUSE_FOCUS);
     if (!window)
     {
         fprintf(stderr, "SDL_CreateWindow Error: %s\n", SDL_GetError());

@@ -229,6 +229,11 @@ INITIALIZE_RENDERER(initialize_renderer) {
     glVertexAttribIPointer(10, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, flip_x));
     glEnableVertexAttribArray(10);
     glVertexAttribDivisor(10, 1);
+	
+    // z_index
+    glVertexAttribPointer(11, 1, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, z_index));
+    glEnableVertexAttribArray(11);
+    glVertexAttribDivisor(11, 1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
