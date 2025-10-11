@@ -127,7 +127,7 @@ Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
 
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
 
-RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index, uint32 opts) { 
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float rotation_rads, float z_index, uint32 opts) { 
 	ASSERT(sprite_id != SPRITE_UNKNOWN, "sprite unknown passed to render sprite");
 	RenderQuad* quad = get_next_quad(render_group);
 	quad->world_position = world_position;
@@ -136,6 +136,7 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	quad->world_size = w_vec_mult((Vec2){ sprite.w, sprite.h }, 1.0 / BASE_PIXELS_PER_UNIT);
 	quad->sprite_position = { sprite.x, sprite.y };
 	quad->sprite_size = { sprite.w, sprite.h };
+	quad->rotation_rads = rotation_rads;
 	quad->z_index = z_index;
 
 	if(is_set(opts, RENDER_SPRITE_OPT_FLIP_X)) {
@@ -146,7 +147,7 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 }
 
 RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index) {
-	return render_sprite(world_position, sprite_id, render_group, z_index, 0);
+	return render_sprite(world_position, sprite_id, render_group, 0, z_index, 0);
 }
 
 RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_state, RenderGroup* render_group, float z_index) {
@@ -161,8 +162,16 @@ RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_st
 	Animation animation = animation_table[anim_state->animation_id];
 	SpriteID sprite_id = animation.frames[anim_state->current_frame].sprite_id;
 	
-	return render_sprite(world_position, sprite_id, render_group, z_index, opts);
+	return render_sprite(world_position, sprite_id, render_group, 0, z_index, opts);
 } 
+
+RenderQuad* render_entity_sprite(Entity* entity, RenderGroup* render_group) {
+	uint32 sprite_opts = 0;
+	if(is_set(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X)) {
+		set(sprite_opts, RENDER_SPRITE_OPT_FLIP_X);
+	}
+	return render_sprite(entity->position, entity->sprite_id, render_group, entity->rotation_rads, entity->z_index, sprite_opts);
+}
 
 Vec2 get_discrete_facing_direction(Vec2 facing_direction, Vec2 velocity) {
 	float mag_y_direction = w_abs(facing_direction.y);
@@ -201,9 +210,10 @@ Vec2 get_discrete_facing_direction(Vec2 facing_direction, Vec2 velocity) {
 
 struct PlayerWorldInput {
 	Vec2 movement_vec;
+	Vec2 aim_vec;
 };
 
-void update_player_world_input(GameInput* game_input, PlayerWorldInput* input) {
+void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, Camera camera) {
 	if(game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
 		KeyInputState* key_input_states = game_input->key_input_states;
 		Vec2 movement_vec = {};
@@ -220,6 +230,15 @@ void update_player_world_input(GameInput* game_input, PlayerWorldInput* input) {
 			movement_vec.x = 1;
 		}
 		input->movement_vec = w_vec_norm(movement_vec);
+
+		Vec2 mouse_camera_position = {
+			(game_input->mouse_state.position.x / g_pixels_per_unit) - (camera.size.x / 2),
+			-(game_input->mouse_state.position.y / g_pixels_per_unit) + (camera.size.y / 2)
+		};
+		input->aim_vec = {
+			mouse_camera_position.x + camera.position.x,
+			mouse_camera_position.y + camera.position.y
+		};
 	}
 	else if(game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
 		GamepadState* gamepad_state = &game_input->gamepad_state;
@@ -345,7 +364,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	}
 
 	PlayerWorldInput player_world_input = {};
-	update_player_world_input(game_input, &player_world_input);
+	update_player_world_input(game_input, &player_world_input, game_state->camera);
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
@@ -391,7 +410,24 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		if(is_set(entity->flags, ENTITY_FLAG_OWNED) && is_set(entity->flags, ENTITY_FLAG_EQUIPPED)) {
 			Entity* owner = get_entity(entity->owner_handle, &game_state->entity_data);
-			entity->position = { owner->position.x + 0.3f, owner->position.y };
+
+			Vec2 aim_vec_rel_owner = w_vec_sub(player_world_input.aim_vec, owner->position);
+
+			entity->rotation_rads = atan2(aim_vec_rel_owner.y, aim_vec_rel_owner.x);
+
+			if(aim_vec_rel_owner.x < 0) {
+				entity->position = { owner->position.x - 0.3f, owner->position.y };
+				set(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X);
+				// Note: This fixes gun rotation when rads are negative from negative aim vector x
+				entity->rotation_rads = M_PI + entity->rotation_rads;
+			}
+			else {
+				entity->position = { owner->position.x + 0.3f, owner->position.y };
+				unset(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X);
+			}
+
+			entity->position = w_rotate_around_pivot(entity->position, owner->position, entity->rotation_rads);
+
 			Vec2 owner_facing_direction = get_discrete_facing_direction(owner->facing_direction, owner->velocity);
 			if(owner_facing_direction.y > 0) {
 				entity->z_index = owner->z_index - 0.1;
@@ -409,7 +445,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			render_animation_sprite(entity->position, &entity->anim_state, &main_render_group, entity->z_index);
 		}
 		else {
-			render_sprite(entity->position, entity->sprite_id, &main_render_group, entity->z_index, 0);
+			render_entity_sprite(entity, &main_render_group);
 		}
 	}
 

@@ -69,6 +69,7 @@ enum EntityType {
 #define ENTITY_FLAG_MARK_FOR_DELETION (1 << 0)
 #define ENTITY_FLAG_EQUIPPED (1 << 1)
 #define ENTITY_FLAG_OWNED (1 << 2)
+#define ENTITY_FLAG_SPRITE_FLIP_X (1 << 3)
 
 struct Entity {
 	flags flags;
@@ -79,6 +80,7 @@ struct Entity {
 	Vec2 position;
 	Vec2 velocity;
 	Vec2 acceleration;
+	float rotation_rads;
 
 	AnimationState anim_state;
 	SpriteID sprite_id;
