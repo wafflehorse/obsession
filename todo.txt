@@ -46,6 +46,9 @@
 [x] Add gun entity with sprite
 [x] Update gun z_index based on player (when facing up, gun should render under player)
 [x] Updating window settings to not always be on top and to take mouse input focus
+[x] Updates player facing direction to be dictated by aim vector
+[x] Add gun sounds
+[x] Add bullet sprite
 
 
 [] Add warrior entity
@@ -59,4 +62,5 @@
 [] Add warrior attack collision with player
 [] Add player health
 [] Add warrior health
+[] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 

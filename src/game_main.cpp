@@ -208,6 +208,31 @@ Vec2 get_discrete_facing_direction(Vec2 facing_direction, Vec2 velocity) {
 	return result;
 }
 
+Vec2 get_discrete_facing_direction(Vec2 facing_direction) {
+	float mag_y_direction = w_abs(facing_direction.y);
+	float mag_x_direction = w_abs(facing_direction.x);
+	Vec2 result = {};
+
+	if(mag_y_direction > mag_x_direction) {
+		if(facing_direction.y > 0) {
+			result.y = 1;
+		}
+		else {
+			result.y = -1;
+		}
+	}
+	else {
+		if(facing_direction.x > 0) {
+			result.x = 1;
+		}
+		else {
+			result.x = -1;
+		}
+	}
+
+	return result;
+}
+
 struct PlayerWorldInput {
 	Vec2 movement_vec;
 	Vec2 aim_vec;
@@ -294,6 +319,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		game_memory->init_audio(&game_state->audio_player);
 		setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60, game_state->sounds, &game_state->main_arena);
+		setup_sound_from_wav(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_01.wav", 1.0, game_state->sounds, &game_state->main_arena);
+		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_02.wav", game_state);
+		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_03.wav", game_state);
+		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_04.wav", game_state);
+		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_05.wav", game_state);
+		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_06.wav", game_state);
+		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_07.wav", game_state);
+		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_08.wav", game_state);
 
 		// TODO: The arena marker / restore interface can be improved. Some way to defer?
 		char* arena_marker = w_arena_marker(&game_state->main_arena);
@@ -381,9 +414,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		//~~~~~~~~~~~ Facing direction update ~~~~~~~~~ //
 
 		if(entity->type == ENTITY_TYPE_PLAYER) {
-			if(w_vec_length(entity->velocity) >= 0.1) {
-				entity->facing_direction = w_vec_norm(entity->velocity);
+			entity->facing_direction = w_vec_norm(player_world_input.aim_vec);
 
+			if(w_vec_length(entity->velocity) >= 0.1) {
 				Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
 				if(disc_facing_direction.x > 0) {
 					w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		

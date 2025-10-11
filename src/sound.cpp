@@ -15,6 +15,7 @@ void add_sound_variant(SoundType type, const char* rel_file_path, GameState* gam
     Sound* sound = &game_state->sounds[type];
 
     ASSERT(sound != NULL, "Sound with this type has not been setup yet");
+    ASSERT(sound->num_variations < MAX_SOUND_VARIATIONS, "MAX_SOUND_VARIATIONS has been exceeded");
 
     sound->variations[sound->num_variations].samples = wav_file.samples;
     sound->variations[sound->num_variations].sample_count = wav_file.num_sample_bytes / (wav_file.fmt_chunk->bits_per_sample / 8);

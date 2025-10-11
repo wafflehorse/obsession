@@ -103,3 +103,29 @@
 // 	};
 // }
 
+// if(w_vec_length(entity->velocity) >= 0.1) {
+// 	entity->facing_direction = w_vec_norm(entity->velocity);
+//
+// 	Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
+// 	if(disc_facing_direction.x > 0) {
+// 		w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
+// 	}
+// 	else if(disc_facing_direction.x < 0) {
+// 		w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state);		
+// 	}
+// 	else if(disc_facing_direction.y > 0) {
+// 		w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state);		
+// 	}
+// 	else {
+// 		w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state);		
+// 	}
+// }
+// else {
+// 	if(entity->facing_direction.x > 0) {
+// 		w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);
+// 	}
+// 	else {
+// 		w_play_animation(ANIM_HERO_IDLE, &entity->anim_state);
+// 	}
+// }
+
