@@ -243,6 +243,15 @@ Vec2 w_vec_norm(Vec2 a) {
     return result;
 }
 
+Vec2 w_vec_unit_from_radians(float radians) {
+	Vec2 result = {
+		.x = cosf(radians),
+		.y = sinf(radians)
+	};
+
+	return result;
+}
+
 float w_vec_length(Vec2 a) {
     return sqrtf(w_square(a.x) + w_square(a.y));
 }

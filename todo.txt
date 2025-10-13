@@ -49,6 +49,11 @@
 [x] Updates player facing direction to be dictated by aim vector
 [x] Add gun sounds
 [x] Add bullet sprite
+[x] Adds projectile entity
+[x] Adds player shooting
+[x] Adds projectile distance traveled based deletion
+[x] Adds screen shake
+[x] Fixes bug in player aim vector (it was relative to camera rather than player)
 
 
 [] Add warrior entity

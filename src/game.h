@@ -7,6 +7,8 @@
 #define BASE_RESOLUTION_HEIGHT 360 
 #define BASE_PIXELS_PER_UNIT 16 
 
+#define MAX_PROJECTILE_DISTANCE 80
+
 struct FontData {
     uint32 ascent;
     uint32 descent;
@@ -47,9 +49,18 @@ enum RenderGroupID {
 	RENDER_GROUP_ID_COUNT
 };
 
+struct CameraShake {
+	float magnitude;
+	float timer_s;
+	float frequency;
+	float duration_s;
+	float seed;
+};
+
 struct Camera {
 	Vec2 position;
 	Vec2 size;
+	CameraShake shake;
 };
 
 struct EntityLookup {
@@ -64,7 +75,8 @@ struct EntityHandle {
 
 enum EntityType {
 	ENTITY_TYPE_PLAYER,
-	ENTITY_TYPE_GUN
+	ENTITY_TYPE_GUN,
+	ENTITY_TYPE_PROJECTILE
 };
 
 #define ENTITY_FLAG_MARK_FOR_DELETION (1 << 0)
@@ -89,6 +101,8 @@ struct Entity {
 
 	Vec2 facing_direction;
 	EntityHandle owner_handle;
+
+	float distance_traveled;
 };
 
 struct EntityData {

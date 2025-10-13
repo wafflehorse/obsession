@@ -113,6 +113,18 @@ EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
 	return get_entity_handle(entity, entity_data);
 }
 
+EntityHandle create_projectile_entity(EntityData* entity_data, Vec2 position, float rotation_rads, Vec2 velocity) {
+	Entity* entity = get_new_entity(entity_data);
+
+	entity->type = ENTITY_TYPE_PROJECTILE;
+	entity->sprite_id = SPRITE_GREEN_BULLET_STRETCHED_1;
+	entity->position = position;
+	entity->rotation_rads = rotation_rads;
+	entity->velocity = velocity;
+
+	return get_entity_handle(entity, entity_data);
+}
+
 Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
 	ASSERT(handle.id < MAX_ENTITIES, "Entity handle has id greater than max entities");
 	Entity* entity = NULL;
@@ -171,6 +183,33 @@ RenderQuad* render_entity_sprite(Entity* entity, RenderGroup* render_group) {
 		set(sprite_opts, RENDER_SPRITE_OPT_FLIP_X);
 	}
 	return render_sprite(entity->position, entity->sprite_id, render_group, entity->rotation_rads, entity->z_index, sprite_opts);
+}
+
+void start_camera_shake(Camera* camera, float magnitude, float frequency, float duration) {
+	CameraShake* shake = &camera->shake;
+	shake->magnitude = magnitude;
+	shake->frequency = frequency;
+	shake->duration_s = duration;
+	shake->timer_s = duration;
+	shake->seed = rand() / RAND_MAX * 1000.0f;
+}
+
+Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
+	if(shake->timer_s <= 0) {
+		return { 0, 0 };
+	}
+
+	shake->timer_s = w_clamp_min(shake->timer_s - dt_s, 0);
+
+	float decay = shake->timer_s / shake->duration_s; 
+	float t = (shake->duration_s - shake->timer_s) * shake->frequency;
+
+	Vec2 shake_offset = {
+		sinf(t * 15.23 + shake->seed) * shake->magnitude * decay,
+		cosf(t * 12.95 + shake->seed) * shake->magnitude * decay
+	};
+
+	return shake_offset;
 }
 
 Vec2 get_discrete_facing_direction(Vec2 facing_direction, Vec2 velocity) {
@@ -236,9 +275,10 @@ Vec2 get_discrete_facing_direction(Vec2 facing_direction) {
 struct PlayerWorldInput {
 	Vec2 movement_vec;
 	Vec2 aim_vec;
+	bool shoot;
 };
 
-void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, Camera camera) {
+void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, Vec2 player_position, Vec2 screen_size) {
 	if(game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
 		KeyInputState* key_input_states = game_input->key_input_states;
 		Vec2 movement_vec = {};
@@ -256,14 +296,16 @@ void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, C
 		}
 		input->movement_vec = w_vec_norm(movement_vec);
 
-		Vec2 mouse_camera_position = {
-			(game_input->mouse_state.position.x / g_pixels_per_unit) - (camera.size.x / 2),
-			-(game_input->mouse_state.position.y / g_pixels_per_unit) + (camera.size.y / 2)
+		Vec2 mouse_world_position = {
+			(game_input->mouse_state.position.x / g_pixels_per_unit) - (screen_size.x / g_pixels_per_unit / 2),
+			-(game_input->mouse_state.position.y / g_pixels_per_unit) + (screen_size.y / g_pixels_per_unit / 2)
 		};
 		input->aim_vec = {
-			mouse_camera_position.x + camera.position.x,
-			mouse_camera_position.y + camera.position.y
+			mouse_world_position.x - player_position.x,
+			mouse_world_position.y - player_position.y
 		};
+
+		input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
 	}
 	else if(game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
 		GamepadState* gamepad_state = &game_input->gamepad_state;
@@ -319,7 +361,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		game_memory->init_audio(&game_state->audio_player);
 		setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60, game_state->sounds, &game_state->main_arena);
-		setup_sound_from_wav(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_01.wav", 1.0, game_state->sounds, &game_state->main_arena);
+		setup_sound_from_wav(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_01.wav", 0.4, game_state->sounds, &game_state->main_arena);
 		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_02.wav", game_state);
 		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_03.wav", game_state);
 		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_04.wav", game_state);
@@ -337,11 +379,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		init_entity_data(&game_state->entity_data);
 
-		EntityHandle player_handle = create_player_entity(&game_state->entity_data, { 1, 0 });
+		EntityHandle player_handle = create_player_entity(&game_state->entity_data, { 0, 0 });
 		create_gun_entity(&game_state->entity_data, player_handle);
-
-
-		play_sound(&game_state->sounds[SOUND_BACKGROUND_MUSIC], &game_state->audio_player);
 	}
 
 	init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
@@ -397,27 +436,39 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	}
 
 	PlayerWorldInput player_world_input = {};
-	update_player_world_input(game_input, &player_world_input, game_state->camera);
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
 		if(entity->type == ENTITY_TYPE_PLAYER) {
+			update_player_world_input(game_input, &player_world_input, entity->position, game_memory->screen_size);
 			float acceleration_mag = 30;
 			Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
 			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
 		}
 
 		//~~~~~~~~~~~ Physics update ~~~~~~~~~~~//
-		entity->position =	w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
-		entity->velocity = w_vec_add(w_vec_mult(entity->acceleration, g_sim_dt_s), entity->velocity);
+		Vec2 new_position =	w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
+		Vec2 new_velocity = w_vec_add(w_vec_mult(entity->acceleration, g_sim_dt_s), entity->velocity);
+
+		if(entity->type == ENTITY_TYPE_PROJECTILE) {
+			Vec2 position_delta = w_vec_sub(new_position, entity->position);
+			entity->distance_traveled += w_vec_length(position_delta);
+
+			if(entity->distance_traveled > MAX_PROJECTILE_DISTANCE) {
+				set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);
+			}
+		}
+
+		entity->position = new_position;
+		entity->velocity = new_velocity;
 
 		//~~~~~~~~~~~ Facing direction update ~~~~~~~~~ //
 
 		if(entity->type == ENTITY_TYPE_PLAYER) {
 			entity->facing_direction = w_vec_norm(player_world_input.aim_vec);
+			Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
 
 			if(w_vec_length(entity->velocity) >= 0.1) {
-				Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
 				if(disc_facing_direction.x > 0) {
 					w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
 				}
@@ -428,11 +479,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state);		
 				}
 				else {
-					w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state);		
+					w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state);	
 				}
 			}
 			else {
-				if(entity->facing_direction.x > 0) {
+				if(disc_facing_direction.x > 0) {
 					w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);
 				}
 				else {
@@ -444,9 +495,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		if(is_set(entity->flags, ENTITY_FLAG_OWNED) && is_set(entity->flags, ENTITY_FLAG_EQUIPPED)) {
 			Entity* owner = get_entity(entity->owner_handle, &game_state->entity_data);
 
-			Vec2 aim_vec_rel_owner = w_vec_sub(player_world_input.aim_vec, owner->position);
+			Vec2 aim_vec_rel_owner = player_world_input.aim_vec;
 
-			entity->rotation_rads = atan2(aim_vec_rel_owner.y, aim_vec_rel_owner.x);
+			float rotation_rads = atan2(aim_vec_rel_owner.y, aim_vec_rel_owner.x);
+			entity->rotation_rads = rotation_rads;
 
 			if(aim_vec_rel_owner.x < 0) {
 				entity->position = { owner->position.x - 0.3f, owner->position.y };
@@ -467,6 +519,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			}
 			else {
 				entity->z_index = owner->z_index + 0.1;
+			}
+
+			if(player_world_input.shoot) {
+				Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
+				Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
+				create_projectile_entity(&game_state->entity_data, entity->position, rotation_rads, velocity);
+
+				play_sound_rand(&game_state->sounds[SOUND_BASIC_GUN_SHOT], &game_state->audio_player);
+				start_camera_shake(&game_state->camera, 0.1, 10, 0.08);
 			}
 		}
 
@@ -495,8 +556,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	sort_render_group(&main_render_group);
 
-	game_memory->push_render_group(background_render_group.quads, background_render_group.count, game_state->camera.position, background_render_group.opts);
-	game_memory->push_render_group(main_render_group.quads, main_render_group.count, game_state->camera.position, main_render_group.opts);
+	Vec2 shake_offset = update_and_get_camera_shake(&game_state->camera.shake, g_sim_dt_s);
+	Vec2 rendered_camera_position = w_vec_add(game_state->camera.position, shake_offset);
+
+	game_memory->push_render_group(background_render_group.quads, background_render_group.count, rendered_camera_position, background_render_group.opts);
+	game_memory->push_render_group(main_render_group.quads, main_render_group.count, rendered_camera_position, main_render_group.opts);
 
 #ifdef DEBUG
 	debug_render_group.size = 500;
