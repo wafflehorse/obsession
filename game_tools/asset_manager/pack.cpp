@@ -27,6 +27,7 @@
 #define MAX_BITMAPS 1000
 #define ATLAS_WIDTH 1024
 #define ATLAS_HEIGHT 1024
+#define SPRITE_MARGIN 1
 
 struct AnimationExtraction {
     char animation_label[256];
@@ -233,8 +234,8 @@ int main(int argc, char* argv[]) {
         unsigned char* trimmed_bitmap = NULL;
         int trimmed_width, trimmed_height;
         if (trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height)) {
-            bitmap_rects[bitmap_count].w = trimmed_width;
-            bitmap_rects[bitmap_count].h = trimmed_height;
+            bitmap_rects[bitmap_count].w = trimmed_width + (SPRITE_MARGIN * 2);
+            bitmap_rects[bitmap_count].h = trimmed_height + (SPRITE_MARGIN * 2);
             bitmap_rects[bitmap_count].id = i;
             bitmap_count++;
         }
@@ -276,7 +277,7 @@ int main(int argc, char* argv[]) {
         trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height);
 
         unsigned char* src_row_start = trimmed_bitmap;
-        unsigned char* dest_row_start = pixels + (4 * ATLAS_WIDTH * rect.y) + (4 * rect.x);
+        unsigned char* dest_row_start = pixels + (4 * ATLAS_WIDTH * (rect.y + SPRITE_MARGIN)) + (4 * (rect.x + SPRITE_MARGIN)) + 4;
 
         for (int row = 0; row < trimmed_height; row++) {
             memcpy(dest_row_start, src_row_start, trimmed_width * 4);
@@ -410,6 +411,10 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < bitmap_count; i++) {
         char sprite_init[256] = {};
         stbrp_rect rect = bitmap_rects[i];
+		rect.x += SPRITE_MARGIN;
+		rect.y += SPRITE_MARGIN;
+		rect.w -= (SPRITE_MARGIN * 2);
+		rect.h -= (SPRITE_MARGIN * 2);
         snprintf(sprite_init, 256, "\t[%s] = {\n\t\t%i, %i, %i, %i\n\t},\n", enum_labels[i], rect.x, rect.y, rect.w, rect.h);
         fwrite(sprite_init, w_str_len(sprite_init), sizeof(char), file);
     }

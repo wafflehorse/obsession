@@ -16,6 +16,7 @@
 char* g_base_path;
 uint32 g_pixels_per_unit;
 double g_sim_dt_s;
+RenderGroup* g_debug_render_group;
 
 #define WORLD_TILE_WIDTH 8
 #define WORLD_TILE_HEIGHT 8 
@@ -113,6 +114,23 @@ EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
 	return get_entity_handle(entity, entity_data);
 }
 
+EntityHandle create_warrior_entity(EntityData* entity_data, Vec2 position) {
+	Entity* entity = get_new_entity(entity_data);
+
+	entity->type = ENTITY_TYPE_WARRIOR;
+	w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state);
+	entity->position = position;
+	set(entity->flags, ENTITY_FLAG_HAS_COLLIDER);
+	entity->collider = {
+		.shape = COLLIDER_SHAPE_RECT,
+		.offset = w_vec_mult((Vec2){ 3, 0 }, 1.0f / BASE_PIXELS_PER_UNIT),
+		.width = 11 / BASE_PIXELS_PER_UNIT,
+		.height = 17 / BASE_PIXELS_PER_UNIT
+	};
+
+	return get_entity_handle(entity, entity_data);
+}
+
 EntityHandle create_projectile_entity(EntityData* entity_data, Vec2 position, float rotation_rads, Vec2 velocity) {
 	Entity* entity = get_new_entity(entity_data);
 
@@ -121,6 +139,14 @@ EntityHandle create_projectile_entity(EntityData* entity_data, Vec2 position, fl
 	entity->position = position;
 	entity->rotation_rads = rotation_rads;
 	entity->velocity = velocity;
+	Sprite sprite = sprite_table[SPRITE_GREEN_BULLET_STRETCHED_1];
+	set(entity->flags, ENTITY_FLAG_HAS_COLLIDER);
+	entity->collider = {
+		.shape = COLLIDER_SHAPE_RECT,
+		.offset = {0, 0},
+		.width = sprite.w / BASE_PIXELS_PER_UNIT,
+		.height = sprite.h / BASE_PIXELS_PER_UNIT,
+	};
 
 	return get_entity_handle(entity, entity_data);
 }
@@ -183,6 +209,25 @@ RenderQuad* render_entity_sprite(Entity* entity, RenderGroup* render_group) {
 		set(sprite_opts, RENDER_SPRITE_OPT_FLIP_X);
 	}
 	return render_sprite(entity->position, entity->sprite_id, render_group, entity->rotation_rads, entity->z_index, sprite_opts);
+}
+
+void debug_render_entity_colliders(Entity* entity, bool has_collided) {
+#ifdef DEBUG
+	if(is_set(entity->flags, ENTITY_FLAG_HAS_COLLIDER)) {
+		RenderQuad* quad = get_next_quad(g_debug_render_group);
+
+		Collider collider = entity->collider;
+		Vec2 collider_position = w_vec_add(entity->position, collider.offset);
+		quad->world_position = collider_position;
+		quad->world_size = { collider.width, collider.height }; 
+		quad->draw_colored_rect = 1;
+		quad->rgba = { 0, 0, 255, 0.5 };
+		if(has_collided) {
+			quad->rgba = { 255, 0, 0, 0.5};
+		}
+		quad->z_index = entity->z_index + 1;
+	}
+#endif
 }
 
 void start_camera_shake(Camera* camera, float magnitude, float frequency, float duration) {
@@ -380,6 +425,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		init_entity_data(&game_state->entity_data);
 
 		EntityHandle player_handle = create_player_entity(&game_state->entity_data, { 0, 0 });
+		create_warrior_entity(&game_state->entity_data, { 5, 0 });
 		create_gun_entity(&game_state->entity_data, player_handle);
 	}
 
@@ -390,6 +436,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	background_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, background_render_group.size * sizeof(RenderQuad));
 	main_render_group.size = 5000;
 	main_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, main_render_group.size * sizeof(RenderQuad));
+
+#ifdef DEBUG
+	debug_render_group.size = 500;
+	debug_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, debug_render_group.size * sizeof(RenderQuad));
+	g_debug_render_group = &debug_render_group;
+#endif
 
 	uint32 tilemap[WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT] = {
 		0, 0, 0, 0, 0, 0, 2, 0,
@@ -446,9 +498,51 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
 		}
 
+		bool has_collided = false;
+		if(is_set(entity->flags, ENTITY_FLAG_HAS_COLLIDER)) {
+			Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
+			Vec2 subject_delta = w_calc_position_delta(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
+
+			float t_min = 1.0f;
+			Vec2 collision_normal = { 0, 0 };
+			Entity* entity_collided_with = NULL;
+
+			for(int j = 0; j < game_state->entity_data.entity_count; j++) {
+				Entity* target_entity = &game_state->entity_data.entities[j];
+
+				if((target_entity->id != entity->id) && is_set(target_entity->flags, ENTITY_FLAG_HAS_COLLIDER)) {
+					Rect subject = {
+						subject_collider_position.x,
+						subject_collider_position.y,
+						entity->collider.width,
+						entity->collider.height
+					};
+
+					Vec2 target_collider_position = w_vec_add(target_entity->position, target_entity->collider.offset);
+					Vec2 target_delta = w_calc_position_delta(target_entity->acceleration, target_entity->velocity, target_entity->position, g_sim_dt_s);
+
+					Rect target = {
+						target_collider_position.x,
+						target_collider_position.y,
+						target_entity->collider.width,
+						target_entity->collider.height
+					};
+
+					float prev_t_min = t_min;
+
+					w_rect_collision(subject, subject_delta, target, target_delta, &t_min, &collision_normal);
+
+					if(t_min != prev_t_min) {
+						entity_collided_with = target_entity;
+						has_collided = true;
+					}
+				}
+			}
+		}
+
 		//~~~~~~~~~~~ Physics update ~~~~~~~~~~~//
 		Vec2 new_position =	w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
-		Vec2 new_velocity = w_vec_add(w_vec_mult(entity->acceleration, g_sim_dt_s), entity->velocity);
+		Vec2 new_velocity = w_calc_velocity(entity->acceleration, entity->velocity, g_sim_dt_s);
 
 		if(entity->type == ENTITY_TYPE_PROJECTILE) {
 			Vec2 position_delta = w_vec_sub(new_position, entity->position);
@@ -488,6 +582,29 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				}
 				else {
 					w_play_animation(ANIM_HERO_IDLE, &entity->anim_state);
+				}
+			}
+		}
+
+		if(entity->type == ENTITY_TYPE_WARRIOR) {
+			entity->position = { 3, 0 };
+			entity->facing_direction = w_vec_norm(entity->velocity);
+			Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
+
+			if(w_vec_length(entity->velocity) >= 0.1) {
+				if(disc_facing_direction.x > 0) {
+					w_play_animation(ANIM_WARRIOR_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
+				}
+				else {
+					w_play_animation(ANIM_WARRIOR_MOVE_LEFT, &entity->anim_state);		
+				}
+			}
+			else {
+				if(disc_facing_direction.x > 0) {
+					w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);
+				}
+				else {
+					w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state);
 				}
 			}
 		}
@@ -541,6 +658,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		else {
 			render_entity_sprite(entity, &main_render_group);
 		}
+
+		debug_render_entity_colliders(entity, has_collided);
 	}
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
@@ -563,8 +682,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	game_memory->push_render_group(main_render_group.quads, main_render_group.count, rendered_camera_position, main_render_group.opts);
 
 #ifdef DEBUG
-	debug_render_group.size = 500;
-	debug_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, debug_render_group.size * sizeof(RenderQuad));
 	DebugInfo* debug_info = &game_memory->debug_info;
 	double avg_rendered_frame_time_s = w_avg(debug_info->rendered_dt_history, w_min(debug_info->rendered_dt_history_count, FRAME_TIME_HISTORY_MAX_COUNT));
 	double fps = 0; 

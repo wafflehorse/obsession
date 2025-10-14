@@ -5,292 +5,292 @@
 
 Sprite sprite_table[SPRITE_COUNT] = {
 	[SPRITE_BLOCK_1] = {
-		490, 0, 23, 21
+		555, 1, 23, 21
 	},
 	[SPRITE_BLOCK_2] = {
-		398, 0, 23, 21
+		455, 1, 23, 21
 	},
 	[SPRITE_BLOCK_3] = {
-		421, 0, 23, 21
+		480, 1, 23, 21
 	},
 	[SPRITE_BLOCK_4] = {
-		467, 0, 23, 21
+		530, 1, 23, 21
 	},
 	[SPRITE_BLOCK_5] = {
-		375, 0, 23, 21
+		430, 1, 23, 21
 	},
 	[SPRITE_BLOCK_6] = {
-		444, 0, 23, 21
+		505, 1, 23, 21
 	},
 	[SPRITE_CABLE_1] = {
-		773, 18, 30, 12
+		455, 24, 30, 12
 	},
 	[SPRITE_GREEN_BULLET_1] = {
-		730, 19, 6, 6
+		637, 24, 6, 6
 	},
 	[SPRITE_GREEN_BULLET_STRETCHED_1] = {
-		721, 19, 9, 6
+		626, 24, 9, 6
 	},
 	[SPRITE_GROUND_1] = {
-		917, 0, 16, 16
+		963, 20, 16, 16
 	},
 	[SPRITE_GUN_GREEN] = {
-		753, 19, 12, 3
+		673, 24, 12, 3
 	},
 	[SPRITE_HERO_DEAD_0] = {
-		115, 0, 13, 26
+		128, 1, 13, 26
 	},
 	[SPRITE_HERO_DEAD_1] = {
-		100, 0, 15, 28
+		111, 1, 15, 28
 	},
 	[SPRITE_HERO_DEAD_2] = {
-		83, 0, 17, 29
+		92, 1, 17, 29
 	},
 	[SPRITE_HERO_DEAD_3] = {
-		42, 0, 19, 30
+		47, 1, 19, 30
 	},
 	[SPRITE_HERO_DEAD_4] = {
-		21, 0, 21, 31
+		24, 1, 21, 31
 	},
 	[SPRITE_HERO_DEAD_5] = {
-		0, 0, 21, 31
+		1, 1, 21, 31
 	},
 	[SPRITE_HERO_DEAD_6] = {
-		61, 0, 22, 29
+		68, 1, 22, 29
 	},
 	[SPRITE_HERO_DEAD_7] = {
-		742, 19, 7, 4
+		658, 24, 7, 4
 	},
 	[SPRITE_HERO_DEAD_8] = {
-		985, 20, 3, 2
+		701, 24, 3, 2
 	},
 	[SPRITE_HERO_DEAD_9] = {
-		961, 16, 1, 1
+		706, 24, 1, 1
 	},
 	[SPRITE_HERO_HIT_0] = {
-		542, 0, 14, 21
+		613, 1, 14, 21
 	},
 	[SPRITE_HERO_HIT_1] = {
-		556, 0, 14, 21
+		629, 1, 14, 21
 	},
 	[SPRITE_HERO_IDLE_0] = {
-		288, 0, 13, 23
+		329, 1, 13, 23
 	},
 	[SPRITE_HERO_IDLE_1] = {
-		275, 0, 13, 23
+		314, 1, 13, 23
 	},
 	[SPRITE_HERO_IDLE_2] = {
-		154, 0, 13, 24
+		173, 1, 13, 24
 	},
 	[SPRITE_HERO_IDLE_3] = {
-		128, 0, 13, 24
+		143, 1, 13, 24
 	},
 	[SPRITE_HERO_IDLE_4] = {
-		301, 0, 13, 22
+		344, 1, 13, 22
 	},
 	[SPRITE_HERO_MOVE_DOWN_0] = {
-		570, 0, 14, 21
+		645, 1, 14, 21
 	},
 	[SPRITE_HERO_MOVE_DOWN_1] = {
-		327, 0, 12, 22
+		374, 1, 12, 22
 	},
 	[SPRITE_HERO_MOVE_DOWN_2] = {
-		251, 0, 12, 24
+		286, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_DOWN_3] = {
-		263, 0, 12, 24
+		300, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_DOWN_4] = {
-		584, 0, 14, 21
+		661, 1, 14, 21
 	},
 	[SPRITE_HERO_MOVE_DOWN_5] = {
-		339, 0, 12, 22
+		388, 1, 12, 22
 	},
 	[SPRITE_HERO_MOVE_DOWN_6] = {
-		167, 0, 12, 24
+		188, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_DOWN_7] = {
-		179, 0, 12, 24
+		202, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_LEFT_0] = {
-		598, 0, 14, 21
+		677, 1, 14, 21
 	},
 	[SPRITE_HERO_MOVE_LEFT_1] = {
-		314, 0, 13, 22
+		359, 1, 13, 22
 	},
 	[SPRITE_HERO_MOVE_LEFT_2] = {
-		191, 0, 12, 24
+		216, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_LEFT_3] = {
-		141, 0, 13, 24
+		158, 1, 13, 24
 	},
 	[SPRITE_HERO_MOVE_UP_0] = {
-		612, 0, 14, 21
+		693, 1, 14, 21
 	},
 	[SPRITE_HERO_MOVE_UP_1] = {
-		351, 0, 12, 22
+		402, 1, 12, 22
 	},
 	[SPRITE_HERO_MOVE_UP_2] = {
-		239, 0, 12, 24
+		272, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_UP_3] = {
-		227, 0, 12, 24
+		258, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_UP_4] = {
-		626, 0, 14, 21
+		709, 1, 14, 21
 	},
 	[SPRITE_HERO_MOVE_UP_5] = {
-		363, 0, 12, 22
+		416, 1, 12, 22
 	},
 	[SPRITE_HERO_MOVE_UP_6] = {
-		215, 0, 12, 24
+		244, 1, 12, 24
 	},
 	[SPRITE_HERO_MOVE_UP_7] = {
-		203, 0, 12, 24
+		230, 1, 12, 24
 	},
 	[SPRITE_PLANT_1] = {
-		682, 19, 14, 9
+		569, 24, 14, 9
 	},
 	[SPRITE_PLANT_10] = {
-		670, 19, 12, 10
+		555, 24, 12, 10
 	},
 	[SPRITE_PLANT_11] = {
-		940, 16, 13, 12
+		850, 22, 13, 12
 	},
 	[SPRITE_PLANT_12] = {
-		907, 17, 10, 8
+		614, 24, 10, 8
 	},
 	[SPRITE_PLANT_13] = {
-		765, 19, 3, 3
+		687, 24, 3, 3
 	},
 	[SPRITE_PLANT_14] = {
-		736, 19, 6, 5
+		645, 24, 6, 5
 	},
 	[SPRITE_PLANT_2] = {
-		768, 19, 3, 3
+		692, 24, 3, 3
 	},
 	[SPRITE_PLANT_3] = {
-		836, 18, 2, 3
+		697, 24, 2, 3
 	},
 	[SPRITE_PLANT_4] = {
-		709, 19, 12, 8
+		600, 24, 12, 8
 	},
 	[SPRITE_PLANT_5] = {
-		1015, 13, 9, 8
+		1014, 20, 9, 8
 	},
 	[SPRITE_PLANT_6] = {
-		749, 19, 4, 4
+		667, 24, 4, 4
 	},
 	[SPRITE_PLANT_7] = {
-		953, 16, 8, 8
+		936, 21, 8, 8
 	},
 	[SPRITE_PLANT_8] = {
-		696, 19, 13, 9
+		585, 24, 13, 9
 	},
 	[SPRITE_PLANT_9] = {
-		833, 18, 3, 5
+		653, 24, 3, 5
 	},
 	[SPRITE_SHORT_BLOCK_1] = {
-		884, 17, 23, 13
+		430, 24, 23, 13
 	},
 	[SPRITE_SHORT_BLOCK_2] = {
-		992, 13, 23, 13
+		725, 22, 23, 13
 	},
 	[SPRITE_SHORT_BLOCK_3] = {
-		861, 17, 23, 13
+		825, 22, 23, 13
 	},
 	[SPRITE_SHORT_BLOCK_4] = {
-		962, 14, 23, 13
+		750, 22, 23, 13
 	},
 	[SPRITE_SHORT_BLOCK_5] = {
-		917, 16, 23, 13
+		775, 22, 23, 13
 	},
 	[SPRITE_SHORT_BLOCK_6] = {
-		838, 17, 23, 13
+		800, 22, 23, 13
 	},
 	[SPRITE_SMALL_BLOCK_1] = {
-		655, 19, 15, 10
+		538, 24, 15, 10
 	},
 	[SPRITE_SMALL_BLOCK_2] = {
-		818, 18, 15, 10
+		504, 24, 15, 10
 	},
 	[SPRITE_SMALL_BLOCK_3] = {
-		803, 18, 15, 10
+		487, 24, 15, 10
 	},
 	[SPRITE_SMALL_BLOCK_4] = {
-		640, 19, 15, 10
+		521, 24, 15, 10
 	},
 	[SPRITE_WARRIOR_ATTACK_0] = {
-		528, 0, 14, 21
+		597, 1, 14, 21
 	},
 	[SPRITE_WARRIOR_ATTACK_1] = {
-		513, 0, 15, 21
+		580, 1, 15, 21
 	},
 	[SPRITE_WARRIOR_ATTACK_2] = {
-		903, 0, 14, 17
+		947, 20, 14, 17
 	},
 	[SPRITE_WARRIOR_ATTACK_3] = {
-		977, 0, 15, 14
+		891, 21, 15, 14
 	},
 	[SPRITE_WARRIOR_ATTACK_4] = {
-		962, 0, 15, 14
+		874, 21, 15, 14
 	},
 	[SPRITE_WARRIOR_DEAD_0] = {
-		885, 0, 18, 17
+		998, 1, 18, 17
 	},
 	[SPRITE_WARRIOR_DEAD_1] = {
-		773, 0, 20, 18
+		874, 1, 20, 18
 	},
 	[SPRITE_WARRIOR_DEAD_2] = {
-		666, 0, 21, 19
+		753, 1, 21, 19
 	},
 	[SPRITE_WARRIOR_DEAD_3] = {
-		862, 0, 23, 17
+		973, 1, 23, 17
 	},
 	[SPRITE_WARRIOR_DEAD_4] = {
-		838, 0, 24, 17
+		947, 1, 24, 17
 	},
 	[SPRITE_WARRIOR_DEAD_5] = {
-		640, 0, 26, 19
+		725, 1, 26, 19
 	},
 	[SPRITE_WARRIOR_DEAD_6] = {
-		992, 0, 26, 13
+		908, 21, 26, 13
 	},
 	[SPRITE_WARRIOR_DEAD_7] = {
-		985, 14, 7, 6
+		865, 22, 7, 6
 	},
 	[SPRITE_WARRIOR_HIT_0] = {
-		759, 0, 14, 19
+		858, 1, 14, 19
 	},
 	[SPRITE_WARRIOR_HIT_1] = {
-		717, 0, 14, 19
+		810, 1, 14, 19
 	},
 	[SPRITE_WARRIOR_IDLE_0] = {
-		793, 0, 15, 18
+		896, 1, 15, 18
 	},
 	[SPRITE_WARRIOR_IDLE_1] = {
-		808, 0, 15, 18
+		913, 1, 15, 18
 	},
 	[SPRITE_WARRIOR_IDLE_2] = {
-		702, 0, 15, 19
+		793, 1, 15, 19
 	},
 	[SPRITE_WARRIOR_IDLE_3] = {
-		687, 0, 15, 19
+		776, 1, 15, 19
 	},
 	[SPRITE_WARRIOR_IDLE_4] = {
-		823, 0, 15, 18
+		930, 1, 15, 18
 	},
 	[SPRITE_WARRIOR_MOVE_LEFT_0] = {
-		933, 0, 15, 16
+		981, 20, 15, 16
 	},
 	[SPRITE_WARRIOR_MOVE_LEFT_1] = {
-		948, 0, 14, 16
+		998, 20, 14, 16
 	},
 	[SPRITE_WARRIOR_MOVE_LEFT_2] = {
-		745, 0, 14, 19
+		842, 1, 14, 19
 	},
 	[SPRITE_WARRIOR_MOVE_LEFT_3] = {
-		731, 0, 14, 19
+		826, 1, 14, 19
 	},
 };
 

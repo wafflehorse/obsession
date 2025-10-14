@@ -421,6 +421,10 @@ Vec2 w_calc_velocity(Vec2 acceleration, Vec2 velocity, double dt_s) {
     return w_vec_add(w_vec_mult(acceleration, dt_s), velocity);
 }
 
+Vec2 w_calc_position_delta(Vec2 acceleration, Vec2 velocity, Vec2 position, double dt_s) {
+    return w_vec_add(w_vec_mult(acceleration, 0.5f * w_square(dt_s)), w_vec_mult(velocity, dt_s));
+}
+
 bool w_check_aabb_collision(Rect subject, Rect target)
 {
     Vec2 subject_top_left = { subject.x - (subject.w / 2), subject.y + (subject.h / 2) };

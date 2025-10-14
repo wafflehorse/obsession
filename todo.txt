@@ -54,18 +54,18 @@
 [x] Adds projectile distance traveled based deletion
 [x] Adds screen shake
 [x] Fixes bug in player aim vector (it was relative to camera rather than player)
+[x] Add warrior entity
+[x] Add a 1 pixel gap between packed sprites. Sprites sometimes have bleed where you can see the edge of the neighboring sprite
+[x] Add projectile collision with warrior
+[x] Add entity collider
+[x] Add entity collider debug rendering
+[] Add projectile <> warrior collision response
+[] Add warrior health
+[] Add player health
 
 
-[] Add warrior entity
 [] Add pathfinding to player when in range
 [] Add warrior attacks
-[] Add gun to player sprite
-[] Add gun projectile
-[] Add screen shake [Polish/Fun]
-[] Add gun sound
-[] Add projectile collision with warrior
 [] Add warrior attack collision with player
-[] Add player health
-[] Add warrior health
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 

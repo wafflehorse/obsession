@@ -5,7 +5,7 @@
 
 #define BASE_RESOLUTION_WIDTH 640 
 #define BASE_RESOLUTION_HEIGHT 360 
-#define BASE_PIXELS_PER_UNIT 16 
+#define BASE_PIXELS_PER_UNIT 16.0f
 
 #define MAX_PROJECTILE_DISTANCE 80
 
@@ -63,6 +63,17 @@ struct Camera {
 	CameraShake shake;
 };
 
+enum ColliderShape {
+	COLLIDER_SHAPE_RECT,
+};
+
+struct Collider {
+	ColliderShape shape;
+	Vec2 offset;
+	float width;
+	float height;
+};
+
 struct EntityLookup {
 	uint32 idx;
 	uint32 generation;
@@ -76,6 +87,7 @@ struct EntityHandle {
 enum EntityType {
 	ENTITY_TYPE_PLAYER,
 	ENTITY_TYPE_GUN,
+	ENTITY_TYPE_WARRIOR,
 	ENTITY_TYPE_PROJECTILE
 };
 
@@ -83,6 +95,7 @@ enum EntityType {
 #define ENTITY_FLAG_EQUIPPED (1 << 1)
 #define ENTITY_FLAG_OWNED (1 << 2)
 #define ENTITY_FLAG_SPRITE_FLIP_X (1 << 3)
+#define ENTITY_FLAG_HAS_COLLIDER (1 << 4)
 
 struct Entity {
 	flags flags;
@@ -102,7 +115,10 @@ struct Entity {
 	Vec2 facing_direction;
 	EntityHandle owner_handle;
 
+	// projectile
 	float distance_traveled;
+
+	Collider collider;
 };
 
 struct EntityData {
