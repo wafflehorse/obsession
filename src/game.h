@@ -1,5 +1,6 @@
 #define MAX_SOUND_VARIATIONS 10
 #define MAX_ENTITIES 1000
+#define MAX_COLLISION_RULES 512
 
 #define GAME_STATE_F_INITIALIZED (1 << 0)
 
@@ -63,7 +64,15 @@ struct Camera {
 	CameraShake shake;
 };
 
+struct CollisionRule {
+	uint32 a_id;
+	uint32 b_id;
+	bool should_collide;
+	CollisionRule* next_rule;
+};
+
 enum ColliderShape {
+	COLLIDER_SHAPE_UNKNOWN,
 	COLLIDER_SHAPE_RECT,
 };
 
@@ -95,7 +104,11 @@ enum EntityType {
 #define ENTITY_FLAG_EQUIPPED (1 << 1)
 #define ENTITY_FLAG_OWNED (1 << 2)
 #define ENTITY_FLAG_SPRITE_FLIP_X (1 << 3)
-#define ENTITY_FLAG_HAS_COLLIDER (1 << 4)
+#define ENTITY_FLAG_KILLABLE (1 << 5)
+#define ENTITY_FLAG_NONSPACIAL (1 << 6)
+#define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 7)
+
+#define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
 struct Entity {
 	flags flags;
@@ -108,6 +121,8 @@ struct Entity {
 	Vec2 acceleration;
 	float rotation_rads;
 
+	Collider collider;
+
 	AnimationState anim_state;
 	SpriteID sprite_id;
 	float z_index;
@@ -118,7 +133,8 @@ struct Entity {
 	// projectile
 	float distance_traveled;
 
-	Collider collider;
+	float hp;
+	float damage_taken_tint_cooldown_s;
 };
 
 struct EntityData {
@@ -138,4 +154,6 @@ struct GameState {
 	FontData font_data;
 	uint32 viewport_scale_factor;
 	EntityData entity_data;
+	CollisionRule* collision_rule_hash[MAX_COLLISION_RULES];
+	CollisionRule* collision_rule_free_list;
 };

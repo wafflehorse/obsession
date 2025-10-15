@@ -98,6 +98,15 @@ EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	entity->position = position;
 	entity->facing_direction.x = 1;
 	entity->facing_direction.y = 0;
+	set(entity->flags, ENTITY_FLAG_KILLABLE);
+	entity->hp = 1000;
+	// TODO: think about this collider size
+	entity->collider = {
+		.shape = COLLIDER_SHAPE_RECT,
+		.offset = { 0 , 0 },
+		.width = 11 / BASE_PIXELS_PER_UNIT,
+		.height = 17 / BASE_PIXELS_PER_UNIT
+	};
 
 	return get_entity_handle(entity, entity_data);
 }
@@ -108,6 +117,7 @@ EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
 	entity->type = ENTITY_TYPE_GUN;
 	set(entity->flags, ENTITY_FLAG_OWNED);
 	set(entity->flags, ENTITY_FLAG_EQUIPPED);
+	set(entity->flags, ENTITY_FLAG_NONSPACIAL);
 	entity->owner_handle = owner;
 	entity->sprite_id = SPRITE_GUN_GREEN;
 
@@ -120,7 +130,8 @@ EntityHandle create_warrior_entity(EntityData* entity_data, Vec2 position) {
 	entity->type = ENTITY_TYPE_WARRIOR;
 	w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state);
 	entity->position = position;
-	set(entity->flags, ENTITY_FLAG_HAS_COLLIDER);
+	set(entity->flags, ENTITY_FLAG_KILLABLE);
+	entity->hp = 1000;
 	entity->collider = {
 		.shape = COLLIDER_SHAPE_RECT,
 		.offset = w_vec_mult((Vec2){ 3, 0 }, 1.0f / BASE_PIXELS_PER_UNIT),
@@ -140,7 +151,6 @@ EntityHandle create_projectile_entity(EntityData* entity_data, Vec2 position, fl
 	entity->rotation_rads = rotation_rads;
 	entity->velocity = velocity;
 	Sprite sprite = sprite_table[SPRITE_GREEN_BULLET_STRETCHED_1];
-	set(entity->flags, ENTITY_FLAG_HAS_COLLIDER);
 	entity->collider = {
 		.shape = COLLIDER_SHAPE_RECT,
 		.offset = {0, 0},
@@ -161,6 +171,103 @@ Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
 	}
 
 	return entity;
+}
+
+// TODO: make this faster?
+void remove_collision_rules(uint32 id, CollisionRule** hash, CollisionRule** free_list) {
+	for(int i = 0; i < MAX_COLLISION_RULES; i++) {
+		for(CollisionRule** rule = &hash[i]; *rule;) {
+			if((*rule)->a_id == id || (*rule)->b_id == id) {
+				CollisionRule* free_rule = *rule;
+				*rule = (*rule)->next_rule;
+
+				free_rule->next_rule = *free_list;
+				*free_list = &(*free_rule);
+			}	
+			else {
+				rule = &(*rule)->next_rule;
+			}
+		}
+	}
+}
+
+void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, CollisionRule** hash, CollisionRule** free_list, Arena* arena) {
+	if(a_id	> b_id) {
+		uint32 temp = a_id;
+		a_id = b_id;
+		b_id = temp;
+	}
+
+	uint32 hash_bucket = a_id & (MAX_COLLISION_RULES - 1);
+	
+	CollisionRule* rule = 0;
+	CollisionRule* found = 0;
+	for(rule = hash[hash_bucket]; rule; rule = rule->next_rule) {
+		if(rule->a_id == a_id && rule->b_id == b_id) {
+			found = rule;
+			break;
+		}	
+	}
+
+	if(!found) {
+        found = *free_list;
+		if(!found) {
+			found = (CollisionRule*)w_arena_alloc(arena, sizeof(CollisionRule));
+		}
+		else {
+			*free_list = found->next_rule;
+		}
+		found->a_id = a_id;
+		found->b_id = b_id;
+		found->next_rule = hash[hash_bucket];
+		hash[hash_bucket] = found;
+	}
+
+	found->should_collide = should_collide;
+}
+
+// TODO: Do we need to make sure that entities marked for deletion don't collide?
+bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
+	if(entity_a->id == entity_b->id 
+		|| is_set(entity_a->flags, ENTITY_FLAG_NONSPACIAL)
+		|| is_set(entity_b->flags, ENTITY_FLAG_NONSPACIAL)) {
+		return false;
+	}
+
+	ASSERT(entity_a->collider.shape != COLLIDER_SHAPE_UNKNOWN, "unknown collider shape on spacial entity")
+
+	bool should_collide = true;
+	if(entity_a->id > entity_b->id) {
+		Entity* temp = entity_a;
+		entity_a = entity_b;
+		entity_b = temp;
+	}
+
+	uint32 hash_bucket = entity_a->id & (MAX_COLLISION_RULES - 1);
+	CollisionRule* rule = 0;
+	for(rule = hash[hash_bucket]; rule; rule = rule->next_rule) {
+		if(rule->a_id == entity_a->id && rule->b_id == entity_b->id) {
+			should_collide = rule->should_collide;
+			break;
+		}
+	}
+
+	return should_collide;
+}
+
+void deal_damage(Entity* target, float damage) {
+	target->hp = w_clamp_min(target->hp - damage, 0);
+}
+
+void handle_collision(Entity* subject, Entity* target) {
+	if(subject->type == ENTITY_TYPE_PROJECTILE) {
+		if(is_set(target->flags, ENTITY_FLAG_KILLABLE)) {
+			deal_damage(target, 200);
+			target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
+		}
+
+		set(subject->flags, ENTITY_FLAG_MARK_FOR_DELETION);
+	}
 }
 
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
@@ -203,17 +310,34 @@ RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_st
 	return render_sprite(world_position, sprite_id, render_group, 0, z_index, opts);
 } 
 
-RenderQuad* render_entity_sprite(Entity* entity, RenderGroup* render_group) {
-	uint32 sprite_opts = 0;
-	if(is_set(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X)) {
-		set(sprite_opts, RENDER_SPRITE_OPT_FLIP_X);
+RenderQuad* render_entity(Entity* entity, RenderGroup* render_group) {
+	ASSERT(entity->sprite_id != SPRITE_UNKNOWN || entity->anim_state.animation_id != ANIM_UNKNOWN, "Cannot determine entity sprite");
+
+	RenderQuad* quad;
+	if(entity->anim_state.animation_id != ANIM_UNKNOWN) {
+		quad = render_animation_sprite(entity->position, &entity->anim_state, render_group, entity->z_index);
 	}
-	return render_sprite(entity->position, entity->sprite_id, render_group, entity->rotation_rads, entity->z_index, sprite_opts);
+	else {
+		uint32 sprite_opts = 0;
+		if(is_set(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X)) {
+			set(sprite_opts, RENDER_SPRITE_OPT_FLIP_X);
+		}
+		quad = render_sprite(entity->position, entity->sprite_id, render_group, entity->rotation_rads, entity->z_index, sprite_opts);
+	}
+
+	if(entity->damage_taken_tint_cooldown_s > 0) {
+		float normalized_elapsed = 1 - w_clamp_01(entity->damage_taken_tint_cooldown_s / ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S);
+
+		float tint_factor = (1 - w_animate_ease_out_quad(normalized_elapsed)) * 5;
+		quad->tint = { 1 + tint_factor, 1 + tint_factor, 1 + tint_factor, 1 };
+	}
+
+	return quad;
 }
 
 void debug_render_entity_colliders(Entity* entity, bool has_collided) {
 #ifdef DEBUG
-	if(is_set(entity->flags, ENTITY_FLAG_HAS_COLLIDER)) {
+	if(!is_set(entity->flags, ENTITY_FLAG_NONSPACIAL)) {
 		RenderQuad* quad = get_next_quad(g_debug_render_group);
 
 		Collider collider = entity->collider;
@@ -424,8 +548,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		init_entity_data(&game_state->entity_data);
 
-		EntityHandle player_handle = create_player_entity(&game_state->entity_data, { 0, 0 });
-		create_warrior_entity(&game_state->entity_data, { 5, 0 });
+		EntityHandle player_handle = create_player_entity(&game_state->entity_data, (Vec2){ 0, 0 });
+		create_warrior_entity(&game_state->entity_data, (Vec2){ 5, 0 });
 		create_gun_entity(&game_state->entity_data, player_handle);
 	}
 
@@ -498,8 +622,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
 		}
 
-		bool has_collided = false;
-		if(is_set(entity->flags, ENTITY_FLAG_HAS_COLLIDER)) {
+		// bool has_collided = false;
+		// Note: This is an optimization
+		if(!is_set(entity->flags, ENTITY_FLAG_NONSPACIAL)) {
 			Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
 			Vec2 subject_delta = w_calc_position_delta(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
 
@@ -510,7 +635,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			for(int j = 0; j < game_state->entity_data.entity_count; j++) {
 				Entity* target_entity = &game_state->entity_data.entities[j];
 
-				if((target_entity->id != entity->id) && is_set(target_entity->flags, ENTITY_FLAG_HAS_COLLIDER)) {
+				if(should_collide(entity, target_entity, game_state->collision_rule_hash)) {
 					Rect subject = {
 						subject_collider_position.x,
 						subject_collider_position.y,
@@ -534,9 +659,13 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 					if(t_min != prev_t_min) {
 						entity_collided_with = target_entity;
-						has_collided = true;
 					}
 				}
+			}
+
+			if(entity_collided_with) {
+				handle_collision(entity, entity_collided_with);
+				// has_collided = true;
 			}
 		}
 
@@ -586,8 +715,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			}
 		}
 
-		if(entity->type == ENTITY_TYPE_WARRIOR) {
-			entity->position = { 3, 0 };
+		if(entity->type == ENTITY_TYPE_WARRIOR && is_set(entity->flags, ENTITY_FLAG_KILLABLE)) {
 			entity->facing_direction = w_vec_norm(entity->velocity);
 			Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
 
@@ -641,30 +769,43 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			if(player_world_input.shoot) {
 				Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
 				Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
-				create_projectile_entity(&game_state->entity_data, entity->position, rotation_rads, velocity);
+				EntityHandle projectile_handle = create_projectile_entity(&game_state->entity_data, entity->position, rotation_rads, velocity);
+				add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, 
+					   game_state->collision_rule_hash, &game_state->collision_rule_free_list, &game_state->main_arena);
 
 				play_sound_rand(&game_state->sounds[SOUND_BASIC_GUN_SHOT], &game_state->audio_player);
 				start_camera_shake(&game_state->camera, 0.1, 10, 0.08);
 			}
 		}
 
-		w_update_animation(&entity->anim_state, g_sim_dt_s);
-
-		ASSERT(entity->sprite_id != SPRITE_UNKNOWN || entity->anim_state.animation_id != ANIM_UNKNOWN, "Cannot determine entity sprite");
-
-		if(entity->anim_state.animation_id != ANIM_UNKNOWN) {
-			render_animation_sprite(entity->position, &entity->anim_state, &main_render_group, entity->z_index);
-		}
-		else {
-			render_entity_sprite(entity, &main_render_group);
+		if(is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->hp <= 0) {
+			unset(entity->flags, ENTITY_FLAG_KILLABLE);
+			set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+			set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
+			if(entity->type == ENTITY_TYPE_WARRIOR) {
+				w_play_animation(ANIM_WARRIOR_DEAD, &entity->anim_state);
+			}
 		}
 
-		debug_render_entity_colliders(entity, has_collided);
+		entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
+
+		bool is_animation_complete = w_update_animation(&entity->anim_state, g_sim_dt_s);
+
+		if(is_set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION) && is_animation_complete) {
+			set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);
+		}
+
+		if(!is_set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION)) {
+			render_entity(entity, &main_render_group);
+		}
+
+		// debug_render_entity_colliders(entity, has_collided);
 	}
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
 		if(is_set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION)) {
+			remove_collision_rules(entity->id, game_state->collision_rule_hash, &game_state->collision_rule_free_list);
 			free_entity(entity->id, &game_state->entity_data);
 			// Ensures we process the element that was inserted to replace the freed entity
 			i--;

@@ -59,9 +59,13 @@
 [x] Add projectile collision with warrior
 [x] Add entity collider
 [x] Add entity collider debug rendering
-[] Add projectile <> warrior collision response
-[] Add warrior health
-[] Add player health
+[x] Add collision pair wise rules hash
+[x] Add projectile <> warrior collision response
+[x] Add warrior health
+[x] Add warrior hit flash
+[x] Add warrior death animation
+[x] Add player health
+[] Add warrior AI
 
 
 [] Add pathfinding to player when in range

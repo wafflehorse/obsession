@@ -640,22 +640,25 @@ void w_init_animation(Animation* animation_table) {
 
 // ~~~~~~~~~~~~~~~~ Sprites & Animations ~~~~~~~~~~~~~~~~~//
 
-SpriteID w_update_animation(AnimationState* anim_state, double dt_s) {
-	SpriteID sprite_id = SPRITE_UNKNOWN;
+bool w_update_animation(AnimationState* anim_state, double dt_s) {
+	bool animation_complete = false;
 	if(anim_state->animation_id != ANIM_UNKNOWN) {
 		anim_state->elapsed_frame_ms += dt_s * 1000; 	
 		Animation curr_anim = i_animation_table[anim_state->animation_id];
 		AnimationFrame curr_frame = curr_anim.frames[anim_state->current_frame];
 
 		if(anim_state->elapsed_frame_ms >= curr_frame.duration_ms) {
-			anim_state->current_frame = (anim_state->current_frame + 1) % curr_anim.frame_count;
+			anim_state->current_frame++;
 			anim_state->elapsed_frame_ms = 0;
-		}
 
-		sprite_id = curr_anim.frames[anim_state->current_frame].sprite_id;
+			if(anim_state->current_frame >= (curr_anim.frame_count)) {
+				animation_complete = true;
+				anim_state->current_frame = 0;
+			}
+		}
 	}
 
-	return sprite_id;
+	return animation_complete;
 }
 
 void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flags opts) {
