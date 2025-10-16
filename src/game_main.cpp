@@ -138,6 +138,8 @@ EntityHandle create_warrior_entity(EntityData* entity_data, Vec2 position) {
 		.width = 11 / BASE_PIXELS_PER_UNIT,
 		.height = 17 / BASE_PIXELS_PER_UNIT
 	};
+	entity->brain = {};
+	entity->brain.type = BRAIN_TYPE_WARRIOR;
 
 	return get_entity_handle(entity, entity_data);
 }
@@ -171,6 +173,36 @@ Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
 	}
 
 	return entity;
+}
+
+void update_brain(Entity* entity, double dt_s) {
+	Brain* brain = &entity->brain;
+	brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
+	if(brain->type == BRAIN_TYPE_WARRIOR) {
+		switch(brain->ai_state) {
+			case AI_STATE_IDLE:
+				if(brain->cooldown_s <= 0) {
+					brain->wander_target.x = entity->position.x + w_random_between(-5, 5); 
+					brain->wander_target.y = entity->position.y + w_random_between(-5, 5);
+					brain->ai_state = AI_STATE_WANDER;
+				}	
+				entity->velocity = {0, 0};
+				break;
+			case AI_STATE_WANDER: {
+				if(w_euclid_dist(entity->position, brain->wander_target) <= 1.0f) {
+					brain->ai_state = AI_STATE_IDLE;
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+
+				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->wander_target, entity->position));
+				entity->velocity = w_vec_mult(wander_direction, 1.0f);
+				break;
+			}
+			case AI_STATE_CHASE:
+			case AI_STATE_ATTACK:
+				break;
+		}
+	}
 }
 
 // TODO: make this faster?
@@ -615,6 +647,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
+		update_brain(entity, g_sim_dt_s);
 		if(entity->type == ENTITY_TYPE_PLAYER) {
 			update_player_world_input(game_input, &player_world_input, entity->position, game_memory->screen_size);
 			float acceleration_mag = 30;

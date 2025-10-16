@@ -83,6 +83,26 @@ struct Collider {
 	float height;
 };
 
+enum AIState {
+	AI_STATE_IDLE,
+	AI_STATE_WANDER,
+	AI_STATE_CHASE,
+	AI_STATE_ATTACK
+};
+
+enum BrainType {
+	BRAIN_TYPE_NONE,
+	BRAIN_TYPE_WARRIOR
+};
+
+struct Brain {
+	BrainType type;
+	AIState ai_state;
+	float cooldown_s;
+	uint32 target_id;
+	Vec2 wander_target;
+};
+
 struct EntityLookup {
 	uint32 idx;
 	uint32 generation;
@@ -135,6 +155,8 @@ struct Entity {
 
 	float hp;
 	float damage_taken_tint_cooldown_s;
+
+	Brain brain;
 };
 
 struct EntityData {

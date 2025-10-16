@@ -65,11 +65,16 @@
 [x] Add warrior hit flash
 [x] Add warrior death animation
 [x] Add player health
-[] Add warrior AI
+[x] Add entity brain concept
+[x] Add warrior idle state
+[x] Add warrior wander state
 
 
-[] Add pathfinding to player when in range
+
 [] Add warrior attacks
 [] Add warrior attack collision with player
+[] Add warrior chase state
+[] Add warrior attack state
+[] Add pathfinding to player when in range
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 
