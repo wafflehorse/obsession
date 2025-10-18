@@ -317,6 +317,8 @@
    { "name": "move_up", "from": 18, "to": 25, "direction": "forward", "color": "#000000ff" },
    { "name": "hit", "from": 26, "to": 27, "direction": "forward", "color": "#000000ff" },
    { "name": "dead", "from": 28, "to": 37, "direction": "forward", "color": "#000000ff" }
+  ],
+  "slices": [
   ]
  }
 }

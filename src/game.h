@@ -9,6 +9,7 @@
 #define BASE_PIXELS_PER_UNIT 16.0f
 
 #define MAX_PROJECTILE_DISTANCE 80
+#define ENTITY_MAX_Z 100
 
 struct FontData {
     uint32 ascent;
@@ -178,4 +179,5 @@ struct GameState {
 	EntityData entity_data;
 	CollisionRule* collision_rule_hash[MAX_COLLISION_RULES];
 	CollisionRule* collision_rule_free_list;
+	Entity* player;
 };

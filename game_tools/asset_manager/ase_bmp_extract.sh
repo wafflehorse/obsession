@@ -20,6 +20,7 @@ for filepath in $ASSET_SOURCE_DIR/*_anim.aseprite; do
 	aseprite -b $filepath \
 	 	--data "$ASSET_DATA_FILE_OUTPUT_DIR/${filename_no_ext_lowercase}.json" \
 		--list-tags \
+		--list-slices \
 		--save-as "$ASSET_BITMAP_OUTPUT_DIR/${filename_no_meta_lowercase}__{tag}__{tagframe}.png"
 done
 

@@ -413,6 +413,10 @@ float w_clamp_01(float a) {
     return w_clamp_between(a, 0, 1);
 }
 
+bool w_rect_has_area(Rect rect) {
+	return (rect.w > 0 && rect.h > 0);
+}
+
 Vec2 w_calc_position(Vec2 acceleration, Vec2 velocity, Vec2 position, double dt_s) {
     return w_vec_add(w_vec_add(w_vec_mult(acceleration, 0.5f * w_square(dt_s)), w_vec_mult(velocity, dt_s)), position);
 }
@@ -425,7 +429,7 @@ Vec2 w_calc_position_delta(Vec2 acceleration, Vec2 velocity, Vec2 position, doub
     return w_vec_add(w_vec_mult(acceleration, 0.5f * w_square(dt_s)), w_vec_mult(velocity, dt_s));
 }
 
-bool w_check_aabb_collision(Rect subject, Rect target)
+bool w_check_aabb_overlap(Rect subject, Rect target)
 {
     Vec2 subject_top_left = { subject.x - (subject.w / 2), subject.y + (subject.h / 2) };
     Vec2 target_top_left = { target.x - (target.w / 2), target.y + (target.h / 2) };
@@ -639,6 +643,25 @@ void w_init_animation(Animation* animation_table) {
 }
 
 // ~~~~~~~~~~~~~~~~ Sprites & Animations ~~~~~~~~~~~~~~~~~//
+
+SpriteID w_animation_current_sprite(AnimationState* anim_state) {
+	Animation curr_anim = i_animation_table[anim_state->animation_id];
+	AnimationFrame curr_frame = curr_anim.frames[anim_state->current_frame];
+	
+	return curr_frame.sprite_id;
+}
+
+bool w_animation_complete(AnimationState* anim_state, double dt_s) {
+	bool animation_complete = false;
+
+	Animation curr_anim = i_animation_table[anim_state->animation_id];
+	AnimationFrame curr_frame = curr_anim.frames[anim_state->current_frame];
+	if(anim_state->elapsed_frame_ms + dt_s >= curr_frame.duration_ms) {
+		animation_complete = true;
+	}
+
+	return animation_complete;
+}
 
 bool w_update_animation(AnimationState* anim_state, double dt_s) {
 	bool animation_complete = false;

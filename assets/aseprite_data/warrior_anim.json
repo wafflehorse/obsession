@@ -388,6 +388,9 @@
    { "name": "attack", "from": 19, "to": 23, "direction": "forward", "color": "#000000ff" },
    { "name": "hit", "from": 29, "to": 30, "direction": "forward", "color": "#000000ff" },
    { "name": "dead", "from": 33, "to": 40, "direction": "forward", "color": "#000000ff" }
+  ],
+  "slices": [
+   { "name": "hitbox", "color": "#0000ffff", "keys": [{ "frame": 21, "bounds": {"x": 7, "y": 8, "w": 18, "h": 20 } }] }
   ]
  }
 }

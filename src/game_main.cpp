@@ -175,10 +175,13 @@ Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
 	return entity;
 }
 
-void update_brain(Entity* entity, double dt_s) {
+void update_brain(Entity* entity, Entity* player, double dt_s) {
 	Brain* brain = &entity->brain;
 	brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
 	if(brain->type == BRAIN_TYPE_WARRIOR) {
+		if(w_euclid_dist(entity->position, player->position) < 5) {
+			brain->ai_state = AI_STATE_ATTACK;	
+		}
 		switch(brain->ai_state) {
 			case AI_STATE_IDLE:
 				if(brain->cooldown_s <= 0) {
@@ -199,7 +202,24 @@ void update_brain(Entity* entity, double dt_s) {
 				break;
 			}
 			case AI_STATE_CHASE:
+				if(brain->cooldown_s <= 0) {
+					brain->ai_state = AI_STATE_ATTACK;
+				}
+				break;
 			case AI_STATE_ATTACK:
+				entity->velocity = { 0, 0 };
+				if(w_euclid_dist(entity->position, player->position) >= 5) {
+					brain->ai_state = AI_STATE_IDLE;	
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+				else {
+					w_play_animation(ANIM_WARRIOR_ATTACK, &entity->anim_state);
+					if(w_animation_complete(&entity->anim_state, dt_s)) {
+						brain->ai_state = AI_STATE_CHASE;
+						brain->cooldown_s = w_random_between(1, 6);
+					}
+				}
+				
 				break;
 		}
 	}
@@ -289,13 +309,13 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
 
 void deal_damage(Entity* target, float damage) {
 	target->hp = w_clamp_min(target->hp - damage, 0);
+	target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
 }
 
 void handle_collision(Entity* subject, Entity* target) {
 	if(subject->type == ENTITY_TYPE_PROJECTILE) {
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE)) {
 			deal_damage(target, 200);
-			target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
 		}
 
 		set(subject->flags, ENTITY_FLAG_MARK_FOR_DELETION);
@@ -383,6 +403,18 @@ void debug_render_entity_colliders(Entity* entity, bool has_collided) {
 		}
 		quad->z_index = entity->z_index + 1;
 	}
+#endif
+}
+
+void debug_render_rect(Vec2 position, Vec2 size) {
+#ifdef DEBUG
+	RenderQuad* quad = get_next_quad(g_debug_render_group);
+
+	quad->world_position = position;
+	quad->world_size = size; 
+	quad->draw_colored_rect = 1;
+	quad->rgba = { 255, 0, 0, 0.5 };
+	quad->z_index = ENTITY_MAX_Z + 1;
 #endif
 }
 
@@ -562,7 +594,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		game_memory->init_audio(&game_state->audio_player);
 		setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60, game_state->sounds, &game_state->main_arena);
-		setup_sound_from_wav(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_01.wav", 0.4, game_state->sounds, &game_state->main_arena);
+		setup_sound_from_wav(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_01.wav", 0.2, game_state->sounds, &game_state->main_arena);
 		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_02.wav", game_state);
 		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_03.wav", game_state);
 		add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_04.wav", game_state);
@@ -581,6 +613,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		init_entity_data(&game_state->entity_data);
 
 		EntityHandle player_handle = create_player_entity(&game_state->entity_data, (Vec2){ 0, 0 });
+		game_state->player = get_entity(player_handle, &game_state->entity_data);
 		create_warrior_entity(&game_state->entity_data, (Vec2){ 5, 0 });
 		create_gun_entity(&game_state->entity_data, player_handle);
 	}
@@ -647,7 +680,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
-		update_brain(entity, g_sim_dt_s);
+		update_brain(entity, game_state->player, g_sim_dt_s);
 		if(entity->type == ENTITY_TYPE_PLAYER) {
 			update_player_world_input(game_input, &player_world_input, entity->position, game_memory->screen_size);
 			float acceleration_mag = 30;
@@ -748,7 +781,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			}
 		}
 
-		if(entity->type == ENTITY_TYPE_WARRIOR && is_set(entity->flags, ENTITY_FLAG_KILLABLE)) {
+		if(entity->type == ENTITY_TYPE_WARRIOR && is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->brain.ai_state != AI_STATE_ATTACK) {
 			entity->facing_direction = w_vec_norm(entity->velocity);
 			Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
 
@@ -823,6 +856,63 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
 
 		bool is_animation_complete = w_update_animation(&entity->anim_state, g_sim_dt_s);
+
+		SpriteID sprite_id = w_animation_current_sprite(&entity->anim_state);
+
+		Rect anim_hitbox = hitbox_table[sprite_id];
+
+		// TODO: Maybe collapse this into the collision loop above?
+		if(w_rect_has_area(anim_hitbox)) {
+			anim_hitbox.x = anim_hitbox.x / BASE_PIXELS_PER_UNIT;
+			anim_hitbox.y = anim_hitbox.y / BASE_PIXELS_PER_UNIT; 
+			anim_hitbox.w = anim_hitbox.w / BASE_PIXELS_PER_UNIT;
+			anim_hitbox.h = anim_hitbox.h / BASE_PIXELS_PER_UNIT;
+
+			// Updates position to center of hitbox from top left
+			anim_hitbox.x += anim_hitbox.w / 2;
+			anim_hitbox.y += anim_hitbox.h / 2; 
+
+            Sprite sprite = sprite_table[sprite_id];
+
+            anim_hitbox.x -= (sprite.w * 0.5) / BASE_PIXELS_PER_UNIT; 
+            anim_hitbox.y -= (sprite.h * 0.5) / BASE_PIXELS_PER_UNIT; 
+
+            anim_hitbox.y *= -1;
+
+			anim_hitbox.x = entity->position.x + anim_hitbox.x;
+			anim_hitbox.y = entity->position.y + anim_hitbox.y;
+
+			Rect subject_hitbox = {
+				anim_hitbox.x,
+				anim_hitbox.y,
+				anim_hitbox.w,
+				anim_hitbox.h,
+			};
+
+			debug_render_rect((Vec2){ subject_hitbox.x, subject_hitbox.y}, (Vec2){ subject_hitbox.w, subject_hitbox.h });
+
+			for(int j = 0; j < game_state->entity_data.entity_count; j++) {
+				Entity* target_entity = &game_state->entity_data.entities[j];
+				if(entity->id != target_entity->id 
+					&& !is_set(entity->flags, ENTITY_FLAG_NONSPACIAL)
+					&& !is_set(target_entity->flags, ENTITY_FLAG_NONSPACIAL)
+					&& is_set(target_entity->flags, ENTITY_FLAG_KILLABLE)) {
+
+					Vec2 target_collider_position = w_vec_add(target_entity->position, target_entity->collider.offset);
+
+					Rect target = {
+						target_collider_position.x,
+						target_collider_position.y,
+						target_entity->collider.width,
+						target_entity->collider.height
+					};
+
+					if(w_check_aabb_overlap(subject_hitbox, target)) {
+						deal_damage(target_entity, 200);	
+					}
+				}
+			}		
+		}
 
 		if(is_set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION) && is_animation_complete) {
 			set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);

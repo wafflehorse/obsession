@@ -68,13 +68,16 @@
 [x] Add entity brain concept
 [x] Add warrior idle state
 [x] Add warrior wander state
+[x] Add ability to parse hitbox slices from aseprite files
+[x] Add hitbox collision
+[x] Add warrior attacks
 
 
 
-[] Add warrior attacks
 [] Add warrior attack collision with player
+[] Add pathfinding to player when in range
 [] Add warrior chase state
 [] Add warrior attack state
-[] Add pathfinding to player when in range
+[] Add camera movement with player
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 

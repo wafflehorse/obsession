@@ -294,6 +294,12 @@ Sprite sprite_table[SPRITE_COUNT] = {
 	},
 };
 
+Rect hitbox_table[SPRITE_COUNT] = {
+	[SPRITE_WARRIOR_ATTACK_2] = {
+		-4, -4, 18, 20
+	},
+};
+
 Animation animation_table[ANIM_COUNT] = {
 	[ANIM_WARRIOR_IDLE] = {
 		.frames = {

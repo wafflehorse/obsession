@@ -29,19 +29,39 @@
 #define ATLAS_HEIGHT 1024
 #define SPRITE_MARGIN 1
 
+struct FrameHitbox {
+	bool is_valid;
+	Rect rect;
+};
+
 struct AnimationExtraction {
     char animation_label[256];
     char sprite_labels[256][256];
-    uint32 frame_durations[256];
+    uint32 frame_durations[128];
+	FrameHitbox frame_hitboxes[128];
     uint32 frame_count;
 };
 
-struct AsepriteAnimationExtract {
-    uint32 frame_durations[256];
-    uint32 frame_count;
-    Animation animations[128];
-    uint32 animation_count;
-};
+bool get_next_int_value(char** cursor, const char* key, int32* num) {
+	*cursor = strstr(*cursor, key);
+	if(*cursor == NULL) {
+		return false;
+	}
+
+	char num_str[64] = {};
+	uint32 num_str_length = 0;
+
+	while (!isdigit(**cursor)) { (*cursor)++; }
+	while (isdigit(**cursor)) {
+		num_str[num_str_length++] = **cursor;
+		(*cursor)++;
+	}
+
+	char* end = 0;
+	*num = (int)strtol(num_str, &end, 10);
+
+	return true;
+} 
 
 void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, AnimationExtraction* anim_extractions, uint32* anim_count) {
     char* cursor = file_contents->data;
@@ -64,10 +84,51 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
         all_frame_durations[all_frames_count++] = strtoul(duration_str, &end, 10);
     }
 
+	char* slices_ptr = strstr(file_contents->data, "slices");
+
+	FrameHitbox all_frame_hitboxes[512] = {};
+
+	cursor = slices_ptr;
+	while((cursor = strstr(cursor, "name")) != NULL) {
+        char name[64] = {};
+        uint32 name_length = 0;
+        cursor = strstr(cursor, ":");
+        while (*cursor != '"') { cursor++; }
+        cursor++;
+        while (*cursor != '"') {
+            name[name_length++] = *cursor;
+            cursor++;
+        }
+
+		if(w_str_match(name, "hitbox")) {
+			printf("processing hitbox\n");	
+
+        	int32 frame_idx;
+			get_next_int_value(&cursor, "frame", &frame_idx);
+
+			Rect hitbox;
+			int32 num;
+
+			get_next_int_value(&cursor, "x", &num);
+			hitbox.x = num;
+			get_next_int_value(&cursor, "y", &num);
+			hitbox.y = num;
+			get_next_int_value(&cursor, "w", &num);
+			hitbox.w = num;
+			get_next_int_value(&cursor, "h", &num);
+			hitbox.h = num;
+
+			FrameHitbox* frame_hitbox = &all_frame_hitboxes[frame_idx];
+			frame_hitbox->is_valid = true;
+			frame_hitbox->rect = hitbox;
+		}
+	}
+
     printf("Processing %i frames...\n", all_frames_count);
 
     cursor = file_contents->data;
-    while ((cursor = strstr(cursor, "name")) != NULL) {
+    while (((cursor = strstr(cursor, "name")) != NULL) 
+		&& (slices_ptr == NULL || cursor < slices_ptr)) {
         char name[64] = {};
         uint32 name_length = 0;
         cursor = strstr(cursor, ":");
@@ -110,6 +171,7 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
 
         for (int i = start_idx; i < end_idx + 1; i++) {
             anim_extract->frame_durations[anim_extract->frame_count] = all_frame_durations[i];
+			anim_extract->frame_hitboxes[anim_extract->frame_count] = all_frame_hitboxes[i];
             char* sprite_label = anim_extract->sprite_labels[anim_extract->frame_count];
             w_str_copy(sprite_label, "SPRITE_");
             w_str_concat(sprite_label, entity_name);
@@ -122,6 +184,7 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
             anim_extract->frame_count++;
         }
     }
+
 }
 void enum_begin(const char* enum_name, FILE* file) {
 	char enum_declaration[64] = {}; 
@@ -142,7 +205,7 @@ void enum_close(FILE* file) {
 
 
 bool trim(unsigned char* bitmap, int num_channels, int bitmap_width, int bitmap_height,
-    unsigned char** trimmed_bitmap, int* trimmed_width, int* trimmed_height) {
+    unsigned char** trimmed_bitmap, int* trimmed_width, int* trimmed_height, Vec2* trimmed_location) {
     if (bitmap_width < 1 || bitmap_height < 1) {
         return false;
     }
@@ -168,6 +231,8 @@ bool trim(unsigned char* bitmap, int num_channels, int bitmap_width, int bitmap_
     *trimmed_bitmap = bitmap + (min_y * num_channels * bitmap_width) + (min_x * num_channels);
     *trimmed_width = max_x - min_x + 1;
     *trimmed_height = max_y - min_y + 1;
+	trimmed_location->x = min_x;
+	trimmed_location->y = min_y;
 
     return is_occupied;
 }
@@ -217,6 +282,8 @@ int main(int argc, char* argv[]) {
     stbrp_node* nodes = (stbrp_node*)w_arena_alloc(&arena, num_nodes * sizeof(stbrp_node));
     stbrp_init_target(&pack_context, ATLAS_WIDTH, ATLAS_HEIGHT, nodes, num_nodes);
 
+	Vec2 raw_bitmap_sizes[MAX_BITMAPS] = {};
+	Vec2 trimmed_bitmap_locations[MAX_BITMAPS] = {};
     int bitmap_count = 0;
 
     for (int i = 0; i < bitmap_file_count; i++) {
@@ -233,10 +300,16 @@ int main(int argc, char* argv[]) {
 
         unsigned char* trimmed_bitmap = NULL;
         int trimmed_width, trimmed_height;
-        if (trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height)) {
+		Vec2 trimmed_location = {};
+        if (trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height, &trimmed_location)) {
             bitmap_rects[bitmap_count].w = trimmed_width + (SPRITE_MARGIN * 2);
             bitmap_rects[bitmap_count].h = trimmed_height + (SPRITE_MARGIN * 2);
             bitmap_rects[bitmap_count].id = i;
+
+			raw_bitmap_sizes[bitmap_count].x = bitmap_width;
+			raw_bitmap_sizes[bitmap_count].y = bitmap_height;
+
+			trimmed_bitmap_locations[bitmap_count] = trimmed_location;
             bitmap_count++;
         }
         else {
@@ -273,8 +346,9 @@ int main(int argc, char* argv[]) {
         }
 
         unsigned char* trimmed_bitmap = NULL;
+		Vec2 trimmed_location = {};
         int trimmed_width, trimmed_height;
-        trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height);
+        trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height, &trimmed_location);
 
         unsigned char* src_row_start = trimmed_bitmap;
         unsigned char* dest_row_start = pixels + (4 * ATLAS_WIDTH * (rect.y + SPRITE_MARGIN)) + (4 * (rect.x + SPRITE_MARGIN)) + 4;
@@ -421,6 +495,41 @@ int main(int argc, char* argv[]) {
 
     const char* sprite_table_close = "};\n\n";
     fwrite(sprite_table_close, w_str_len(sprite_table_close), sizeof(char), file);
+
+	//~~~~~~~~~~~~~~ Hitbox Table ~~~~~~~~~~~~~~~~~~//
+
+    const char* hitbox_table_declaration = "Rect hitbox_table[SPRITE_COUNT] = {\n";
+    fwrite(hitbox_table_declaration, w_str_len(hitbox_table_declaration), sizeof(char), file);
+
+    for (int i = 0; i < anim_count; i++) {
+        AnimationExtraction* anim_ext = &animation_extracts[i];
+		for(int j = 0; j < anim_ext->frame_count; j++) {
+			FrameHitbox raw_frame_hitbox = anim_ext->frame_hitboxes[j];
+			if(raw_frame_hitbox.is_valid) {
+				int bitmap_idx = -1;
+				for(int a = 0; a < bitmap_count; a++) {
+					if(w_str_match(enum_labels[a], anim_ext->sprite_labels[j])) {
+						bitmap_idx = a;
+						break;
+					}			
+				}
+
+				ASSERT(bitmap_idx != -1, "bitmap index not found for hitbox!");
+
+				Vec2 trimmed_bitmap_location = trimmed_bitmap_locations[bitmap_idx];
+				Vec2 raw_hitbox_position = { raw_frame_hitbox.rect.x, raw_frame_hitbox.rect.y };
+				Vec2 adjusted_hitbox_position = w_vec_sub(raw_hitbox_position, trimmed_bitmap_location);
+						
+        		char hitbox_init[256] = {};
+				snprintf(hitbox_init, 256, "\t[%s] = {\n\t\t%.0f, %.0f, %.0f, %.0f\n\t},\n", 
+		 		anim_ext->sprite_labels[j], adjusted_hitbox_position.x, adjusted_hitbox_position.y, raw_frame_hitbox.rect.w, raw_frame_hitbox.rect.h);
+				fwrite(hitbox_init, w_str_len(hitbox_init), sizeof(char), file);
+			}
+		}
+    }
+
+    const char* hitbox_table_close = "};\n\n";
+    fwrite(hitbox_table_close, w_str_len(hitbox_table_close), sizeof(char), file);
 
 	//~~~~~~~~~~~~~~~~~~~ Write Animation Table ~~~~~~~~~~~~~~~~~~~~~//
 
