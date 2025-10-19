@@ -319,6 +319,7 @@
    { "name": "dead", "from": 28, "to": 37, "direction": "forward", "color": "#000000ff" }
   ],
   "slices": [
+   { "name": "ground_anchor", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 16, "y": 26, "w": 1, "h": 1 } }] }
   ]
  }
 }

@@ -71,9 +71,15 @@
 [x] Add ability to parse hitbox slices from aseprite files
 [x] Add hitbox collision
 [x] Add warrior attacks
+[x] Fix issue with sprites not being centered on player due to lack of pivot in aseprite files
+[x] Update entity positions to be where the entity touches the ground as to align with the sprite pivots
+[x] Fix collider rendering position based on new entity positioning at center bottom
+[x] Fix hitbox positioning to just be entity position offset
+[] Fix gun render position and rotation
+[] Delete child entity if owner is no longer active
+[] Flip attack animation based on facing direction
 
-
-
+[] Add z value for representing how far off the ground something is? Like the player gun?
 [] Add warrior attack collision with player
 [] Add pathfinding to player when in range
 [] Add warrior chase state

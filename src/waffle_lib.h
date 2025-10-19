@@ -83,6 +83,8 @@ struct Sprite {
     float y;
     float w;
     float h;
+	bool has_ground_anchor;
+	Vec2 ground_anchor;
 };
 
 #define ANIMATION_STATE_F_FLIP_X (1 << 0)
@@ -262,6 +264,15 @@ float w_dot_product(Vec2 a, Vec2 b) {
 
 float w_euclid_dist(Vec2 a, Vec2 b) {
     return sqrtf(w_square(a.x - b.x) + w_square(a.y - b.y));
+}
+
+Rect w_rect_mult(Rect rect, float scalar) {
+	return (Rect){
+		rect.x * scalar,
+		rect.y * scalar,
+		rect.w * scalar,
+		rect.h * scalar
+	};
 }
 
 int w_str_len(const char* str) {

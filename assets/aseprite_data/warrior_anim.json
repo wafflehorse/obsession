@@ -390,7 +390,8 @@
    { "name": "dead", "from": 33, "to": 40, "direction": "forward", "color": "#000000ff" }
   ],
   "slices": [
-   { "name": "hitbox", "color": "#0000ffff", "keys": [{ "frame": 21, "bounds": {"x": 7, "y": 8, "w": 18, "h": 20 } }] }
+   { "name": "hitbox", "color": "#0000ffff", "keys": [{ "frame": 21, "bounds": {"x": 7, "y": 8, "w": 18, "h": 20 } }] },
+   { "name": "ground_anchor", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 16, "y": 26, "w": 1, "h": 1 } }] }
   ]
  }
 }

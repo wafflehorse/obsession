@@ -29,9 +29,22 @@
 #define ATLAS_HEIGHT 1024
 #define SPRITE_MARGIN 1
 
+struct Slice {
+	int frame_idx;
+	float x;
+	float y;
+	float w;
+	float h;
+};
+
 struct FrameHitbox {
 	bool is_valid;
 	Rect rect;
+};
+
+struct GroundAnchor {
+	Vec2 ground_anchor;
+	bool is_valid;
 };
 
 struct AnimationExtraction {
@@ -39,6 +52,8 @@ struct AnimationExtraction {
     char sprite_labels[256][256];
     uint32 frame_durations[128];
 	FrameHitbox frame_hitboxes[128];
+	Vec2 ground_anchor;
+	uint32 ground_anchor_count;
     uint32 frame_count;
 };
 
@@ -62,6 +77,20 @@ bool get_next_int_value(char** cursor, const char* key, int32* num) {
 
 	return true;
 } 
+
+void parse_slice(char** cursor, Slice* slice) {
+	get_next_int_value(cursor, "frame", &slice->frame_idx);
+
+	int num;
+	get_next_int_value(cursor, "x", &num);
+	slice->x = num;
+	get_next_int_value(cursor, "y", &num);
+	slice->y = num;
+	get_next_int_value(cursor, "w", &num);
+	slice->w = num;
+	get_next_int_value(cursor, "h", &num);
+	slice->h = num;
+}
 
 void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, AnimationExtraction* anim_extractions, uint32* anim_count) {
     char* cursor = file_contents->data;
@@ -87,6 +116,8 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
 	char* slices_ptr = strstr(file_contents->data, "slices");
 
 	FrameHitbox all_frame_hitboxes[512] = {};
+	Vec2 ground_anchor = {};
+	uint32 ground_anchor_count = 0;
 
 	cursor = slices_ptr;
 	while((cursor = strstr(cursor, "name")) != NULL) {
@@ -102,25 +133,29 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
 
 		if(w_str_match(name, "hitbox")) {
 			printf("processing hitbox\n");	
+			Slice slice;
+			parse_slice(&cursor, &slice);
 
-        	int32 frame_idx;
-			get_next_int_value(&cursor, "frame", &frame_idx);
-
-			Rect hitbox;
-			int32 num;
-
-			get_next_int_value(&cursor, "x", &num);
-			hitbox.x = num;
-			get_next_int_value(&cursor, "y", &num);
-			hitbox.y = num;
-			get_next_int_value(&cursor, "w", &num);
-			hitbox.w = num;
-			get_next_int_value(&cursor, "h", &num);
-			hitbox.h = num;
-
-			FrameHitbox* frame_hitbox = &all_frame_hitboxes[frame_idx];
+			FrameHitbox* frame_hitbox = &all_frame_hitboxes[slice.frame_idx];
 			frame_hitbox->is_valid = true;
-			frame_hitbox->rect = hitbox;
+			frame_hitbox->rect.x = slice.x;
+			frame_hitbox->rect.y = slice.y;
+			frame_hitbox->rect.w = slice.w;
+			frame_hitbox->rect.h = slice.h;
+		}
+		else if(w_str_match(name, "ground_anchor")) {
+			printf("processing ground_anchor\n");
+			ASSERT(ground_anchor_count < 2, "multiple ground anchors specified for the same animation!");
+
+			Slice slice;
+			parse_slice(&cursor, &slice);
+
+			ground_anchor = {
+				slice.x,
+				slice.y
+			};
+				
+			ground_anchor_count++;
 		}
 	}
 
@@ -168,6 +203,11 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
         char* animation_label = anim_extract->animation_label;
         snprintf(animation_label, sizeof(anim_extract->animation_label), "ANIM_%s_%s", entity_name, name);
         w_to_uppercase(animation_label);
+
+		if(ground_anchor_count > 0) {
+			anim_extract->ground_anchor = ground_anchor;
+			anim_extract->ground_anchor_count = 1;
+		}
 
         for (int i = start_idx; i < end_idx + 1; i++) {
             anim_extract->frame_durations[anim_extract->frame_count] = all_frame_durations[i];
@@ -239,6 +279,18 @@ bool trim(unsigned char* bitmap, int num_channels, int bitmap_width, int bitmap_
 
 int filepath_sort_cmp(const void* a, const void* b) {
     return w_str_cmp((const char*)a, (const char*)b);
+}
+
+int find_sprite_index_by_label(char (*sprite_labels)[256], uint32 label_count, char* label) {
+	for(int i = 0; i < label_count; i++) {
+		if(w_str_match(label, sprite_labels[i])) {
+			return i;
+		}
+	}
+
+	ASSERT(false, "Sprite label not found in search!");
+
+	return -1;
 }
 
 int main(int argc, char* argv[]) {
@@ -351,7 +403,7 @@ int main(int argc, char* argv[]) {
         trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height, &trimmed_location);
 
         unsigned char* src_row_start = trimmed_bitmap;
-        unsigned char* dest_row_start = pixels + (4 * ATLAS_WIDTH * (rect.y + SPRITE_MARGIN)) + (4 * (rect.x + SPRITE_MARGIN)) + 4;
+        unsigned char* dest_row_start = pixels + (4 * ATLAS_WIDTH * (rect.y + SPRITE_MARGIN)) + (4 * (rect.x + SPRITE_MARGIN));
 
         for (int row = 0; row < trimmed_height; row++) {
             memcpy(dest_row_start, src_row_start, trimmed_width * 4);
@@ -455,6 +507,21 @@ int main(int argc, char* argv[]) {
         w_arena_restore(&arena, marker);
     }
 
+	GroundAnchor sprite_ground_anchors[MAX_BITMAPS] = {};
+
+	for (int i = 0; i < anim_count; i++) {
+		AnimationExtraction* anim_extraction = &animation_extracts[i];
+		if(anim_extraction->ground_anchor_count > 0) {
+			for (int j = 0; j < anim_extraction->frame_count; j++) {
+				int sprite_index = find_sprite_index_by_label(enum_labels, bitmap_count, anim_extraction->sprite_labels[j]);
+
+				GroundAnchor* anchor = &sprite_ground_anchors[sprite_index];
+				anchor->is_valid = true;
+				anchor->ground_anchor = anim_extraction->ground_anchor;
+			}
+		}
+	}
+
 	//~~~~~~~~~~~~~~~~~~~~ Write Animation IDs ~~~~~~~~~~~~~~~~~~~//
 
 	enum_begin("AnimationID", file);
@@ -489,7 +556,20 @@ int main(int argc, char* argv[]) {
 		rect.y += SPRITE_MARGIN;
 		rect.w -= (SPRITE_MARGIN * 2);
 		rect.h -= (SPRITE_MARGIN * 2);
-        snprintf(sprite_init, 256, "\t[%s] = {\n\t\t%i, %i, %i, %i\n\t},\n", enum_labels[i], rect.x, rect.y, rect.w, rect.h);
+		char has_anchor_string[8];
+		GroundAnchor anchor = sprite_ground_anchors[i];
+		Vec2 adjusted_anchor_position = {};
+		if(anchor.is_valid) {
+			w_str_copy(has_anchor_string, "true");	
+			Vec2 trimmed_bitmap_location = trimmed_bitmap_locations[i];
+
+			adjusted_anchor_position = w_vec_sub(anchor.ground_anchor, trimmed_bitmap_location);
+		}
+		else {
+			w_str_copy(has_anchor_string, "false");
+		}
+
+        snprintf(sprite_init, 256, "\t[%s] = {\n\t\t%i, %i, %i, %i, %s, { %.2f, %.2f }\n\t},\n", enum_labels[i], rect.x, rect.y, rect.w, rect.h, has_anchor_string, adjusted_anchor_position.x, adjusted_anchor_position.y);
         fwrite(sprite_init, w_str_len(sprite_init), sizeof(char), file);
     }
 
@@ -516,13 +596,20 @@ int main(int argc, char* argv[]) {
 
 				ASSERT(bitmap_idx != -1, "bitmap index not found for hitbox!");
 
-				Vec2 trimmed_bitmap_location = trimmed_bitmap_locations[bitmap_idx];
-				Vec2 raw_hitbox_position = { raw_frame_hitbox.rect.x, raw_frame_hitbox.rect.y };
-				Vec2 adjusted_hitbox_position = w_vec_sub(raw_hitbox_position, trimmed_bitmap_location);
-						
+				GroundAnchor anchor = sprite_ground_anchors[bitmap_idx];
+				ASSERT(anchor.is_valid, "Hitboxes must be also having a ground anchor associated with the frame");
+
+				Vec2 hitbox_center = {
+					raw_frame_hitbox.rect.x + (raw_frame_hitbox.rect.w / 2),
+					raw_frame_hitbox.rect.y + (raw_frame_hitbox.rect.h / 2)
+				};
+
+				Vec2 hitbox_offset = w_vec_sub(hitbox_center, anchor.ground_anchor);
+				hitbox_offset.y *= -1;
+
         		char hitbox_init[256] = {};
 				snprintf(hitbox_init, 256, "\t[%s] = {\n\t\t%.0f, %.0f, %.0f, %.0f\n\t},\n", 
-		 		anim_ext->sprite_labels[j], adjusted_hitbox_position.x, adjusted_hitbox_position.y, raw_frame_hitbox.rect.w, raw_frame_hitbox.rect.h);
+		 		anim_ext->sprite_labels[j], hitbox_offset.x, hitbox_offset.y, raw_frame_hitbox.rect.w, raw_frame_hitbox.rect.h);
 				fwrite(hitbox_init, w_str_len(hitbox_init), sizeof(char), file);
 			}
 		}

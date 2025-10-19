@@ -47,6 +47,17 @@ void init_entity_data(EntityData* entity_data) {
 	}
 }
 
+float pixels_to_units(float pixels) {
+	return pixels / BASE_PIXELS_PER_UNIT;
+}
+
+Vec2 pixels_to_units(Vec2 pixels) {
+	return {
+		pixels.x / BASE_PIXELS_PER_UNIT,
+		pixels.y / BASE_PIXELS_PER_UNIT
+	};
+}
+
 Entity* get_new_entity(EntityData* entity_data) {
 	uint32 idx = entity_data->entity_count;
 	Entity* entity = &entity_data->entities[entity_data->entity_count++];
@@ -100,12 +111,17 @@ EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	entity->facing_direction.y = 0;
 	set(entity->flags, ENTITY_FLAG_KILLABLE);
 	entity->hp = 1000;
+	
+	Vec2 collider_world_size = {
+		11 / BASE_PIXELS_PER_UNIT,
+		17 / BASE_PIXELS_PER_UNIT
+	};
 	// TODO: think about this collider size
 	entity->collider = {
 		.shape = COLLIDER_SHAPE_RECT,
-		.offset = { 0 , 0 },
-		.width = 11 / BASE_PIXELS_PER_UNIT,
-		.height = 17 / BASE_PIXELS_PER_UNIT
+		.offset = { 0 , collider_world_size.y / 2 },
+		.width = collider_world_size.x,
+		.height = collider_world_size.y
 	};
 
 	return get_entity_handle(entity, entity_data);
@@ -132,11 +148,17 @@ EntityHandle create_warrior_entity(EntityData* entity_data, Vec2 position) {
 	entity->position = position;
 	set(entity->flags, ENTITY_FLAG_KILLABLE);
 	entity->hp = 1000;
+
+	Vec2 collider_world_size = {
+		11 / BASE_PIXELS_PER_UNIT,
+		14 / BASE_PIXELS_PER_UNIT
+	};
+
 	entity->collider = {
 		.shape = COLLIDER_SHAPE_RECT,
-		.offset = w_vec_mult((Vec2){ 3, 0 }, 1.0f / BASE_PIXELS_PER_UNIT),
-		.width = 11 / BASE_PIXELS_PER_UNIT,
-		.height = 17 / BASE_PIXELS_PER_UNIT
+		.offset = { 0, collider_world_size.y / 2 },
+		.width = collider_world_size.x,
+		.height = collider_world_size.y
 	};
 	entity->brain = {};
 	entity->brain.type = BRAIN_TYPE_WARRIOR;
@@ -347,6 +369,34 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	return render_sprite(world_position, sprite_id, render_group, 0, z_index, 0);
 }
 
+Vec2 get_entity_sprite_world_position(SpriteID sprite_id, Vec2 entity_position, bool flip_x) {
+	Sprite sprite = sprite_table[sprite_id];
+	Vec2 sprite_position;
+
+	if(sprite.has_ground_anchor) {
+		Vec2 sprite_center_px = {
+			sprite.w / 2,
+			sprite.h / 2
+		};
+
+		Vec2 sprite_anchor_from_center_offset = w_vec_sub(sprite_center_px, sprite.ground_anchor);
+		Vec2 anchor_from_center_offset_world = w_vec_mult(sprite_anchor_from_center_offset, 1.0 / BASE_PIXELS_PER_UNIT);
+		anchor_from_center_offset_world.y *= -1;
+
+		if(flip_x) {
+			anchor_from_center_offset_world.x *= -1;
+		}
+
+		sprite_position = w_vec_add(entity_position, anchor_from_center_offset_world);
+	}
+	else {
+		sprite_position = entity_position;
+	}
+
+	return sprite_position;
+}
+
+// TODO: Do we even want this?
 RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_state, RenderGroup* render_group, float z_index) {
 	ASSERT(anim_state->animation_id != ANIM_UNKNOWN, "anim unknown passed to render animation sprite");
 
@@ -365,17 +415,28 @@ RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_st
 RenderQuad* render_entity(Entity* entity, RenderGroup* render_group) {
 	ASSERT(entity->sprite_id != SPRITE_UNKNOWN || entity->anim_state.animation_id != ANIM_UNKNOWN, "Cannot determine entity sprite");
 
+	flags opts = {};
+	SpriteID sprite_id;
 	RenderQuad* quad;
 	if(entity->anim_state.animation_id != ANIM_UNKNOWN) {
-		quad = render_animation_sprite(entity->position, &entity->anim_state, render_group, entity->z_index);
+		// TODO: can we get rid of this and use the ENTITY_FLAG_SPRITE_FLIP_X
+		if(is_set(entity->anim_state.flags, ANIMATION_STATE_F_FLIP_X)) {
+			set(opts, RENDER_SPRITE_OPT_FLIP_X);
+		}
+		// TODO: might want to create util methods for this with assertions and bounds checking?
+		Animation animation = animation_table[entity->anim_state.animation_id];
+		sprite_id = animation.frames[entity->anim_state.current_frame].sprite_id;
 	}
 	else {
-		uint32 sprite_opts = 0;
 		if(is_set(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X)) {
-			set(sprite_opts, RENDER_SPRITE_OPT_FLIP_X);
+			set(opts, RENDER_SPRITE_OPT_FLIP_X);
 		}
-		quad = render_sprite(entity->position, entity->sprite_id, render_group, entity->rotation_rads, entity->z_index, sprite_opts);
+		sprite_id = entity->sprite_id;
 	}
+
+	Vec2 sprite_position = get_entity_sprite_world_position(sprite_id, entity->position, is_set(opts, RENDER_SPRITE_OPT_FLIP_X));
+
+	quad = render_sprite(sprite_position, sprite_id, render_group, entity->rotation_rads, entity->z_index, opts);
 
 	if(entity->damage_taken_tint_cooldown_s > 0) {
 		float normalized_elapsed = 1 - w_clamp_01(entity->damage_taken_tint_cooldown_s / ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S);
@@ -406,14 +467,14 @@ void debug_render_entity_colliders(Entity* entity, bool has_collided) {
 #endif
 }
 
-void debug_render_rect(Vec2 position, Vec2 size) {
+void debug_render_rect(Vec2 position, Vec2 size, Vec4 color) {
 #ifdef DEBUG
 	RenderQuad* quad = get_next_quad(g_debug_render_group);
 
 	quad->world_position = position;
 	quad->world_size = size; 
 	quad->draw_colored_rect = 1;
-	quad->rgba = { 255, 0, 0, 0.5 };
+	quad->rgba = color;
 	quad->z_index = ENTITY_MAX_Z + 1;
 #endif
 }
@@ -863,21 +924,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		// TODO: Maybe collapse this into the collision loop above?
 		if(w_rect_has_area(anim_hitbox)) {
-			anim_hitbox.x = anim_hitbox.x / BASE_PIXELS_PER_UNIT;
-			anim_hitbox.y = anim_hitbox.y / BASE_PIXELS_PER_UNIT; 
-			anim_hitbox.w = anim_hitbox.w / BASE_PIXELS_PER_UNIT;
-			anim_hitbox.h = anim_hitbox.h / BASE_PIXELS_PER_UNIT;
-
-			// Updates position to center of hitbox from top left
-			anim_hitbox.x += anim_hitbox.w / 2;
-			anim_hitbox.y += anim_hitbox.h / 2; 
-
-            Sprite sprite = sprite_table[sprite_id];
-
-            anim_hitbox.x -= (sprite.w * 0.5) / BASE_PIXELS_PER_UNIT; 
-            anim_hitbox.y -= (sprite.h * 0.5) / BASE_PIXELS_PER_UNIT; 
-
-            anim_hitbox.y *= -1;
+			anim_hitbox = w_rect_mult(anim_hitbox, 1.0 / BASE_PIXELS_PER_UNIT);
 
 			anim_hitbox.x = entity->position.x + anim_hitbox.x;
 			anim_hitbox.y = entity->position.y + anim_hitbox.y;
@@ -889,7 +936,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				anim_hitbox.h,
 			};
 
-			debug_render_rect((Vec2){ subject_hitbox.x, subject_hitbox.y}, (Vec2){ subject_hitbox.w, subject_hitbox.h });
+			debug_render_rect((Vec2){ subject_hitbox.x, subject_hitbox.y}, (Vec2){ subject_hitbox.w, subject_hitbox.h }, { 255, 0, 0, 0.5 });
 
 			for(int j = 0; j < game_state->entity_data.entity_count; j++) {
 				Entity* target_entity = &game_state->entity_data.entities[j];
@@ -922,7 +969,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			render_entity(entity, &main_render_group);
 		}
 
-		// debug_render_entity_colliders(entity, has_collided);
+		debug_render_rect(entity->position, pixels_to_units({ 1, 1 }), { 0, 255, 0, 1 });
+		debug_render_entity_colliders(entity, false);
 	}
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
