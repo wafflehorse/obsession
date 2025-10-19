@@ -667,7 +667,8 @@ bool w_animation_complete(AnimationState* anim_state, double dt_s) {
 
 	Animation curr_anim = i_animation_table[anim_state->animation_id];
 	AnimationFrame curr_frame = curr_anim.frames[anim_state->current_frame];
-	if(anim_state->elapsed_frame_ms + dt_s >= curr_frame.duration_ms) {
+	if(anim_state->current_frame >= (curr_anim.frame_count - 1) 
+		&& anim_state->elapsed_frame_ms + (dt_s * 1000) >= curr_frame.duration_ms) {
 		animation_complete = true;
 	}
 

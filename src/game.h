@@ -101,7 +101,7 @@ struct Brain {
 	AIState ai_state;
 	float cooldown_s;
 	uint32 target_id;
-	Vec2 wander_target;
+	Vec2 target_position;
 };
 
 struct EntityLookup {

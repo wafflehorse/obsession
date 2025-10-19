@@ -109,7 +109,7 @@ EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	entity->position = position;
 	entity->facing_direction.x = 1;
 	entity->facing_direction.y = 0;
-	set(entity->flags, ENTITY_FLAG_KILLABLE);
+	// set(entity->flags, ENTITY_FLAG_KILLABLE);
 	entity->hp = 1000;
 	
 	Vec2 collider_world_size = {
@@ -200,48 +200,55 @@ Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
 void update_brain(Entity* entity, Entity* player, double dt_s) {
 	Brain* brain = &entity->brain;
 	brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
+	float distance_to_player = w_euclid_dist(entity->position, player->position);
 	if(brain->type == BRAIN_TYPE_WARRIOR) {
-		if(w_euclid_dist(entity->position, player->position) < 5) {
-			brain->ai_state = AI_STATE_ATTACK;	
+		if(distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK) {
+			brain->ai_state = AI_STATE_CHASE;	
 		}
 		switch(brain->ai_state) {
 			case AI_STATE_IDLE:
 				if(brain->cooldown_s <= 0) {
-					brain->wander_target.x = entity->position.x + w_random_between(-5, 5); 
-					brain->wander_target.y = entity->position.y + w_random_between(-5, 5);
+					brain->target_position.x = entity->position.x + w_random_between(-5, 5); 
+					brain->target_position.y = entity->position.y + w_random_between(-5, 5);
 					brain->ai_state = AI_STATE_WANDER;
 				}	
 				entity->velocity = {0, 0};
 				break;
 			case AI_STATE_WANDER: {
-				if(w_euclid_dist(entity->position, brain->wander_target) <= 1.0f) {
+				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f) {
 					brain->ai_state = AI_STATE_IDLE;
 					brain->cooldown_s = w_random_between(1, 6);
 				}
 
-				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->wander_target, entity->position));
+				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
 				entity->velocity = w_vec_mult(wander_direction, 1.0f);
 				break;
 			}
 			case AI_STATE_CHASE:
-				if(brain->cooldown_s <= 0) {
+				if(distance_to_player >= 5) {
+					brain->ai_state = AI_STATE_IDLE;	
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+				else if(distance_to_player < 0.5) {
 					brain->ai_state = AI_STATE_ATTACK;
+				}
+				else {
+					brain->target_position = player->position;
+					Vec2 chase_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
+					entity->velocity = w_vec_mult(chase_direction, 5.0f);
 				}
 				break;
 			case AI_STATE_ATTACK:
 				entity->velocity = { 0, 0 };
-				if(w_euclid_dist(entity->position, player->position) >= 5) {
-					brain->ai_state = AI_STATE_IDLE;	
+				flags opts = {};
+				if(player->position.x < entity->position.x) {
+					set(opts, ANIMATION_STATE_F_FLIP_X);
+				}
+				w_play_animation(ANIM_WARRIOR_ATTACK, &entity->anim_state, opts);
+				if(w_animation_complete(&entity->anim_state, dt_s)) {
+					brain->ai_state = AI_STATE_CHASE;
 					brain->cooldown_s = w_random_between(1, 6);
 				}
-				else {
-					w_play_animation(ANIM_WARRIOR_ATTACK, &entity->anim_state);
-					if(w_animation_complete(&entity->anim_state, dt_s)) {
-						brain->ai_state = AI_STATE_CHASE;
-						brain->cooldown_s = w_random_between(1, 6);
-					}
-				}
-				
 				break;
 		}
 	}
@@ -572,7 +579,7 @@ struct PlayerWorldInput {
 	bool shoot;
 };
 
-void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, Vec2 player_position, Vec2 screen_size) {
+void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, Camera* camera, Vec2 player_position, Vec2 screen_size) {
 	if(game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
 		KeyInputState* key_input_states = game_input->key_input_states;
 		Vec2 movement_vec = {};
@@ -590,13 +597,14 @@ void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, V
 		}
 		input->movement_vec = w_vec_norm(movement_vec);
 
-		Vec2 mouse_world_position = {
+		Vec2 mouse_camera_position = {
 			(game_input->mouse_state.position.x / g_pixels_per_unit) - (screen_size.x / g_pixels_per_unit / 2),
 			-(game_input->mouse_state.position.y / g_pixels_per_unit) + (screen_size.y / g_pixels_per_unit / 2)
 		};
+		Vec2 mouse_world_position = w_vec_add(mouse_camera_position, camera->position);
 		input->aim_vec = {
 			mouse_world_position.x - player_position.x,
-			mouse_world_position.y - player_position.y
+			mouse_world_position.y - (player_position.y + 0.5f)
 		};
 
 		input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
@@ -608,6 +616,10 @@ void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, V
 }
 
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
+	// ~~~~~~~~~~~~~~~~~~ Debug Flags ~~~~~~~~~~~~~~~~~~~~ //
+	bool debug_should_render_hitboxes = false;
+	bool debug_should_render_entity_locations = false;
+	bool debug_should_render_entity_colliders = false;
 	GameState* game_state = (GameState*)game_memory->memory;
 	g_base_path = game_memory->base_path;
 	g_sim_dt_s = frame_dt_s;
@@ -675,7 +687,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		EntityHandle player_handle = create_player_entity(&game_state->entity_data, (Vec2){ 0, 0 });
 		game_state->player = get_entity(player_handle, &game_state->entity_data);
-		create_warrior_entity(&game_state->entity_data, (Vec2){ 5, 0 });
+		create_warrior_entity(&game_state->entity_data, (Vec2){ 7, -5 });
 		create_gun_entity(&game_state->entity_data, player_handle);
 	}
 
@@ -743,7 +755,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		Entity* entity = &game_state->entity_data.entities[i];
 		update_brain(entity, game_state->player, g_sim_dt_s);
 		if(entity->type == ENTITY_TYPE_PLAYER) {
-			update_player_world_input(game_input, &player_world_input, entity->position, game_memory->screen_size);
+			update_player_world_input(game_input, &player_world_input, &game_state->camera, entity->position, game_memory->screen_size);
 			float acceleration_mag = 30;
 			Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
 			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
@@ -866,42 +878,55 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		if(is_set(entity->flags, ENTITY_FLAG_OWNED) && is_set(entity->flags, ENTITY_FLAG_EQUIPPED)) {
 			Entity* owner = get_entity(entity->owner_handle, &game_state->entity_data);
+			if(owner) {
+				Vec2 aim_vec_rel_owner = player_world_input.aim_vec;
 
-			Vec2 aim_vec_rel_owner = player_world_input.aim_vec;
+				float rotation_rads = atan2(aim_vec_rel_owner.y, aim_vec_rel_owner.x);
+				entity->rotation_rads = rotation_rads;
+				Vec2 pivot = {};
 
-			float rotation_rads = atan2(aim_vec_rel_owner.y, aim_vec_rel_owner.x);
-			entity->rotation_rads = rotation_rads;
+				if(aim_vec_rel_owner.x < 0) {
+					entity->position = { owner->position.x - 0.3f, owner->position.y + 0.5f };
+					pivot = {
+						entity->position.x + .25f,
+						entity->position.y
+					};
+					set(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X);
+					// Note: This fixes gun rotation when rads are negative from negative aim vector x
+					entity->rotation_rads = M_PI + entity->rotation_rads;
+				}
+				else {
+					entity->position = { owner->position.x + 0.3f, owner->position.y + 0.5f };
+					pivot = {
+						entity->position.x - .25f,
+						entity->position.y
+					};
+					unset(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X);
+				}
 
-			if(aim_vec_rel_owner.x < 0) {
-				entity->position = { owner->position.x - 0.3f, owner->position.y };
-				set(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X);
-				// Note: This fixes gun rotation when rads are negative from negative aim vector x
-				entity->rotation_rads = M_PI + entity->rotation_rads;
+				entity->position = w_rotate_around_pivot(entity->position, pivot, entity->rotation_rads);
+
+				Vec2 owner_facing_direction = get_discrete_facing_direction(owner->facing_direction, owner->velocity);
+				if(owner_facing_direction.y > 0) {
+					entity->z_index = owner->z_index - 0.1;
+				}
+				else {
+					entity->z_index = owner->z_index + 0.1;
+				}
+
+				if(player_world_input.shoot) {
+					Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
+					Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
+					EntityHandle projectile_handle = create_projectile_entity(&game_state->entity_data, entity->position, rotation_rads, velocity);
+					add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, 
+						   game_state->collision_rule_hash, &game_state->collision_rule_free_list, &game_state->main_arena);
+
+					play_sound_rand(&game_state->sounds[SOUND_BASIC_GUN_SHOT], &game_state->audio_player);
+					start_camera_shake(&game_state->camera, 0.1, 10, 0.08);
+				}
 			}
 			else {
-				entity->position = { owner->position.x + 0.3f, owner->position.y };
-				unset(entity->flags, ENTITY_FLAG_SPRITE_FLIP_X);
-			}
-
-			entity->position = w_rotate_around_pivot(entity->position, owner->position, entity->rotation_rads);
-
-			Vec2 owner_facing_direction = get_discrete_facing_direction(owner->facing_direction, owner->velocity);
-			if(owner_facing_direction.y > 0) {
-				entity->z_index = owner->z_index - 0.1;
-			}
-			else {
-				entity->z_index = owner->z_index + 0.1;
-			}
-
-			if(player_world_input.shoot) {
-				Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
-				Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
-				EntityHandle projectile_handle = create_projectile_entity(&game_state->entity_data, entity->position, rotation_rads, velocity);
-				add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, 
-					   game_state->collision_rule_hash, &game_state->collision_rule_free_list, &game_state->main_arena);
-
-				play_sound_rand(&game_state->sounds[SOUND_BASIC_GUN_SHOT], &game_state->audio_player);
-				start_camera_shake(&game_state->camera, 0.1, 10, 0.08);
+				set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);
 			}
 		}
 
@@ -936,7 +961,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				anim_hitbox.h,
 			};
 
-			debug_render_rect((Vec2){ subject_hitbox.x, subject_hitbox.y}, (Vec2){ subject_hitbox.w, subject_hitbox.h }, { 255, 0, 0, 0.5 });
+			if(debug_should_render_hitboxes) {
+				debug_render_rect((Vec2){ subject_hitbox.x, subject_hitbox.y}, (Vec2){ subject_hitbox.w, subject_hitbox.h }, { 255, 0, 0, 0.5 });
+			}
 
 			for(int j = 0; j < game_state->entity_data.entity_count; j++) {
 				Entity* target_entity = &game_state->entity_data.entities[j];
@@ -969,8 +996,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			render_entity(entity, &main_render_group);
 		}
 
-		debug_render_rect(entity->position, pixels_to_units({ 1, 1 }), { 0, 255, 0, 1 });
-		debug_render_entity_colliders(entity, false);
+		if(debug_should_render_entity_locations) {
+			debug_render_rect(entity->position, pixels_to_units({ 1, 1 }), { 0, 255, 0, 1 });
+		}
+		if(debug_should_render_entity_colliders) {
+			debug_render_entity_colliders(entity, false);
+		}
 	}
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
@@ -982,6 +1013,13 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			i--;
 		}
 	}
+
+	Vec2 camera_to_player_offset = w_vec_sub(game_state->player->position, game_state->camera.position);
+
+	float smoothing_factor = 8;
+	Vec2 camera_delta = w_vec_mult(camera_to_player_offset, smoothing_factor);
+	camera_delta = w_vec_mult(camera_delta, g_sim_dt_s);
+	game_state->camera.position = w_vec_add(game_state->camera.position, camera_delta);
 
 	game_memory->push_audio_samples(&game_state->audio_player);
 

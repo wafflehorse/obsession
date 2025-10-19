@@ -71,19 +71,28 @@
 [x] Add ability to parse hitbox slices from aseprite files
 [x] Add hitbox collision
 [x] Add warrior attacks
+[x] Add warrior attack collision with player
 [x] Fix issue with sprites not being centered on player due to lack of pivot in aseprite files
 [x] Update entity positions to be where the entity touches the ground as to align with the sprite pivots
 [x] Fix collider rendering position based on new entity positioning at center bottom
 [x] Fix hitbox positioning to just be entity position offset
-[] Fix gun render position and rotation
-[] Delete child entity if owner is no longer active
-[] Flip attack animation based on facing direction
+[x] Fix gun render position and rotation
+[x] Add warrior chase state
+[x] Flip attack animation based on facing direction
+[x] Delete gun entity if owner is no longer active
+[x] Add camera movement with player
+[x] Fix player aiming now that camera moves around
 
 [] Add z value for representing how far off the ground something is? Like the player gun?
-[] Add warrior attack collision with player
 [] Add pathfinding to player when in range
-[] Add warrior chase state
-[] Add warrior attack state
-[] Add camera movement with player
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
+[] Add collision to blocks
+	[] Add block entity
+	[] Do we want a penetration test with some repulsion velocity?
+[] Update z-index based on entity y position (player should render correctly in front of and behind blocks)
+[] Add a bed where player sleeps overnight (resets the enemies)
+[] Add player health UI
+[] Randomly spawn enemies around the map
+[] Create map bounds
+[] lighting
 
