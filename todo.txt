@@ -82,9 +82,9 @@
 [x] Delete gun entity if owner is no longer active
 [x] Add camera movement with player
 [x] Fix player aiming now that camera moves around
-[] Add collision to blocks
-	[] Add block entity
-	[] Do we want a penetration test with some repulsion velocity?
+[x] Add collision to blocks
+	[x] Add block entity
+[x] Add z value for representing how far off the ground something is. Like the player gun
 [] Update z-index based on entity y position (player should render correctly in front of and behind blocks)
 
 [] Randomly spawn enemies around the map
@@ -94,7 +94,6 @@
 [] Add a bed where player sleeps overnight (resets the enemies)
 [] Add player health UI
 [] Create map bounds
-[] Add z value for representing how far off the ground something is? Like the player gun?
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 

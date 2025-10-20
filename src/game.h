@@ -144,6 +144,7 @@ struct Entity {
 	Vec2 velocity;
 	Vec2 acceleration;
 	float rotation_rads;
+	float z_pos;
 
 	Collider collider;
 

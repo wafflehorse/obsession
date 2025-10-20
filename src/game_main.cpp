@@ -380,8 +380,10 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE)) {
 			deal_damage(target, 200);
 		}
-
-		set(subject->flags, ENTITY_FLAG_MARK_FOR_DELETION);
+	
+		if(is_set(target->flags, ENTITY_FLAG_KILLABLE) || is_set(target->flags, ENTITY_FLAG_BLOCKER)) {
+			set(subject->flags, ENTITY_FLAG_MARK_FOR_DELETION);
+		}
 	}
 
 	if(is_set(target->flags, ENTITY_FLAG_BLOCKER)) {
@@ -421,7 +423,7 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	return render_sprite(world_position, sprite_id, render_group, 0, z_index, 0);
 }
 
-Vec2 get_entity_sprite_world_position(SpriteID sprite_id, Vec2 entity_position, bool flip_x) {
+Vec2 get_entity_sprite_world_position(SpriteID sprite_id, Vec2 entity_position, float z_pos, bool flip_x) {
 	Sprite sprite = sprite_table[sprite_id];
 	Vec2 sprite_position;
 
@@ -440,12 +442,13 @@ Vec2 get_entity_sprite_world_position(SpriteID sprite_id, Vec2 entity_position, 
 		}
 
 		sprite_position = w_vec_add(entity_position, anchor_from_center_offset_world);
+		sprite_position.y += z_pos;
 	}
 	else {
 		Vec2 sprite_world_size = w_vec_mult((Vec2){ sprite.w, sprite.h}, 1.0 / BASE_PIXELS_PER_UNIT);
 		sprite_position = {
 			entity_position.x,
-			entity_position.y + (sprite_world_size.y / 2)
+			entity_position.y + (sprite_world_size.y / 2) + z_pos
 		};
 	}
 
@@ -490,7 +493,7 @@ RenderQuad* render_entity(Entity* entity, RenderGroup* render_group) {
 		sprite_id = entity->sprite_id;
 	}
 
-	Vec2 sprite_position = get_entity_sprite_world_position(sprite_id, entity->position, is_set(opts, RENDER_SPRITE_OPT_FLIP_X));
+	Vec2 sprite_position = get_entity_sprite_world_position(sprite_id, entity->position, entity->z_pos, is_set(opts, RENDER_SPRITE_OPT_FLIP_X));
 
 	quad = render_sprite(sprite_position, sprite_id, render_group, entity->rotation_rads, entity->z_index, opts);
 
@@ -962,9 +965,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				float rotation_rads = atan2(aim_vec_rel_owner.y, aim_vec_rel_owner.x);
 				entity->rotation_rads = rotation_rads;
 				Vec2 pivot = {};
+				entity->z_pos = 0.5f;
 
 				if(aim_vec_rel_owner.x < 0) {
-					entity->position = { owner->position.x - 0.3f, owner->position.y + 0.5f };
+					entity->position = { owner->position.x - 0.3f, owner->position.y };
 					pivot = {
 						entity->position.x + .25f,
 						entity->position.y
@@ -974,7 +978,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					entity->rotation_rads = M_PI + entity->rotation_rads;
 				}
 				else {
-					entity->position = { owner->position.x + 0.3f, owner->position.y + 0.5f };
+					entity->position = { owner->position.x + 0.3f, owner->position.y };
 					pivot = {
 						entity->position.x - .25f,
 						entity->position.y
@@ -995,7 +999,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				if(player_world_input.shoot) {
 					Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
 					Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
-					EntityHandle projectile_handle = create_projectile_entity(&game_state->entity_data, entity->position, rotation_rads, velocity);
+					Vec2 projectile_position = { entity->position.x, entity->position.y + entity->z_pos };
+					EntityHandle projectile_handle = create_projectile_entity(&game_state->entity_data, projectile_position, rotation_rads, velocity);
 					add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, 
 						game_state->collision_rule_hash, &game_state->collision_rule_free_list, &game_state->main_arena);
 
