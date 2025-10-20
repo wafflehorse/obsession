@@ -118,7 +118,8 @@ enum EntityType {
 	ENTITY_TYPE_PLAYER,
 	ENTITY_TYPE_GUN,
 	ENTITY_TYPE_WARRIOR,
-	ENTITY_TYPE_PROJECTILE
+	ENTITY_TYPE_PROJECTILE,
+	ENTITY_TYPE_PROP
 };
 
 #define ENTITY_FLAG_MARK_FOR_DELETION (1 << 0)
@@ -126,8 +127,10 @@ enum EntityType {
 #define ENTITY_FLAG_OWNED (1 << 2)
 #define ENTITY_FLAG_SPRITE_FLIP_X (1 << 3)
 #define ENTITY_FLAG_KILLABLE (1 << 5)
+// TODO: does this nonspacial flag make sense? Maybe better name for something that doesn't collide with anything?
 #define ENTITY_FLAG_NONSPACIAL (1 << 6)
-#define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 7)
+#define ENTITY_FLAG_BLOCKER (1 << 7)
+#define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 8)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 

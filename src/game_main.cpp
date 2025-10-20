@@ -102,6 +102,40 @@ EntityHandle get_entity_handle(Entity* entity, EntityData* entity_data) {
 	return handle;
 }
 
+Vec2 get_sprite_world_size(SpriteID sprite_id) {
+	Sprite sprite = sprite_table[sprite_id];
+
+	return {
+		sprite.w / BASE_PIXELS_PER_UNIT,
+		sprite.h / BASE_PIXELS_PER_UNIT
+	};
+}
+
+EntityHandle create_prop_entity(EntityData* entity_data, Vec2 position, SpriteID sprite_id) {
+	Entity* entity = get_new_entity(entity_data);
+
+	entity->type = ENTITY_TYPE_PROP;
+	entity->position = position;
+	entity->sprite_id = sprite_id;
+
+	Vec2 sprite_size = get_sprite_world_size(sprite_id);
+	Vec2 collider_size = {
+		sprite_size.x,
+		sprite_size.y / 2
+	};
+
+	entity->collider = {
+		.shape = COLLIDER_SHAPE_RECT,
+		.offset = { 0, collider_size.y / 2 },
+		.width = collider_size.x,
+		.height = collider_size.y
+	};
+
+	set(entity->flags, ENTITY_FLAG_BLOCKER);
+
+	return get_entity_handle(entity, entity_data);
+}
+
 EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	Entity* entity = get_new_entity(entity_data);
 	
@@ -341,13 +375,24 @@ void deal_damage(Entity* target, float damage) {
 	target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
 }
 
-void handle_collision(Entity* subject, Entity* target) {
+void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, float dt_collision_s) {
 	if(subject->type == ENTITY_TYPE_PROJECTILE) {
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE)) {
 			deal_damage(target, 200);
 		}
 
 		set(subject->flags, ENTITY_FLAG_MARK_FOR_DELETION);
+	}
+
+	if(is_set(target->flags, ENTITY_FLAG_BLOCKER)) {
+		subject->position = w_calc_position(subject->acceleration, subject->velocity, subject->position, dt_collision_s);
+		float collision_normal_velocity_penetration = w_dot_product(subject->velocity, collision_normal);
+		Vec2 collision_normal_velocity = w_vec_mult(collision_normal, collision_normal_velocity_penetration);
+		subject->velocity = w_vec_sub(subject->velocity, collision_normal_velocity);
+
+		float collision_normal_acceleration_penetration = w_dot_product(subject->acceleration, collision_normal);
+		Vec2 collision_normal_acceleration = w_vec_mult(collision_normal, collision_normal_acceleration_penetration);
+		subject->acceleration = w_vec_sub(subject->acceleration, collision_normal_acceleration);
 	}
 }
 
@@ -397,7 +442,11 @@ Vec2 get_entity_sprite_world_position(SpriteID sprite_id, Vec2 entity_position, 
 		sprite_position = w_vec_add(entity_position, anchor_from_center_offset_world);
 	}
 	else {
-		sprite_position = entity_position;
+		Vec2 sprite_world_size = w_vec_mult((Vec2){ sprite.w, sprite.h}, 1.0 / BASE_PIXELS_PER_UNIT);
+		sprite_position = {
+			entity_position.x,
+			entity_position.y + (sprite_world_size.y / 2)
+		};
 	}
 
 	return sprite_position;
@@ -618,7 +667,7 @@ void update_player_world_input(GameInput* game_input, PlayerWorldInput* input, C
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	// ~~~~~~~~~~~~~~~~~~ Debug Flags ~~~~~~~~~~~~~~~~~~~~ //
 	bool debug_should_render_hitboxes = false;
-	bool debug_should_render_entity_locations = false;
+	bool debug_should_render_entity_locations = true;
 	bool debug_should_render_entity_colliders = false;
 	GameState* game_state = (GameState*)game_memory->memory;
 	g_base_path = game_memory->base_path;
@@ -643,6 +692,22 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	RenderGroup debug_render_group = {};
 	debug_render_group.id = RENDER_GROUP_ID_DEBUG;
 #endif
+
+	uint32 tilemap[WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT] = {
+		0, 0, 0, 0, 0, 0, 2, 0,
+		0, 1, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 2, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 2, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0,
+	};
+
+	Vec2 world_top_left_tile_position = {
+		-WORLD_TILE_WIDTH / 2 + 0.5,
+		WORLD_TILE_HEIGHT / 2 - 0.5
+	};
 
 	if(!is_set(game_state->flags, GAME_STATE_F_INITIALIZED)) {
 		set(game_state->flags, GAME_STATE_F_INITIALIZED);
@@ -689,6 +754,21 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		game_state->player = get_entity(player_handle, &game_state->entity_data);
 		create_warrior_entity(&game_state->entity_data, (Vec2){ 7, -5 });
 		create_gun_entity(&game_state->entity_data, player_handle);
+
+		for(int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
+			uint32 col = i % WORLD_TILE_WIDTH;
+			uint32 row = i / WORLD_TILE_HEIGHT;
+			Vec2 position = {
+				world_top_left_tile_position.x + col,
+				world_top_left_tile_position.y - row
+			};
+			switch(tilemap[i]) {
+				case 1: {
+					create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
+					break;
+				}
+			}
+		}
 	}
 
 	init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
@@ -705,22 +785,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	g_debug_render_group = &debug_render_group;
 #endif
 
-	uint32 tilemap[WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT] = {
-		0, 0, 0, 0, 0, 0, 2, 0,
-		0, 1, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 2, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 2, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-	};
-
-	Vec2 world_top_left_tile_position = {
-		-WORLD_TILE_WIDTH / 2 + 0.5,
-		WORLD_TILE_HEIGHT / 2 - 0.5
-	};
-
+	// ~~~~~~~~~~~~~~~~~~ Render ground ~~~~~~~~~~~~~~~~~~~~~~ //
 	{
 		RenderQuad* ground = get_next_quad(&background_render_group);
 		ground->world_position = { 0, 0 };
@@ -729,6 +794,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		ground->sprite_position = { ground_sprite.x, ground_sprite.y };
 		ground->sprite_size = { ground_sprite.w, ground_sprite.h };
 	}
+	
+	// ~~~~~~~~~~~~~~~~~~ Render tilemap ~~~~~~~~~~~~~~~~~~~~~~ //
 
 	for(int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
 		uint32 col = i % WORLD_TILE_WIDTH;
@@ -738,10 +805,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			world_top_left_tile_position.y - row
 		};
 		switch(tilemap[i]) {
-			case 1: {
-				render_sprite(position, SPRITE_BLOCK_1, &background_render_group, DEFAULT_Z_INDEX);
-				break;
-			}
 			case 2: {
 				render_sprite(position, SPRITE_PLANT_1, &main_render_group, DEFAULT_Z_INDEX);
 				break;
@@ -761,68 +824,83 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
 		}
 
+		Vec2 starting_position = entity->position;
+
+
 		// bool has_collided = false;
 		// Note: This is an optimization
 		if(!is_set(entity->flags, ENTITY_FLAG_NONSPACIAL)) {
-			Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
-			Vec2 subject_delta = w_calc_position_delta(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
+            float t_remaining = 1.0f;
+            for (int attempts = 0; attempts < 4 && t_remaining > 0.0f; attempts++) {
+				float t_min = 1.0f;
+				Vec2 collision_normal = { 0, 0 };
+				Entity* entity_collided_with = NULL;
 
-			float t_min = 1.0f;
-			Vec2 collision_normal = { 0, 0 };
-			Entity* entity_collided_with = NULL;
+				Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
+				Vec2 subject_delta = w_calc_position_delta(entity->acceleration, entity->velocity, entity->position, t_remaining * g_sim_dt_s);
 
-			for(int j = 0; j < game_state->entity_data.entity_count; j++) {
-				Entity* target_entity = &game_state->entity_data.entities[j];
+				for(int j = 0; j < game_state->entity_data.entity_count; j++) {
+					Entity* target_entity = &game_state->entity_data.entities[j];
 
-				if(should_collide(entity, target_entity, game_state->collision_rule_hash)) {
-					Rect subject = {
-						subject_collider_position.x,
-						subject_collider_position.y,
-						entity->collider.width,
-						entity->collider.height
-					};
+					if(should_collide(entity, target_entity, game_state->collision_rule_hash)) {
+						Rect subject = {
+							subject_collider_position.x,
+							subject_collider_position.y,
+							entity->collider.width,
+							entity->collider.height
+						};
 
-					Vec2 target_collider_position = w_vec_add(target_entity->position, target_entity->collider.offset);
-					Vec2 target_delta = w_calc_position_delta(target_entity->acceleration, target_entity->velocity, target_entity->position, g_sim_dt_s);
+						Vec2 target_collider_position = w_vec_add(target_entity->position, target_entity->collider.offset);
+						Vec2 target_delta = w_calc_position_delta(target_entity->acceleration, target_entity->velocity, target_entity->position, g_sim_dt_s);
 
-					Rect target = {
-						target_collider_position.x,
-						target_collider_position.y,
-						target_entity->collider.width,
-						target_entity->collider.height
-					};
+						Rect target = {
+							target_collider_position.x,
+							target_collider_position.y,
+							target_entity->collider.width,
+							target_entity->collider.height
+						};
 
-					float prev_t_min = t_min;
+						float prev_t_min = t_min;
 
-					w_rect_collision(subject, subject_delta, target, target_delta, &t_min, &collision_normal);
+						w_rect_collision(subject, subject_delta, target, target_delta, &t_min, &collision_normal);
 
-					if(t_min != prev_t_min) {
-						entity_collided_with = target_entity;
+						if(t_min != prev_t_min) {
+							entity_collided_with = target_entity;
+						}
 					}
 				}
-			}
 
-			if(entity_collided_with) {
-				handle_collision(entity, entity_collided_with);
-				// has_collided = true;
+				if (t_min < 1) {
+					t_min = w_max(0.0, t_min - 0.01); //epsilon adjustment
+				}
+
+				float t_effective = t_min * t_remaining;
+				t_remaining -= t_effective;
+				float effective_dt_s = t_effective * g_sim_dt_s;
+
+				if(entity_collided_with) {
+					handle_collision(entity, entity_collided_with, collision_normal, effective_dt_s);
+					// has_collided = true;
+				}
+				else {
+					entity->position = w_calc_position(entity->acceleration, entity->velocity, entity->position, effective_dt_s);
+					entity->velocity = w_calc_velocity(entity->acceleration, entity->velocity, effective_dt_s);
+				}
 			}
 		}
-
-		//~~~~~~~~~~~ Physics update ~~~~~~~~~~~//
-		Vec2 new_position =	w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
-		Vec2 new_velocity = w_calc_velocity(entity->acceleration, entity->velocity, g_sim_dt_s);
+		else {
+			entity->position = w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
+			entity->velocity = w_calc_velocity(entity->acceleration, entity->velocity, g_sim_dt_s);
+		}
 
 		if(entity->type == ENTITY_TYPE_PROJECTILE) {
-			Vec2 position_delta = w_vec_sub(new_position, entity->position);
+			Vec2 position_delta = w_vec_sub(entity->position, starting_position);
 			entity->distance_traveled += w_vec_length(position_delta);
 
 			if(entity->distance_traveled > MAX_PROJECTILE_DISTANCE) {
 				set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);
 			}
 		}
-
-		entity->position = new_position;
-		entity->velocity = new_velocity;
 
 		//~~~~~~~~~~~ Facing direction update ~~~~~~~~~ //
 
@@ -919,7 +997,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
 					EntityHandle projectile_handle = create_projectile_entity(&game_state->entity_data, entity->position, rotation_rads, velocity);
 					add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, 
-						   game_state->collision_rule_hash, &game_state->collision_rule_free_list, &game_state->main_arena);
+						game_state->collision_rule_hash, &game_state->collision_rule_free_list, &game_state->main_arena);
 
 					play_sound_rand(&game_state->sounds[SOUND_BASIC_GUN_SHOT], &game_state->audio_player);
 					start_camera_shake(&game_state->camera, 0.1, 10, 0.08);
