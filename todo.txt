@@ -85,7 +85,8 @@
 [x] Add collision to blocks
 	[x] Add block entity
 [x] Add z value for representing how far off the ground something is. Like the player gun
-[] Update z-index based on entity y position (player should render correctly in front of and behind blocks)
+[x] Update z-index based on entity y position (player should render correctly in front of and behind blocks)
+[x] Fix player collision with warrior so that they don't stick to one another (they exceed collision attempts so they don't end up moving normally)
 
 [] Randomly spawn enemies around the map
 [] Add pathfinding to player when in range

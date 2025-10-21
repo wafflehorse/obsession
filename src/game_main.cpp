@@ -143,19 +143,21 @@ EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	entity->position = position;
 	entity->facing_direction.x = 1;
 	entity->facing_direction.y = 0;
-	// set(entity->flags, ENTITY_FLAG_KILLABLE);
+	set(entity->flags, ENTITY_FLAG_KILLABLE);
 	entity->hp = 1000;
 	
 	Vec2 collider_world_size = {
 		11 / BASE_PIXELS_PER_UNIT,
 		17 / BASE_PIXELS_PER_UNIT
 	};
+
+	collider_world_size.y *= 0.5f;
 	// TODO: think about this collider size
 	entity->collider = {
 		.shape = COLLIDER_SHAPE_RECT,
 		.offset = { 0 , collider_world_size.y / 2 },
 		.width = collider_world_size.x,
-		.height = collider_world_size.y
+		.height = collider_world_size.y,
 	};
 
 	return get_entity_handle(entity, entity_data);
@@ -352,6 +354,15 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
 	ASSERT(entity_a->collider.shape != COLLIDER_SHAPE_UNKNOWN, "unknown collider shape on spacial entity")
 
 	bool should_collide = true;
+	if(is_set(entity_a->flags, ENTITY_FLAG_KILLABLE) && !is_set(entity_b->flags, ENTITY_FLAG_BLOCKER)) {
+		should_collide = false;
+	} 
+
+    if(entity_a->type == ENTITY_TYPE_PLAYER && entity_b->type == ENTITY_TYPE_WARRIOR) {
+
+
+    }
+
 	if(entity_a->id > entity_b->id) {
 		Entity* temp = entity_a;
 		entity_a = entity_b;
@@ -371,7 +382,7 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
 }
 
 void deal_damage(Entity* target, float damage) {
-	target->hp = w_clamp_min(target->hp - damage, 0);
+	// target->hp = w_clamp_min(target->hp - damage, 0);
 	target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
 }
 
@@ -809,7 +820,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		};
 		switch(tilemap[i]) {
 			case 2: {
-				render_sprite(position, SPRITE_PLANT_1, &main_render_group, DEFAULT_Z_INDEX);
+				render_sprite(position, SPRITE_PLANT_1, &background_render_group, DEFAULT_Z_INDEX);
 				break;
 			}
 		}
@@ -895,6 +906,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			entity->position = w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
 			entity->velocity = w_calc_velocity(entity->acceleration, entity->velocity, g_sim_dt_s);
 		}
+
+		entity->z_index = entity->position.y * -1;
 
 		if(entity->type == ENTITY_TYPE_PROJECTILE) {
 			Vec2 position_delta = w_vec_sub(entity->position, starting_position);
