@@ -51,7 +51,7 @@ typedef uint32 flags;
 #define M_PI 3.14159265358979323846
 #endif
 
-#define ANIMATION_MAX_FRAME_COUNT 16
+#define ANIMATION_MAX_FRAME_COUNT 32 
 
 struct Vec2 {
     float x;
@@ -88,6 +88,7 @@ struct Sprite {
 };
 
 #define ANIMATION_STATE_F_FLIP_X (1 << 0)
+#define ANIMATION_STATE_F_LOCKED (1 << 1)
 
 struct AnimationState {
 	flags flags;
@@ -693,11 +694,15 @@ bool w_update_animation(AnimationState* anim_state, double dt_s) {
 		}
 	}
 
+	if(animation_complete) {
+		unset(anim_state->flags, ANIMATION_STATE_F_LOCKED);
+	}
+
 	return animation_complete;
 }
 
 void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flags opts) {
-	if(anim_state->animation_id != animation_id || opts != anim_state->flags) {
+	if((anim_state->animation_id != animation_id || opts != anim_state->flags) && !is_set(anim_state->flags, ANIMATION_STATE_F_LOCKED)) {
 		anim_state->animation_id = animation_id;
 		anim_state->current_frame = 0;
 		anim_state->elapsed_frame_ms = 0;

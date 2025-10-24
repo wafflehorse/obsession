@@ -87,7 +87,29 @@
 [x] Add z value for representing how far off the ground something is. Like the player gun
 [x] Update z-index based on entity y position (player should render correctly in front of and behind blocks)
 [x] Fix player collision with warrior so that they don't stick to one another (they exceed collision attempts so they don't end up moving normally)
+[x] Add generic entity movement animation update function
+[] Add food
+	- This could be some of the animals in the sprite pack?
+	- Maybe there are plants or something that we can also use? 
+	- Let's go with the boar
+	[x] Add boar sprites and animations
+	[x] Add boar entity
+	[x] Add boar brain
+	[] Add boar food drops
+		[] Add item concept
+		[] Add item pickup
+[] Add inventory system
+	[] Inventory UI
+	[] Consuming items
 
+[] Add food entity
+
+
+[] Add boar sleeping
+[] Add ground pivots to spritesheet aseprite file types (non animation)
+	- Can hopefully use the pivot value on the same slices that define the bitmap
+	- Then we just need to add the parsing of sprite sheet aseprite json files to pack.cpp
+[] Put generated bitmaps in separate directory so that it can be removed and regenerated without wiping other bitmaps
 [] Randomly spawn enemies around the map
 [] Add pathfinding to player when in range
 [] Add reset on death

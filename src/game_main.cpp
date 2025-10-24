@@ -23,6 +23,44 @@ RenderGroup* g_debug_render_group;
 
 #define DEFAULT_Z_INDEX 1.0f
 
+enum FacingDirection {
+	FACING_DIRECTION_LEFT,
+	FACING_DIRECTION_RIGHT
+};
+
+struct EntityAnimations {
+	AnimationID idle;
+	FacingDirection idle_facing_direction;	
+	AnimationID move_left;
+	AnimationID move_right;
+	AnimationID move_up;
+	AnimationID move_down;
+	AnimationID death;
+};
+
+EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
+	[ENTITY_TYPE_PLAYER] = {
+		.idle = ANIM_HERO_IDLE,
+		.move_left = ANIM_HERO_MOVE_LEFT,
+		.move_down = ANIM_HERO_MOVE_DOWN,
+		.move_up = ANIM_HERO_MOVE_UP,
+		.idle_facing_direction = FACING_DIRECTION_LEFT,
+		.death = ANIM_HERO_DEAD
+	},
+	[ENTITY_TYPE_WARRIOR] = {
+		.idle = ANIM_WARRIOR_IDLE,
+		.idle_facing_direction = FACING_DIRECTION_LEFT,
+		.move_left = ANIM_WARRIOR_MOVE_LEFT,
+		.death = ANIM_WARRIOR_DEAD
+	},
+	[ENTITY_TYPE_BOAR] = {
+		.idle = ANIM_BOAR_IDLE,
+		.idle_facing_direction = FACING_DIRECTION_RIGHT,
+		.move_right = ANIM_BOAR_WALK,
+		.death = ANIM_BOAR_TRANSITION_IDLE_TO_SLEEP
+	}
+};
+
 uint32 get_viewport_scale_factor(Vec2 screen_size) {
 	uint32 width_scale = screen_size.x / BASE_RESOLUTION_WIDTH;
 	uint32 height_scale = screen_size.y / BASE_RESOLUTION_HEIGHT;
@@ -67,6 +105,7 @@ Entity* get_new_entity(EntityData* entity_data) {
 
 	entity->id = entity_data->entity_ids[idx];
 	entity->z_index = 1;
+	entity->facing_direction = { 1, 0 };
 
 	return entity;
 }
@@ -176,6 +215,25 @@ EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
 	return get_entity_handle(entity, entity_data);
 }
 
+EntityHandle create_boar_entity(EntityData* entity_data, Vec2 position) {
+	Entity* entity = get_new_entity(entity_data);
+	
+	entity->type = ENTITY_TYPE_BOAR;
+	entity->position = position;
+
+	Vec2 sprite_size = get_sprite_world_size(SPRITE_BOAR_IDLE_0);
+
+	entity->collider = {
+		.shape = COLLIDER_SHAPE_RECT,
+		.offset = { 0, sprite_size.y / 2 },
+		.width = sprite_size.x,
+		.height = sprite_size.y
+	};
+	entity->brain.type = BRAIN_TYPE_BOAR;
+
+	return get_entity_handle(entity, entity_data);
+}
+
 EntityHandle create_warrior_entity(EntityData* entity_data, Vec2 position) {
 	Entity* entity = get_new_entity(entity_data);
 
@@ -196,7 +254,6 @@ EntityHandle create_warrior_entity(EntityData* entity_data, Vec2 position) {
 		.width = collider_world_size.x,
 		.height = collider_world_size.y
 	};
-	entity->brain = {};
 	entity->brain.type = BRAIN_TYPE_WARRIOR;
 
 	return get_entity_handle(entity, entity_data);
@@ -276,7 +333,7 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 				break;
 			case AI_STATE_ATTACK:
 				entity->velocity = { 0, 0 };
-				flags opts = {};
+				flags opts = ANIMATION_STATE_F_LOCKED;
 				if(player->position.x < entity->position.x) {
 					set(opts, ANIMATION_STATE_F_FLIP_X);
 				}
@@ -285,6 +342,31 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 					brain->ai_state = AI_STATE_CHASE;
 					brain->cooldown_s = w_random_between(1, 6);
 				}
+				break;
+		}
+	}
+	else if(brain->type == BRAIN_TYPE_BOAR) {
+		switch(brain->ai_state) {
+			case AI_STATE_IDLE:
+				if(brain->cooldown_s <= 0) {
+					brain->target_position.x = entity->position.x + w_random_between(-5, 5); 
+					brain->target_position.y = entity->position.y + w_random_between(-5, 5);
+					brain->ai_state = AI_STATE_WANDER;
+				}	
+				entity->velocity = {0, 0};
+				break;
+			case AI_STATE_WANDER: {
+				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f) {
+					brain->ai_state = AI_STATE_IDLE;
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+
+				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
+				entity->velocity = w_vec_mult(wander_direction, 1.0f);
+				break;
+			}
+			case AI_STATE_ATTACK:
+			case AI_STATE_CHASE:
 				break;
 		}
 	}
@@ -308,7 +390,10 @@ void remove_collision_rules(uint32 id, CollisionRule** hash, CollisionRule** fre
 	}
 }
 
-void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, CollisionRule** hash, CollisionRule** free_list, Arena* arena) {
+void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, GameState* game_state) {
+	CollisionRule** hash = game_state->collision_rule_hash;
+	CollisionRule** free_list = &game_state->collision_rule_free_list;
+
 	if(a_id	> b_id) {
 		uint32 temp = a_id;
 		a_id = b_id;
@@ -329,7 +414,7 @@ void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, Collision
 	if(!found) {
         found = *free_list;
 		if(!found) {
-			found = (CollisionRule*)w_arena_alloc(arena, sizeof(CollisionRule));
+			found = (CollisionRule*)w_arena_alloc(&game_state->main_arena, sizeof(CollisionRule));
 		}
 		else {
 			*free_list = found->next_rule;
@@ -386,7 +471,9 @@ void deal_damage(Entity* target, float damage) {
 	target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
 }
 
-void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, float dt_collision_s) {
+void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, float dt_collision_s, bool* can_move_freely, GameState* game_state) {
+	*can_move_freely = true;
+
 	if(subject->type == ENTITY_TYPE_PROJECTILE) {
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE)) {
 			deal_damage(target, 200);
@@ -395,6 +482,8 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE) || is_set(target->flags, ENTITY_FLAG_BLOCKER)) {
 			set(subject->flags, ENTITY_FLAG_MARK_FOR_DELETION);
 		}
+
+		add_collision_rule(subject->id, target->id, false, game_state);		
 	}
 
 	if(is_set(target->flags, ENTITY_FLAG_BLOCKER)) {
@@ -406,6 +495,7 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
 		float collision_normal_acceleration_penetration = w_dot_product(subject->acceleration, collision_normal);
 		Vec2 collision_normal_acceleration = w_vec_mult(collision_normal, collision_normal_acceleration_penetration);
 		subject->acceleration = w_vec_sub(subject->acceleration, collision_normal_acceleration);
+		*can_move_freely = false;
 	}
 }
 
@@ -576,7 +666,7 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
 	return shake_offset;
 }
 
-Vec2 get_discrete_facing_direction(Vec2 facing_direction, Vec2 velocity) {
+Vec2 get_discrete_facing_direction_4_directions(Vec2 facing_direction, Vec2 velocity) {
 	float mag_y_direction = w_abs(facing_direction.y);
 	float mag_x_direction = w_abs(facing_direction.x);
 	Vec2 result = {};
@@ -611,29 +701,63 @@ Vec2 get_discrete_facing_direction(Vec2 facing_direction, Vec2 velocity) {
 	return result;
 }
 
-Vec2 get_discrete_facing_direction(Vec2 facing_direction) {
-	float mag_y_direction = w_abs(facing_direction.y);
-	float mag_x_direction = w_abs(facing_direction.x);
-	Vec2 result = {};
-
-	if(mag_y_direction > mag_x_direction) {
-		if(facing_direction.y > 0) {
-			result.y = 1;
-		}
-		else {
-			result.y = -1;
-		}
+void update_entity_movement_animation(Entity* entity) {
+	EntityAnimations animations = entity_animations[entity->type];
+	Vec2 disc_facing_direction = {};
+	if(animations.move_up != ANIM_UNKNOWN && animations.move_down != ANIM_UNKNOWN) {
+		disc_facing_direction = get_discrete_facing_direction_4_directions(entity->facing_direction, entity->velocity);
 	}
 	else {
-		if(facing_direction.x > 0) {
-			result.x = 1;
+		if(entity->facing_direction.x > 0) {
+			disc_facing_direction.x = 1;
 		}
 		else {
-			result.x = -1;
+			disc_facing_direction.x = -1;
 		}
 	}
 
-	return result;
+	flags anim_opts = 0;
+
+	if(animations.move_left != ANIM_UNKNOWN || animations.move_right != ANIM_UNKNOWN) {
+		if(w_vec_length(entity->velocity) >= 0.1) {
+			if(disc_facing_direction.x > 0) {
+				AnimationID animation_id = animations.move_right;
+				if(animation_id == ANIM_UNKNOWN) {
+					animation_id = animations.move_left;
+					anim_opts = ANIMATION_STATE_F_FLIP_X;
+				}
+				w_play_animation(animation_id, &entity->anim_state, anim_opts);		
+			}
+			else if(disc_facing_direction.x < 0) {
+				AnimationID animation_id = animations.move_left;
+				if(animation_id == ANIM_UNKNOWN) {
+					animation_id = animations.move_right;
+					anim_opts = ANIMATION_STATE_F_FLIP_X;
+				}
+				w_play_animation(animation_id, &entity->anim_state, anim_opts);		
+			}
+			else if(disc_facing_direction.y > 0) {
+				w_play_animation(animations.move_up, &entity->anim_state);		
+			}
+			else {
+				w_play_animation(animations.move_down, &entity->anim_state);	
+			}
+		}
+		else {
+			if(disc_facing_direction.x > 0) {
+				if(animations.idle_facing_direction == FACING_DIRECTION_LEFT) {
+					anim_opts = ANIMATION_STATE_F_FLIP_X;
+				}
+				w_play_animation(animations.idle, &entity->anim_state, anim_opts);
+			}
+			else {
+				if(animations.idle_facing_direction == FACING_DIRECTION_RIGHT) {
+					anim_opts = ANIMATION_STATE_F_FLIP_X;
+				}
+				w_play_animation(animations.idle, &entity->anim_state, anim_opts);
+			}
+		}
+	}
 }
 
 struct PlayerWorldInput {
@@ -767,6 +891,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		EntityHandle player_handle = create_player_entity(&game_state->entity_data, (Vec2){ 0, 0 });
 		game_state->player = get_entity(player_handle, &game_state->entity_data);
 		create_warrior_entity(&game_state->entity_data, (Vec2){ 7, -5 });
+		create_boar_entity(&game_state->entity_data, (Vec2){ -7, 5 });
 		create_gun_entity(&game_state->entity_data, player_handle);
 
 		for(int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
@@ -808,7 +933,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		ground->sprite_position = { ground_sprite.x, ground_sprite.y };
 		ground->sprite_size = { ground_sprite.w, ground_sprite.h };
 	}
-	
+
 	// ~~~~~~~~~~~~~~~~~~ Render tilemap ~~~~~~~~~~~~~~~~~~~~~~ //
 
 	for(int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
@@ -844,8 +969,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		// bool has_collided = false;
 		// Note: This is an optimization
 		if(!is_set(entity->flags, ENTITY_FLAG_NONSPACIAL)) {
-            float t_remaining = 1.0f;
-            for (int attempts = 0; attempts < 4 && t_remaining > 0.0f; attempts++) {
+			float t_remaining = 1.0f;
+			for (int attempts = 0; attempts < 4 && t_remaining > 0.0f; attempts++) {
 				float t_min = 1.0f;
 				Vec2 collision_normal = { 0, 0 };
 				Entity* entity_collided_with = NULL;
@@ -892,11 +1017,13 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				t_remaining -= t_effective;
 				float effective_dt_s = t_effective * g_sim_dt_s;
 
+				bool can_move_freely = true;
 				if(entity_collided_with) {
-					handle_collision(entity, entity_collided_with, collision_normal, effective_dt_s);
-					// has_collided = true;
+					handle_collision(entity, entity_collided_with, collision_normal, effective_dt_s, &can_move_freely, game_state);
+					// has_collided = true
 				}
-				else {
+
+				if(can_move_freely) {
 					entity->position = w_calc_position(entity->acceleration, entity->velocity, entity->position, effective_dt_s);
 					entity->velocity = w_calc_velocity(entity->acceleration, entity->velocity, effective_dt_s);
 				}
@@ -922,52 +1049,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		if(entity->type == ENTITY_TYPE_PLAYER) {
 			entity->facing_direction = w_vec_norm(player_world_input.aim_vec);
-			Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
-
-			if(w_vec_length(entity->velocity) >= 0.1) {
-				if(disc_facing_direction.x > 0) {
-					w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
-				}
-				else if(disc_facing_direction.x < 0) {
-					w_play_animation(ANIM_HERO_MOVE_LEFT, &entity->anim_state);		
-				}
-				else if(disc_facing_direction.y > 0) {
-					w_play_animation(ANIM_HERO_MOVE_UP, &entity->anim_state);		
-				}
-				else {
-					w_play_animation(ANIM_HERO_MOVE_DOWN, &entity->anim_state);	
-				}
-			}
-			else {
-				if(disc_facing_direction.x > 0) {
-					w_play_animation(ANIM_HERO_IDLE, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);
-				}
-				else {
-					w_play_animation(ANIM_HERO_IDLE, &entity->anim_state);
-				}
-			}
+		}
+		else if(w_vec_length(entity->velocity) > 0.1) {
+			entity->facing_direction = w_vec_norm(entity->velocity);
 		}
 
-		if(entity->type == ENTITY_TYPE_WARRIOR && is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->brain.ai_state != AI_STATE_ATTACK) {
-			entity->facing_direction = w_vec_norm(entity->velocity);
-			Vec2 disc_facing_direction = get_discrete_facing_direction(entity->facing_direction, entity->velocity);
-
-			if(w_vec_length(entity->velocity) >= 0.1) {
-				if(disc_facing_direction.x > 0) {
-					w_play_animation(ANIM_WARRIOR_MOVE_LEFT, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);		
-				}
-				else {
-					w_play_animation(ANIM_WARRIOR_MOVE_LEFT, &entity->anim_state);		
-				}
-			}
-			else {
-				if(disc_facing_direction.x > 0) {
-					w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state, ANIMATION_STATE_F_FLIP_X);
-				}
-				else {
-					w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state);
-				}
-			}
+		// TODO: do we need a flag for entities with movement animations? Sprite unknown check is weird
+		if(entity->sprite_id == SPRITE_UNKNOWN) {
+			update_entity_movement_animation(entity);
 		}
 
 		if(is_set(entity->flags, ENTITY_FLAG_OWNED) && is_set(entity->flags, ENTITY_FLAG_EQUIPPED)) {
@@ -1001,7 +1090,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 				entity->position = w_rotate_around_pivot(entity->position, pivot, entity->rotation_rads);
 
-				Vec2 owner_facing_direction = get_discrete_facing_direction(owner->facing_direction, owner->velocity);
+				Vec2 owner_facing_direction = get_discrete_facing_direction_4_directions(owner->facing_direction, owner->velocity);
 				if(owner_facing_direction.y > 0) {
 					entity->z_index = owner->z_index - 0.1;
 				}
@@ -1014,8 +1103,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
 					Vec2 projectile_position = { entity->position.x, entity->position.y + entity->z_pos };
 					EntityHandle projectile_handle = create_projectile_entity(&game_state->entity_data, projectile_position, rotation_rads, velocity);
-					add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, 
-						game_state->collision_rule_hash, &game_state->collision_rule_free_list, &game_state->main_arena);
+					add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, game_state);
 
 					play_sound_rand(&game_state->sounds[SOUND_BASIC_GUN_SHOT], &game_state->audio_player);
 					start_camera_shake(&game_state->camera, 0.1, 10, 0.08);
@@ -1031,7 +1119,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			set(entity->flags, ENTITY_FLAG_NONSPACIAL);
 			set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
 			if(entity->type == ENTITY_TYPE_WARRIOR) {
-				w_play_animation(ANIM_WARRIOR_DEAD, &entity->anim_state);
+				w_play_animation(ANIM_WARRIOR_DEAD, &entity->anim_state, ANIMATION_STATE_F_LOCKED);
 			}
 		}
 
