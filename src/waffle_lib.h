@@ -109,6 +109,7 @@ struct Animation {
 
 
 #define COLOR_WHITE ((Vec4){ 255, 255, 255, 1 })
+#define COLOR_BLACK ((Vec4){ 0, 0, 0, 1 })
 
 //~~~~~~~~~~~~~~~~~~~~~~~~ FILE UTILITY TYPES ~~~~~~~~~~~~~~~~~~~~~~~//
 
@@ -210,6 +211,14 @@ Vec2 w_vec_add(Vec2 a, Vec2 b) {
 
 Vec4 w_vec_add(Vec4 a, Vec4 b) {
     return Vec4{ a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+}
+
+Vec2 w_vec_add(Vec2 a, float b) {
+    return Vec2{ a.x + b, a.y + b };
+}
+
+Vec4 w_vec_add(Vec4 a, float b) {
+    return Vec4{ a.x + b, a.y + b, a.z + b, a.w + b };
 }
 
 Vec2 w_vec_sub(Vec2 a, Vec2 b) {

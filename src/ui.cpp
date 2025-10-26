@@ -1,3 +1,5 @@
+#include "waffle_lib.h"
+
 static FontData* i_font_data;
 static uint32 i_pixels_per_unit;
 
@@ -216,307 +218,208 @@ void draw_progress_bar(UI_ProgressBar progress_bar, float pixels_per_unit, Rende
     bar_progress->rgba = progress_bar.progress_color;
 }
 
-enum UIContainerDirection {
-	UI_CONTAINER_DIRECTION_ROW,
-	UI_CONTAINER_DIRECTION_COL
-};
-
-enum UIElementType {
-    UI_ELEMENT_CONTAINER,
-    UI_ELEMENT_SPRITE,
-    UI_ELEMENT_TEXT,
-    UI_ELEMENT_SPACER,
-    UI_ELEMENT_TYPE_COUNT,
-};
-
-struct UIElementSpriteData {
-    Vec2 sprite_pos;
-    Vec2 sprite_size;
-};
-
-struct UIElementTextData {
-    char text[256];
-    Vec4 rgba;
-    uint32 scale;
-};
-
-typedef struct UIElement UIElement;
-
-struct UIElementArray {
-    UIElement* elements;
-    uint32 capacity;
-    uint32 count;
-};
-
-struct UIElementContainerData {
-    Vec2 position;
-    UIContainerDirection direction;
-    float margin;
-    float child_gap;
-    UIElementArray child_array;
-};
+#define UI_ELEMENT_F_CONTAINER_ROW (1 << 0)
+#define UI_ELEMENT_F_CONTAINER_COL (1 << 1)
+#define UI_ELEMENT_F_DRAW_TEXT (1 << 2)
+#define UI_ELEMENT_F_DRAW_SPRITE (1 << 3)
+#define UI_ELEMENT_F_DRAW_BACKGROUND (1 << 4)
 
 struct UIElement {
-    UIElementType type;
-    Vec2 size;
-    union {
-        UIElementSpriteData sprite_data;
-        UIElementTextData text_data;
-        UIElementContainerData container_data;
-    };
+	UIElement* parent;
+	UIElement* child;
+	UIElement* next;
+	UIElement* last_child;
+
+	flags flags;
+
+	Vec2 position;
+	Vec2 rel_position; // top-left
+	Vec2 size;
+	Vec2 min_size;
+	Vec2 max_size;
+
+	char text[256];
+	Vec4 rgba;
+	uint32 font_scale;
+
+	Sprite sprite;
+
+	Vec4 background_rgba;
+
+    float padding;
+    float child_gap;
 };
 
-struct UIContainer {
-    Vec2 position;
-    UIContainerDirection direction;
-    float margin;
-    float item_gap;
-    UIElement items[10];
-    uint32 item_count;
+struct UIContainerCreateParams {
+	float padding;
+	float child_gap;
+	Vec2 min_size;
+	Vec2 max_size;
+	Vec4 background_rgba;
+	flags opts;
 };
 
-// TODO: could be worth having methods for getting element specific data. Each one would assert that the element you are passing in matches the type you expect
+UIElement* ui_create_container(UIContainerCreateParams params, Arena* arena) { 
+	UIElement* container = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));	
 
-UIElement* ui_create_container(float margin, float child_gap, UIContainerDirection direction, uint32 num_children, Arena* arena) {
-    UIElement* container = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
+	ASSERT(is_set(params.opts, UI_ELEMENT_F_CONTAINER_ROW) || is_set(params.opts, UI_ELEMENT_F_CONTAINER_COL), "Must set container direction");
+	ASSERT(params.min_size.x <= params.max_size.x && params.min_size.y <= params.max_size.y, "Min size is greater than max size");
 
-    container->type = UI_ELEMENT_CONTAINER;
+	container->padding = params.padding;
+	container->child_gap = params.child_gap;
+	container->flags = params.opts;
+	container->min_size = params.min_size;
+	container->size = {
+		(float)w_max(params.min_size.x, params.padding * 2),
+		(float)w_max(params.min_size.y, params.padding * 2)
+	};
+	container->max_size = params.max_size;
+	container->background_rgba = params.background_rgba;
 
-    UIElementContainerData* container_data = &container->container_data;
-    container_data->margin = margin;
-    container_data->child_gap = child_gap;
-    container_data->direction = direction;
-
-    UIElementArray* child_array = &container_data->child_array;
-
-    child_array->elements = (UIElement*)w_arena_alloc(arena, num_children * sizeof(UIElement));
-    child_array->capacity = num_children;
-    child_array->count = 0;
-
-    return container;
+	return container;
 }
 
-void ui_add_sprite_element(UIElement* container, Vec2 sprite_pos, Vec2 sprite_size, Vec2 size) {
-    ASSERT(container->type == UI_ELEMENT_CONTAINER, "add_sprite_element must only operate on container elements");
+Vec2 ui_container_content_size(UIElement* container) {
+	Vec2 size = {};
+	uint32 num_children = 0;
+	UIElement* child = container->child;
+	while(child) {
+		if(is_set(container->flags, UI_ELEMENT_F_CONTAINER_ROW)) {
+			size.x += child->size.x;
+			size.y = w_max(size.y, child->size.y);
+		}
+		else {
+			size.y += child->size.y;
+			size.x = w_max(size.x, child->size.x);
+		}
+		num_children++;
+		child = child->next;
+	}
 
-    UIElementContainerData* container_data = &container->container_data;
+	if(is_set(container->flags, UI_ELEMENT_F_CONTAINER_ROW)) {
+		size.x += container->child_gap * (num_children - 1);
+	}
+	else {
+		size.y += container->child_gap * (num_children - 1);
+	}
 
-    UIElementArray* child_array = &container_data->child_array;
-    UIElement* child = &child_array->elements[child_array->count++];
-
-    ASSERT(child_array->count <= child_array->capacity, "UIElement container max child count overflow!");
-
-    child->sprite_data.sprite_pos = sprite_pos;
-    child->sprite_data.sprite_size = sprite_size;
-    child->size = size;
-    child->type = UI_ELEMENT_SPRITE;
+	return size;
 }
 
-void ui_add_text_element(UIElement* container, const char* text, uint32 scale, Vec4 rgba) {
-    ASSERT(container->type == UI_ELEMENT_CONTAINER, "add_text_element must only operate on container elements");
+UIElement* ui_create_sprite(Sprite sprite, Arena* arena) {
+	UIElement* sprite_element = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));	
 
-    UIElementContainerData* container_data = &container->container_data;
-    UIElementArray* child_array = &container_data->child_array;
-    UIElement* child = &child_array->elements[child_array->count++];
+	sprite_element->sprite = sprite;
+	sprite_element->size = {
+		sprite.w / BASE_PIXELS_PER_UNIT,
+		sprite.h / BASE_PIXELS_PER_UNIT
+	}; 
+	sprite_element->flags = UI_ELEMENT_F_DRAW_SPRITE;
 
-    ASSERT(child_array->count <= child_array->capacity, "UIElement container max child count overflow!");
-
-    child->type = UI_ELEMENT_TEXT;
-    child->size = get_text_size(text, scale);
-    w_str_copy(child->text_data.text, text);
-    child->text_data.scale = scale;
-    child->text_data.rgba = rgba;
-};
-
-void ui_add_spacer_element(UIElement* container, float spacing) {
-    ASSERT(container->type == UI_ELEMENT_CONTAINER, "add_spacer_element must only operate on container elements");
-
-    UIElementContainerData* container_data = &container->container_data;
-    UIElementArray* child_array = &container_data->child_array;
-    UIElement* child = &child_array->elements[child_array->count++];
-
-    ASSERT(child_array->count <= child_array->capacity, "UIElement container max child count overflow!");
-
-    child->type = UI_ELEMENT_SPACER;
-
-    if (container_data->direction == UI_CONTAINER_DIRECTION_ROW) {
-        child->size.x = spacing;
-    }
-    else {
-        child->size.y = spacing;
-    }
+	return sprite_element;
 }
 
-// TODO: Maybe this should be a generic get_element_size function?
-Vec2 ui_get_container_size(UIElement* container) {
-    ASSERT(container->type == UI_ELEMENT_CONTAINER, "get_container_size must only operate on container elements");
+UIElement* ui_create_text(const char* text, Vec4 rgba, uint32 font_scale, Arena* arena) {
+	UIElement* text_element = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
 
-    UIElementContainerData* container_data = &container->container_data;
-    UIElementArray* child_array = &container_data->child_array;
+	w_str_copy(text_element->text, text);
+	text_element->rgba = rgba;
+	text_element->font_scale = font_scale;
+	text_element->size = get_text_size(text, font_scale);
+	text_element->flags = UI_ELEMENT_F_DRAW_TEXT;
 
-    // TODO: Add support for column container
-    Vec2 size = {};
-    if (container_data->direction == UI_CONTAINER_DIRECTION_ROW) {
-        size.x += (container_data->margin * 2) + (container_data->child_gap * (container_data->child_array.count - 1));
-
-        float item_max_height = 0;
-        for (int i = 0; i < child_array->count; i++) {
-            UIElement* child = &child_array->elements[i];
-
-            item_max_height = w_max(item_max_height, child->size.y);
-            size.x += child->size.x;
-        }
-
-        size.y = (2 * container_data->margin) + item_max_height;
-    }
-    else {
-        size.y += (container_data->margin * 2) + (container_data->child_gap * (container_data->child_array.count - 1));
-
-        float item_max_width = 0;
-        for (int i = 0; i < child_array->count; i++) {
-            UIElement* child = &child_array->elements[i];
-
-            item_max_width = w_max(item_max_width, child->size.x);
-            size.y += child->size.y;
-        }
-
-        size.x = (2 * container_data->margin) + item_max_width;
-    }
-
-    return size;
+	return text_element;
 }
 
-#define UI_CONTAINER_DRAW_F_LEFT_ALIGN (1 << 0)
+UIElement* ui_create_spacer(Vec2 size, Arena* arena) {
+	UIElement* spacer_element = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
 
-// TODO: Maybe this should be a generic draw element function?
-void ui_draw_container(UIElement* container, RenderGroup* render_group, uint32 opts) {
-    ASSERT(container->type == UI_ELEMENT_CONTAINER, "get_container_size must only operate on container elements");
-    UIElementContainerData* container_data = &container->container_data;
+	spacer_element->size = size;
 
-    Vec2 container_size = ui_get_container_size(container);
-
-    float current_x;
-    float current_y;
-    if (container_data->direction == UI_CONTAINER_DIRECTION_ROW) {
-        current_x = container_data->position.x - (container_size.x / 2) + container_data->margin;
-        current_y = container_data->position.y;
-    }
-    else {
-        current_x = container_data->position.x;
-        current_y = container_data->position.y + (container_size.y / 2) - container_data->margin;
-    }
-
-    UIElementArray* child_array = &container_data->child_array;
-
-    for (int i = 0; i < child_array->count; i++) {
-        UIElement* child = &child_array->elements[i];
-
-        Vec2 child_position = {};
-        if (container_data->direction == UI_CONTAINER_DIRECTION_ROW) {
-            child_position.x = current_x + (child->size.x / 2);
-            child_position.y = current_y;
-            current_x += child->size.x + container_data->child_gap;
-        }
-        else {
-			if(is_set(opts, UI_CONTAINER_DRAW_F_LEFT_ALIGN)) {
-				child_position.x = container_data->position.x - (container_size.x / 2) + (child->size.x / 2) + container_data->margin;
-			}
-			else {
-            	child_position.x = container_data->position.x;
-			}
-            child_position.y = current_y - (child->size.y / 2);
-            current_y -= child->size.y + container_data->child_gap;
-        }
-
-        if (child->type == UI_ELEMENT_SPRITE) {
-            RenderQuad* quad = get_next_quad(render_group);
-            UIElementSpriteData* sprite_data = &child->sprite_data;
-
-			quad->sprite_position = sprite_data->sprite_pos;
-			quad->sprite_size = sprite_data->sprite_size;
-			quad->world_position = child_position;
-			quad->world_size = child->size;
-        }
-        else if (child->type == UI_ELEMENT_TEXT) {
-            UIElementTextData* text_data = &child->text_data;
-            UIText ui_text = {
-                .text = text_data->text,
-                .position = {
-                    child_position.x - (child->size.x / 2),
-                    child_position.y + (child->size.y / 2)
-                },
-                .font_scale = text_data->scale,
-                .rgba = text_data->rgba
-            };
-
-            draw_text(ui_text, render_group);
-        }
-    }
+	return spacer_element;
 }
 
-// static Sprite panel_slice_sprites[UI_PANEL_SLICE_COUNT] = {
-//     [UI_PANEL_SLICE_TOP_LEFT] = {
-//         .position = { 0, 128 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_TOP_EDGE] = {
-//         .position = { 16, 128 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_TOP_RIGHT] = {
-//         .position = { 32, 128 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_LEFT_EDGE] = {
-//         .position = { 0, 144 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_CENTER] = {
-//         .position = { 16, 144 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_RIGHT_EDGE] = {
-//         .position = { 32, 144 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_BOTTOM_LEFT] = {
-//         .position = { 0, 160 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_BOTTOM_EDGE] = {
-//         .position = { 16, 160 },
-//         .size = { 16, 16 }
-//     },
-//     [UI_PANEL_SLICE_BOTTOM_RIGHT] = {
-//         .position = { 32, 160 },
-//         .size = { 16, 16 }
-//     }
-// };
+// TODO: add support for max width handling
+void ui_push(UIElement* parent, UIElement* child) {
+	child->parent = parent;	
 
-// void ui_draw_panel(Vec2 position, Vec2 size, RenderGroup* render_group) {
-//     float middle_y = position.y;
-//     float top_y = middle_y + (size.y / 2) - 0.5;
-//     float bottom_y = middle_y - (size.y / 2) + 0.5;
-//
-//     float left_x = position.x - (size.x / 2) + 0.5;
-//     float right_x = position.x + (size.x / 2) - 0.5;
-//     float middle_x = position.x;
-//
-//     float stretch_x = size.x - 2; // Subtracting 2 for both corners	
-//     float stretch_y = size.y - 2; // Subtracting 2 for both corners
-//
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_TOP_LEFT], { left_x, top_y }, { 1, 1 }, render_group);
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_TOP_EDGE], { middle_x, top_y }, { stretch_x, 1 }, render_group);
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_TOP_RIGHT], { right_x, top_y }, { 1, 1 }, render_group);
-//
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_LEFT_EDGE], { left_x, middle_y }, { 1, stretch_y }, render_group);
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_CENTER], position, { stretch_x, stretch_y }, render_group);
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_RIGHT_EDGE], { right_x, middle_y }, { 1, stretch_y }, render_group);
-//
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_BOTTOM_LEFT], { left_x, bottom_y }, { 1, 1 }, render_group);
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_BOTTOM_EDGE], { middle_x, bottom_y }, { stretch_x, 1 }, render_group);
-//     render_sprite(panel_slice_sprites[UI_PANEL_SLICE_BOTTOM_RIGHT], { right_x, bottom_y }, { 1, 1 }, render_group);
-// }
+	if(!parent->child) {
+		child->rel_position = {
+			parent->padding,
+			-parent->padding
+		};
+		parent->child = child;
+		parent->last_child = child;
+	}
+	else {
+		UIElement* last_child = parent->last_child;
+		if(is_set(parent->flags, UI_ELEMENT_F_CONTAINER_ROW)) {
+			parent->size.x += parent->child_gap;
+			child->rel_position.x = last_child->rel_position.x + last_child->size.x + parent->child_gap;
+			child->rel_position.y = last_child->rel_position.y;
+		}
+		else {
+			parent->size.y += parent->child_gap;
+			child->rel_position.y = last_child->rel_position.y - last_child->size.y - parent->child_gap;
+			child->rel_position.x = last_child->rel_position.x;
+		}
+		parent->last_child->next = child;
+		parent->last_child = child;
+	}
 
+	Vec2 content_size = ui_container_content_size(parent);
+	parent->size.x = w_max(parent->size.x, content_size.x + (parent->padding * 2));
+	parent->size.y = w_max(parent->size.y, content_size.y + (parent->padding * 2));
+	if(parent->max_size.x > 0 && parent->max_size.y > 0) {
+		parent->size.x = w_min(parent->size.x, parent->max_size.x);
+		parent->size.y = w_min(parent->size.y, parent->max_size.y);
+	}
+}
 
+void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_group) {
+	element->position = position; // position is top_left
 
+	if(is_set(element->flags, UI_ELEMENT_F_DRAW_BACKGROUND)) {
+		RenderQuad* quad = get_next_quad(render_group);
+		
+		quad->draw_colored_rect = 1;
+		quad->rgba = element->background_rgba;
+		quad->world_size = element->size;
+		quad->world_position = {
+			position.x + (quad->world_size.x / 2),
+			position.y - (quad->world_size.y / 2)
+		};
+	}
+		
+	if(is_set(element->flags, UI_ELEMENT_F_DRAW_TEXT)) {
+		UIText ui_text = {
+			.text = element->text,
+			.position = position,
+			.font_scale = element->font_scale,
+			.rgba = element->rgba
+		};
+
+		draw_text(ui_text, render_group);
+	}
+	
+	if(is_set(element->flags, UI_ELEMENT_F_DRAW_SPRITE)) {
+		RenderQuad* quad = get_next_quad(render_group);
+
+		// TODO: No supported scaling
+		quad->world_size = element->size;
+		quad->world_position = {
+			position.x + (quad->world_size.x / 2),
+			position.y - (quad->world_size.y / 2)
+		};
+		quad->sprite_position = { element->sprite.x, element->sprite.y };
+		quad->sprite_size = { element->sprite.w, element->sprite.h };
+		quad->texture_unit = TEXTURE_ID_SPRITE;
+	}
+
+	UIElement* child = element->child;
+	while(child) {
+		Vec2 child_position = w_vec_add(element->position, child->rel_position);
+		ui_draw_element(child, child_position, render_group);
+		child = child->next;
+	}
+}

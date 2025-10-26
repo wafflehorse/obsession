@@ -47,13 +47,13 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		185, 27, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_16] = {
-		227, 27, 19, 15, true, { 9.00, 11.00 }
+		206, 27, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_17] = {
 		248, 27, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_18] = {
-		290, 27, 19, 15, true, { 9.00, 11.00 }
+		269, 27, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_19] = {
 		725, 22, 20, 16, true, { 9.00, 12.00 }
@@ -83,16 +83,16 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		452, 24, 20, 16, true, { 9.00, 12.00 }
 	},
 	[SPRITE_BOAR_SLEEP_0] = {
-		660, 42, 19, 13, true, { 9.00, 9.00 }
+		174, 44, 19, 13, true, { 9.00, 9.00 }
 	},
 	[SPRITE_BOAR_SLEEP_1] = {
-		681, 42, 19, 13, true, { 9.00, 9.00 }
+		195, 44, 19, 13, true, { 9.00, 9.00 }
 	},
 	[SPRITE_BOAR_SLEEP_10] = {
-		377, 42, 19, 14, true, { 9.00, 10.00 }
+		835, 40, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_11] = {
-		895, 39, 19, 14, true, { 9.00, 10.00 }
+		335, 42, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_12] = {
 		111, 31, 19, 15, true, { 9.00, 11.00 }
@@ -101,76 +101,76 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		68, 32, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_14] = {
-		1, 34, 19, 15, true, { 9.00, 11.00 }
+		89, 32, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_15] = {
-		963, 38, 19, 15, true, { 9.00, 11.00 }
+		47, 33, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_16] = {
-		984, 38, 19, 15, true, { 9.00, 11.00 }
+		963, 38, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_17] = {
-		314, 26, 19, 15, true, { 9.00, 11.00 }
-	},
-	[SPRITE_BOAR_SLEEP_18] = {
 		874, 39, 19, 15, true, { 9.00, 11.00 }
 	},
+	[SPRITE_BOAR_SLEEP_18] = {
+		314, 26, 19, 15, true, { 9.00, 11.00 }
+	},
 	[SPRITE_BOAR_SLEEP_19] = {
-		22, 34, 19, 15, true, { 9.00, 11.00 }
+		984, 38, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_2] = {
 		132, 44, 19, 13, true, { 9.00, 9.00 }
 	},
 	[SPRITE_BOAR_SLEEP_20] = {
-		47, 33, 19, 15, true, { 9.00, 11.00 }
+		22, 34, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_21] = {
-		89, 32, 19, 15, true, { 9.00, 11.00 }
+		1, 34, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_22] = {
-		356, 42, 19, 14, true, { 9.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_23] = {
-		793, 40, 19, 14, true, { 9.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_24] = {
-		751, 40, 19, 14, true, { 9.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_25] = {
-		730, 40, 19, 14, true, { 9.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_26] = {
 		937, 39, 19, 14, true, { 9.00, 10.00 }
 	},
+	[SPRITE_BOAR_SLEEP_23] = {
+		377, 42, 19, 14, true, { 9.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_24] = {
+		895, 39, 19, 14, true, { 9.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_25] = {
+		356, 42, 19, 14, true, { 9.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_26] = {
+		751, 40, 19, 14, true, { 9.00, 10.00 }
+	},
 	[SPRITE_BOAR_SLEEP_27] = {
-		916, 39, 19, 14, true, { 9.00, 10.00 }
+		709, 40, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_28] = {
-		153, 44, 19, 13, true, { 9.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_29] = {
-		174, 44, 19, 13, true, { 9.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_3] = {
-		195, 44, 19, 13, true, { 9.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_4] = {
-		576, 42, 19, 13, true, { 9.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_5] = {
 		311, 43, 19, 13, true, { 9.00, 9.00 }
 	},
-	[SPRITE_BOAR_SLEEP_6] = {
+	[SPRITE_BOAR_SLEEP_29] = {
+		681, 42, 19, 13, true, { 9.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_3] = {
 		639, 42, 19, 13, true, { 9.00, 9.00 }
 	},
+	[SPRITE_BOAR_SLEEP_4] = {
+		618, 42, 19, 13, true, { 9.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_5] = {
+		597, 42, 19, 13, true, { 9.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_6] = {
+		576, 42, 19, 13, true, { 9.00, 9.00 }
+	},
 	[SPRITE_BOAR_SLEEP_7] = {
-		335, 42, 19, 14, true, { 9.00, 10.00 }
+		814, 40, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_8] = {
-		835, 40, 19, 14, true, { 9.00, 10.00 }
+		793, 40, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_9] = {
-		814, 40, 19, 14, true, { 9.00, 10.00 }
+		772, 40, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_0] = {
 		474, 24, 20, 16, true, { 9.00, 12.00 }
@@ -179,22 +179,22 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		496, 24, 20, 16, true, { 9.00, 12.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_2] = {
-		269, 27, 19, 15, true, { 9.00, 11.00 }
+		290, 27, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_3] = {
-		772, 40, 19, 14, true, { 9.00, 10.00 }
+		730, 40, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_4] = {
-		618, 42, 19, 13, true, { 9.00, 9.00 }
+		153, 44, 19, 13, true, { 9.00, 9.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_0] = {
-		597, 42, 19, 13, true, { 9.00, 9.00 }
+		660, 42, 19, 13, true, { 9.00, 9.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_1] = {
-		709, 40, 19, 14, true, { 9.00, 10.00 }
+		916, 39, 19, 14, true, { 9.00, 10.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_2] = {
-		206, 27, 19, 15, true, { 9.00, 11.00 }
+		227, 27, 19, 15, true, { 9.00, 11.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_3] = {
 		518, 24, 20, 16, true, { 9.00, 12.00 }
@@ -226,20 +226,23 @@ Sprite sprite_table[SPRITE_COUNT] = {
 	[SPRITE_BOAR_WALK_7] = {
 		650, 24, 20, 16, true, { 9.00, 12.00 }
 	},
+	[SPRITE_BOAR_MEAT_RAW] = {
+		58, 50, 8, 8, false, { 0.00, 0.00 }
+	},
 	[SPRITE_CABLE_1] = {
 		216, 44, 30, 12, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GREEN_BULLET_1] = {
-		35, 51, 6, 6, false, { 0.00, 0.00 }
+		856, 54, 6, 6, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GREEN_BULLET_STRETCHED_1] = {
-		15, 51, 9, 6, false, { 0.00, 0.00 }
+		25, 51, 9, 6, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GROUND_1] = {
 		1007, 20, 16, 16, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GUN_GREEN] = {
-		1005, 54, 12, 3, false, { 0.00, 0.00 }
+		895, 55, 12, 3, false, { 0.00, 0.00 }
 	},
 	[SPRITE_HERO_DEAD_0] = {
 		128, 1, 13, 26, true, { 6.00, 24.00 }
@@ -263,10 +266,10 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		68, 1, 22, 29, true, { 10.00, 25.00 }
 	},
 	[SPRITE_HERO_DEAD_7] = {
-		856, 54, 7, 4, true, { 4.00, 25.00 }
+		1005, 54, 7, 4, true, { 4.00, 25.00 }
 	},
 	[SPRITE_HERO_DEAD_8] = {
-		958, 51, 3, 2, true, { 0.00, 24.00 }
+		36, 51, 3, 2, true, { 0.00, 24.00 }
 	},
 	[SPRITE_HERO_DEAD_9] = {
 		1022, 38, 1, 1, true, { 0.00, 24.00 }
@@ -368,7 +371,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		127, 48, 3, 3, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_14] = {
-		299, 54, 6, 5, false, { 0.00, 0.00 }
+		864, 54, 6, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_2] = {
 		958, 46, 3, 3, false, { 0.00, 0.00 }
@@ -386,7 +389,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		702, 42, 4, 4, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_7] = {
-		58, 50, 8, 8, false, { 0.00, 0.00 }
+		15, 51, 8, 8, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_8] = {
 		43, 50, 13, 9, false, { 0.00, 0.00 }
@@ -395,13 +398,13 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		958, 39, 3, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_SHORT_BLOCK_1] = {
-		451, 42, 23, 13, false, { 0.00, 0.00 }
+		426, 42, 23, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_SHORT_BLOCK_2] = {
-		476, 42, 23, 13, false, { 0.00, 0.00 }
+		451, 42, 23, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_SHORT_BLOCK_3] = {
-		426, 42, 23, 13, false, { 0.00, 0.00 }
+		476, 42, 23, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_SHORT_BLOCK_4] = {
 		501, 42, 23, 13, false, { 0.00, 0.00 }
@@ -413,16 +416,16 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		551, 42, 23, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_SMALL_BLOCK_1] = {
-		282, 44, 15, 10, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SMALL_BLOCK_2] = {
-		110, 48, 15, 10, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SMALL_BLOCK_3] = {
 		248, 44, 15, 10, false, { 0.00, 0.00 }
 	},
-	[SPRITE_SMALL_BLOCK_4] = {
+	[SPRITE_SMALL_BLOCK_2] = {
 		265, 44, 15, 10, false, { 0.00, 0.00 }
+	},
+	[SPRITE_SMALL_BLOCK_3] = {
+		282, 44, 15, 10, false, { 0.00, 0.00 }
+	},
+	[SPRITE_SMALL_BLOCK_4] = {
+		110, 48, 15, 10, false, { 0.00, 0.00 }
 	},
 	[SPRITE_WARRIOR_ATTACK_0] = {
 		597, 1, 14, 21, true, { 8.00, 18.00 }
@@ -461,7 +464,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		398, 42, 26, 13, true, { 12.00, 11.00 }
 	},
 	[SPRITE_WARRIOR_DEAD_7] = {
-		26, 51, 7, 6, true, { 3.00, 4.00 }
+		299, 54, 7, 6, true, { 3.00, 4.00 }
 	},
 	[SPRITE_WARRIOR_HIT_0] = {
 		842, 1, 14, 19, true, { 8.00, 16.00 }

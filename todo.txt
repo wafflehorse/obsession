@@ -95,16 +95,33 @@
 	[x] Add boar sprites and animations
 	[x] Add boar entity
 	[x] Add boar brain
+	[x] Add boar meat entity
 	[] Add boar food drops
-		[] Add item concept
-		[] Add item pickup
-[] Add inventory system
-	[] Inventory UI
-	[] Consuming items
+		[x] Add item concept
+		[x] Add item pickup
+		[] Add item drop on kill
+[x] Redo UI system using Ryan Fluery approach
+	- Get current use of UI containers replaced
+[x] Add hot bar
+[x] Populate hot bar with pick up
+[x] Move gun to hot bar entity
+[x] Add entity rendering based on active hot bar item
+[x] Add keyboard controls to switch hot bar active item
+[x] Add max width option to container element
 
-[] Add food entity
-
-
+[] Add item consumption
+[] Add centering to container elements (centering children)
+[] Fix hot bar moving with camera lag and screen shake
+	- Fixed screen position (nothing to do with camera)
+		- although, rendering pipeline assumes world coordinates
+[] Add support for sprite scaling
+[] Fix issue where AI entities collide with blocker causing them to be stuck in the wandering state
+	- Since they can never reach their target, they stay stuck there
+	- With path finding this will be less of an issue, but what if we choose a wander target that is out of bounds or within a blocking entity
+		- We probably want some sort of check that the wander target is valid? That might be expensive?
+	- Another issue this had me notice was that the animation will be the idle animation since it's not moving
+		- And I wonder if that means it's better to have the animation state based on the AI_STATE and we can flip based on velocity?
+[] Make animation based on AI state rather than velocity
 [] Add boar sleeping
 [] Add ground pivots to spritesheet aseprite file types (non animation)
 	- Can hopefully use the pivot value on the same slices that define the bitmap

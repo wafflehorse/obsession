@@ -11,6 +11,8 @@
 #define MAX_PROJECTILE_DISTANCE 80
 #define ENTITY_MAX_Z 100
 
+#define MAX_HOT_BAR_SLOTS 8 
+
 struct FontData {
     uint32 ascent;
     uint32 descent;
@@ -48,6 +50,7 @@ enum RenderGroupID {
 	RENDER_GROUP_ID_DEBUG,
 	RENDER_GROUP_ID_BACKGROUND,
 	RENDER_GROUP_ID_MAIN,
+	RENDER_GROUP_ID_UI,
 	RENDER_GROUP_ID_COUNT
 };
 
@@ -107,12 +110,12 @@ struct Brain {
 
 struct EntityLookup {
 	uint32 idx;
-	uint32 generation;
+	int generation;
 };
 
 struct EntityHandle {
 	uint32 id;
-	uint32 generation;
+	int generation;
 };
 
 enum EntityType {
@@ -122,18 +125,19 @@ enum EntityType {
 	ENTITY_TYPE_PROJECTILE,
 	ENTITY_TYPE_PROP,
 	ENTITY_TYPE_BOAR,
+	ENTITY_TYPE_BOAR_MEAT,
 	ENTITY_TYPE_COUNT
 };
 
 #define ENTITY_FLAG_MARK_FOR_DELETION (1 << 0)
-#define ENTITY_FLAG_EQUIPPED (1 << 1)
-#define ENTITY_FLAG_OWNED (1 << 2)
-#define ENTITY_FLAG_SPRITE_FLIP_X (1 << 3)
-#define ENTITY_FLAG_KILLABLE (1 << 5)
+#define ENTITY_FLAG_OWNED (1 << 1)
+#define ENTITY_FLAG_SPRITE_FLIP_X (1 << 2)
+#define ENTITY_FLAG_KILLABLE (1 << 3)
 // TODO: does this nonspacial flag make sense? Maybe better name for something that doesn't collide with anything?
-#define ENTITY_FLAG_NONSPACIAL (1 << 6)
-#define ENTITY_FLAG_BLOCKER (1 << 7)
-#define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 8)
+#define ENTITY_FLAG_NONSPACIAL (1 << 4)
+#define ENTITY_FLAG_BLOCKER (1 << 5)
+#define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 6)
+#define ENTITY_FLAG_ITEM (1 << 7)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
@@ -174,6 +178,11 @@ struct EntityData {
 	EntityLookup entity_lookups[MAX_ENTITIES];
 };
 
+struct HotBar {
+	EntityHandle entity_handles[MAX_HOT_BAR_SLOTS];
+	uint32 active_item_idx;
+};
+
 struct GameState {
 	flags flags;
 	Camera camera;
@@ -187,4 +196,5 @@ struct GameState {
 	CollisionRule* collision_rule_hash[MAX_COLLISION_RULES];
 	CollisionRule* collision_rule_free_list;
 	Entity* player;
+	HotBar hot_bar;
 };
