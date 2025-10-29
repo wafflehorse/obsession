@@ -57,7 +57,7 @@ EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
 		.idle = ANIM_BOAR_IDLE,
 		.idle_facing_direction = FACING_DIRECTION_RIGHT,
 		.move_right = ANIM_BOAR_WALK,
-		.death = ANIM_BOAR_TRANSITION_IDLE_TO_SLEEP
+		.death = ANIM_BOAR_2_DEATH
 	}
 };
 
@@ -193,6 +193,22 @@ EntityHandle create_prop_entity(EntityData* entity_data, Vec2 position, SpriteID
 	return get_entity_handle(entity, entity_data);
 }
 
+EntityHandle create_ore_deposit_entity(EntityData* entity_data, EntityType entity_type, Vec2 position, SpriteID sprite_id) {
+	Entity* entity = get_new_entity(entity_data);
+	
+	ASSERT(entity_type == ENTITY_TYPE_IRON_DEPOSIT, "Ore deposit entity must have supported type");
+
+	entity->type = entity_type;
+	entity->position = position;
+	entity->sprite_id = sprite_id;
+	entity->collider = get_rect_collider_from_sprite(sprite_id);
+	set(entity->flags, ENTITY_FLAG_BLOCKER);
+	set(entity->flags, ENTITY_FLAG_KILLABLE);
+	entity->hp = 1000000;
+
+	return get_entity_handle(entity, entity_data);
+}
+
 EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	Entity* entity = get_new_entity(entity_data);
 	
@@ -241,7 +257,7 @@ EntityHandle create_boar_entity(EntityData* entity_data, Vec2 position) {
 	Vec2 sprite_size = get_sprite_world_size(SPRITE_BOAR_IDLE_0);
 
 	set(entity->flags, ENTITY_FLAG_KILLABLE);
-	entity->hp = 500;
+	entity->hp = MAX_HP_BOAR;
 
 	entity->collider = {
 		.shape = COLLIDER_SHAPE_RECT,
@@ -303,6 +319,20 @@ EntityHandle create_boar_meat_entity(EntityData* entity_data, Vec2 position) {
 
 	entity->type = ENTITY_TYPE_BOAR_MEAT;
 	entity->sprite_id = SPRITE_BOAR_MEAT_RAW;
+	entity->position = position;
+	entity->collider = get_rect_collider_from_sprite(entity->sprite_id);
+
+	set(entity->flags, ENTITY_FLAG_ITEM);
+	set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+
+	return get_entity_handle(entity, entity_data);
+}
+
+EntityHandle create_item_entity(EntityData* entity_data, EntityType type, Vec2 position, SpriteID sprite_id) {
+	Entity* entity = get_new_entity(entity_data);
+
+	entity->type = type;
+	entity->sprite_id = sprite_id;
 	entity->position = position;
 	entity->collider = get_rect_collider_from_sprite(entity->sprite_id);
 
@@ -408,20 +438,29 @@ void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 	ui_draw_element(container, container_top_left, render_group);
 }
 
+Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
+	float random_x = w_random_between(-x_range, x_range);
+	float random_y = w_random_between(-y_range, y_range);
+	Vec2 result = {
+		.x = position.x + random_x,
+		.y = position.y + random_y
+	};
+
+	return result;
+}
 
 void update_brain(Entity* entity, Entity* player, double dt_s) {
 	Brain* brain = &entity->brain;
 	brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
 	float distance_to_player = w_euclid_dist(entity->position, player->position);
 	if(brain->type == BRAIN_TYPE_WARRIOR) {
-		if(distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK) {
+		if(distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK && brain->ai_state != AI_STATE_DEAD) {
 			brain->ai_state = AI_STATE_CHASE;	
 		}
 		switch(brain->ai_state) {
 			case AI_STATE_IDLE:
 				if(brain->cooldown_s <= 0) {
-					brain->target_position.x = entity->position.x + w_random_between(-5, 5); 
-					brain->target_position.y = entity->position.y + w_random_between(-5, 5);
+					brain->target_position = random_point_near_position(entity->position, 5, 5);
 					brain->ai_state = AI_STATE_WANDER;
 				}	
 				entity->velocity = {0, 0};
@@ -450,7 +489,7 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 					entity->velocity = w_vec_mult(chase_direction, 5.0f);
 				}
 				break;
-			case AI_STATE_ATTACK:
+			case AI_STATE_ATTACK: {
 				entity->velocity = { 0, 0 };
 				flags opts = ANIMATION_STATE_F_LOCKED;
 				if(player->position.x < entity->position.x) {
@@ -462,14 +501,17 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 					brain->cooldown_s = w_random_between(1, 6);
 				}
 				break;
+			}
+			case AI_STATE_DEAD:
+				entity->velocity = { 0, 0 };
+				break;
 		}
 	}
 	else if(brain->type == BRAIN_TYPE_BOAR) {
 		switch(brain->ai_state) {
 			case AI_STATE_IDLE:
 				if(brain->cooldown_s <= 0) {
-					brain->target_position.x = entity->position.x + w_random_between(-5, 5); 
-					brain->target_position.y = entity->position.y + w_random_between(-5, 5);
+					brain->target_position = random_point_near_position(entity->position, 5, 5);
 					brain->ai_state = AI_STATE_WANDER;
 				}	
 				entity->velocity = {0, 0};
@@ -484,8 +526,10 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 				entity->velocity = w_vec_mult(wander_direction, 1.0f);
 				break;
 			}
-			case AI_STATE_ATTACK:
-			case AI_STATE_CHASE:
+			case AI_STATE_DEAD:
+				entity->velocity = { 0, 0 };
+				break;
+			default:
 				break;
 		}
 	}
@@ -585,9 +629,51 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
 	return should_collide;
 }
 
-void deal_damage(Entity* target, float damage) {
-	// target->hp = w_clamp_min(target->hp - damage, 0);
+void spawn_item_entity(EntityType entity_type, Vec2 source_position, GameState* game_state) {
+	EntityHandle entity_handle;
+
+	switch(entity_type) {
+		case ENTITY_TYPE_IRON:
+			entity_handle = create_item_entity(&game_state->entity_data, ENTITY_TYPE_IRON, source_position, SPRITE_IRON);
+			break;
+		case ENTITY_TYPE_BOAR_MEAT:
+			entity_handle = create_item_entity(&game_state->entity_data, ENTITY_TYPE_BOAR_MEAT, source_position, SPRITE_BOAR_MEAT_RAW);
+			break;
+		default:
+			break;
+	}
+
+	Entity* item = get_entity(entity_handle, &game_state->entity_data);
+
+	ASSERT(item != NULL, "Tried to spawn invalid item entity");
+
+	Vec2 random_point = random_point_near_position(source_position, 1, 1);
+	Vec2 random_point_direction = w_vec_sub(random_point, source_position);
+	Vec2 velocity_direction = w_vec_norm(random_point_direction);
+	float velocity_mag = w_random_between(1.5, 3);
+
+	item->velocity = w_vec_mult(velocity_direction, velocity_mag);
+	item->z_pos = 0.0001;
+	item->z_velocity = 10;
+	item->z_acceleration = -40;
+
+	set(item->flags, ENTITY_FLAG_ITEM_SPAWNING);
+}
+
+void deal_damage(Entity* target, float damage, GameState* game_state) {
+	if(target->type != ENTITY_TYPE_PLAYER) {
+		target->hp = w_clamp_min(target->hp - damage, 0);
+	}
 	target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
+	EntityItemSpawnInfo spawn_info = game_state->entity_item_spawn_info[target->type];
+	target->damage_since_spawn += damage;
+	if(spawn_info.spawned_entity_type != ENTITY_TYPE_UNKNOWN && target->damage_since_spawn >= spawn_info.damage_required_to_spawn) {
+		target->damage_since_spawn = 0;	
+		float spawn_roll = w_random_between(0, 1);
+		if(spawn_roll <= spawn_info.spawn_chance) {
+			spawn_item_entity(spawn_info.spawned_entity_type, target->position, game_state);
+		}
+	}
 }
 
 void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, float dt_collision_s, bool* can_move_freely, GameState* game_state) {
@@ -595,9 +681,9 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
 
 	if(subject->type == ENTITY_TYPE_PROJECTILE) {
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE)) {
-			deal_damage(target, 200);
+			deal_damage(target, 200, game_state);
 		}
-	
+
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE) || is_set(target->flags, ENTITY_FLAG_BLOCKER)) {
 			set(subject->flags, ENTITY_FLAG_MARK_FOR_DELETION);
 		}
@@ -687,7 +773,7 @@ RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_st
 	// TODO: might want to create util methods for this with assertions and bounds checking?
 	Animation animation = animation_table[anim_state->animation_id];
 	SpriteID sprite_id = animation.frames[anim_state->current_frame].sprite_id;
-	
+
 	return render_sprite(world_position, sprite_id, render_group, 0, z_index, opts);
 } 
 
@@ -908,7 +994,7 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
 				game_state->hot_bar.active_item_idx = hot_bar_idx;
 			}
 		}
-		
+
 		input->movement_vec = w_vec_norm(movement_vec);
 
 		Vec2 mouse_screen_position = {
@@ -955,7 +1041,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	main_render_group.id = RENDER_GROUP_ID_MAIN;
 	RenderGroup render_group_ui = {};
 	render_group_ui.id = RENDER_GROUP_ID_UI;
-	
+
 #ifdef DEBUG
 	RenderGroup debug_render_group = {};
 	debug_render_group.id = RENDER_GROUP_ID_DEBUG;
@@ -964,12 +1050,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	uint32 tilemap[WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT] = {
 		0, 0, 0, 0, 0, 0, 2, 0,
 		0, 1, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 3,
 		0, 0, 0, 2, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 2, 0,
 		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 3, 0, 0, 0, 0, 0, 0,
 	};
 
 	Vec2 world_top_left_tile_position = {
@@ -1019,6 +1105,17 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		init_entity_data(&game_state->entity_data);
 		init_hot_bar(&game_state->hot_bar);
 
+		game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
+			.spawned_entity_type = ENTITY_TYPE_IRON,
+			.damage_required_to_spawn = 200.0f,
+			.spawn_chance = 0.5f
+		};
+		game_state->entity_item_spawn_info[ENTITY_TYPE_BOAR] = {
+			.spawned_entity_type = ENTITY_TYPE_BOAR_MEAT,
+			.damage_required_to_spawn = MAX_HP_BOAR,
+			.spawn_chance = 1.0f
+		};
+
 		EntityHandle player_handle = create_player_entity(&game_state->entity_data, (Vec2){ 0, 0 });
 		game_state->player = get_entity(player_handle, &game_state->entity_data);
 		create_warrior_entity(&game_state->entity_data, (Vec2){ 7, -5 });
@@ -1038,6 +1135,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			switch(tilemap[i]) {
 				case 1: {
 					create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
+					break;
+				}
+				case 3: {
+					create_ore_deposit_entity(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
 					break;
 				}
 			}
@@ -1108,8 +1209,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				entity->owner_handle = get_entity_handle(game_state->player, &game_state->entity_data);
 				add_item_to_hot_bar_next_free(entity, &game_state->hot_bar, &game_state->entity_data);
 			} else if(distance_from_player < 1.5) {
-	 			Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
-	 			Vec2 player_direction_norm = w_vec_norm(player_offset);	
+				Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
+				Vec2 player_direction_norm = w_vec_norm(player_offset);	
 				float current_velocity_mag = w_vec_length(entity->velocity);
 				if(current_velocity_mag == 0) {
 					current_velocity_mag = 3;
@@ -1185,6 +1286,18 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		else {
 			entity->position = w_calc_position(entity->acceleration, entity->velocity, entity->position, g_sim_dt_s);
 			entity->velocity = w_calc_velocity(entity->acceleration, entity->velocity, g_sim_dt_s);
+		}
+
+		entity->z_pos = (0.5f * entity->z_acceleration * w_square(g_sim_dt_s)) + (entity->z_velocity * g_sim_dt_s) + entity->z_pos; 
+		entity->z_pos = w_clamp_min(entity->z_pos, 0);
+		entity->z_velocity = entity->z_acceleration * g_sim_dt_s + entity->z_velocity;
+
+		if(is_set(entity->flags, ENTITY_FLAG_ITEM_SPAWNING) && entity->z_pos == 0) {
+			entity->z_velocity = 0;
+			entity->z_acceleration = 0;
+			entity->velocity = {};
+			entity->acceleration = {};
+			unset(entity->flags, ENTITY_FLAG_ITEM_SPAWNING);
 		}
 
 		entity->z_index = entity->position.y * -1;
@@ -1279,12 +1392,13 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		}
 
 		if(is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->hp <= 0) {
-			unset(entity->flags, ENTITY_FLAG_KILLABLE);
 			set(entity->flags, ENTITY_FLAG_NONSPACIAL);
 			set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
-			if(entity->type == ENTITY_TYPE_WARRIOR) {
-				w_play_animation(ANIM_WARRIOR_DEAD, &entity->anim_state, ANIMATION_STATE_F_LOCKED);
+			EntityAnimations entity_anims = entity_animations[entity->type];
+			if(entity_anims.death != ANIM_UNKNOWN) {
+				w_play_animation(entity_anims.death, &entity->anim_state, ANIMATION_STATE_F_LOCKED);
 			}
+			entity->brain.ai_state = AI_STATE_DEAD;
 		}
 
 		entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
@@ -1330,7 +1444,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					};
 
 					if(w_check_aabb_overlap(subject_hitbox, target)) {
-						deal_damage(target_entity, 200);	
+						deal_damage(target_entity, 200, game_state);	
 					}
 				}
 			}		
@@ -1372,14 +1486,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		}
 	}
 
-	render_hot_bar(game_state, &render_group_ui);
-
 	Vec2 camera_to_player_offset = w_vec_sub(game_state->player->position, game_state->camera.position);
 
 	float smoothing_factor = 8;
 	Vec2 camera_delta = w_vec_mult(camera_to_player_offset, smoothing_factor);
 	camera_delta = w_vec_mult(camera_delta, g_sim_dt_s);
 	game_state->camera.position = w_vec_add(game_state->camera.position, camera_delta);
+
+	render_hot_bar(game_state, &render_group_ui);
 
 	game_memory->push_audio_samples(&game_state->audio_player);
 
@@ -1390,7 +1504,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	game_memory->push_render_group(background_render_group.quads, background_render_group.count, rendered_camera_position, background_render_group.opts);
 	game_memory->push_render_group(main_render_group.quads, main_render_group.count, rendered_camera_position, main_render_group.opts);
-	game_memory->push_render_group(render_group_ui.quads, render_group_ui.count, rendered_camera_position, render_group_ui.opts);
+	game_memory->push_render_group(render_group_ui.quads, render_group_ui.count, game_state->camera.position, render_group_ui.opts);
 
 #ifdef DEBUG
 	DebugInfo* debug_info = &game_memory->debug_info;

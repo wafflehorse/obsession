@@ -13,6 +13,8 @@
 
 #define MAX_HOT_BAR_SLOTS 8 
 
+#define MAX_HP_BOAR 500.0f
+
 struct FontData {
     uint32 ascent;
     uint32 descent;
@@ -91,7 +93,8 @@ enum AIState {
 	AI_STATE_IDLE,
 	AI_STATE_WANDER,
 	AI_STATE_CHASE,
-	AI_STATE_ATTACK
+	AI_STATE_ATTACK,
+	AI_STATE_DEAD
 };
 
 enum BrainType {
@@ -119,6 +122,7 @@ struct EntityHandle {
 };
 
 enum EntityType {
+	ENTITY_TYPE_UNKNOWN,
 	ENTITY_TYPE_PLAYER,
 	ENTITY_TYPE_GUN,
 	ENTITY_TYPE_WARRIOR,
@@ -126,6 +130,8 @@ enum EntityType {
 	ENTITY_TYPE_PROP,
 	ENTITY_TYPE_BOAR,
 	ENTITY_TYPE_BOAR_MEAT,
+	ENTITY_TYPE_IRON_DEPOSIT,
+	ENTITY_TYPE_IRON,
 	ENTITY_TYPE_COUNT
 };
 
@@ -138,6 +144,7 @@ enum EntityType {
 #define ENTITY_FLAG_BLOCKER (1 << 5)
 #define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 6)
 #define ENTITY_FLAG_ITEM (1 << 7)
+#define ENTITY_FLAG_ITEM_SPAWNING (1 << 8)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
@@ -152,6 +159,8 @@ struct Entity {
 	Vec2 acceleration;
 	float rotation_rads;
 	float z_pos;
+	float z_velocity;
+	float z_acceleration;
 
 	Collider collider;
 
@@ -168,6 +177,8 @@ struct Entity {
 	float hp;
 	float damage_taken_tint_cooldown_s;
 
+	float damage_since_spawn;
+
 	Brain brain;
 };
 
@@ -181,6 +192,12 @@ struct EntityData {
 struct HotBar {
 	EntityHandle entity_handles[MAX_HOT_BAR_SLOTS];
 	uint32 active_item_idx;
+};
+
+struct EntityItemSpawnInfo {
+	EntityType spawned_entity_type;
+	float damage_required_to_spawn;
+	float spawn_chance;
 };
 
 struct GameState {
@@ -197,4 +214,5 @@ struct GameState {
 	CollisionRule* collision_rule_free_list;
 	Entity* player;
 	HotBar hot_bar;
+	EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
 };

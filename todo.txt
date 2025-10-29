@@ -88,7 +88,7 @@
 [x] Update z-index based on entity y position (player should render correctly in front of and behind blocks)
 [x] Fix player collision with warrior so that they don't stick to one another (they exceed collision attempts so they don't end up moving normally)
 [x] Add generic entity movement animation update function
-[] Add food
+[x] Add food
 	- This could be some of the animals in the sprite pack?
 	- Maybe there are plants or something that we can also use? 
 	- Let's go with the boar
@@ -96,10 +96,10 @@
 	[x] Add boar entity
 	[x] Add boar brain
 	[x] Add boar meat entity
-	[] Add boar food drops
+	[x] Add boar food drops
 		[x] Add item concept
 		[x] Add item pickup
-		[] Add item drop on kill
+		[x] Add item drop on kill
 [x] Redo UI system using Ryan Fluery approach
 	- Get current use of UI containers replaced
 [x] Add hot bar
@@ -108,12 +108,23 @@
 [x] Add entity rendering based on active hot bar item
 [x] Add keyboard controls to switch hot bar active item
 [x] Add max width option to container element
-
-[] Add item consumption
-[] Add centering to container elements (centering children)
-[] Fix hot bar moving with camera lag and screen shake
+[x] Fix hot bar moving with camera lag and screen shake
 	- Fixed screen position (nothing to do with camera)
 		- although, rendering pipeline assumes world coordinates
+[x] Add entity item drops
+[x] Add entity item drop velocity and gravity so that it shoots out of entity
+[x] Add dead AI state
+	[x] Fix warrior animation (stop velocity)
+[x] Add boar death animation
+	- Can take hunter death animation and remove the hunter on the animal
+[] Add stacking in hot bar
+
+[] Fix issue where warrior disappears if it dies while in attack animation
+	- Maybe need a force mechanism when animation is locked
+[] Fix ore aseprite file uses anim stuff since it breaks them into frames
+	- Add maybe _frames.aseprite file handling that treates it as a sprite sheet 
+[] Add item consumption
+[] Add centering to container elements (centering children)
 [] Add support for sprite scaling
 [] Fix issue where AI entities collide with blocker causing them to be stuck in the wandering state
 	- Since they can never reach their target, they stay stuck there
@@ -130,7 +141,6 @@
 [] Randomly spawn enemies around the map
 [] Add pathfinding to player when in range
 [] Add reset on death
-[] Add dead AI state
 [] Add a bed where player sleeps overnight (resets the enemies)
 [] Add player health UI
 [] Create map bounds
