@@ -128,6 +128,9 @@
 [x] Allow non-integer font scaling.
     - This is a little bit of a hack to get text small enough for ui elements like stack size
     - It looks good enough for now
+[x] Support dropping stacks
+[x] Support picking up stacks
+[] Do we still need ENTITY_FLAG_OWNED
 
 [] Fix ore aseprite file uses anim stuff since it breaks them into frames
 	- Add maybe _frames.aseprite file handling that treates it as a sprite sheet 

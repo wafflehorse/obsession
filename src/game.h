@@ -14,6 +14,8 @@
 #define MAX_HOT_BAR_SLOTS 8 
 #define MAX_ITEM_STACK_SIZE 99
 
+#define ITEM_PICKUP_RANGE 1.5
+
 #define MAX_HP_BOAR 500.0f
 
 struct FontData {
@@ -178,7 +180,10 @@ struct Entity {
 	float hp;
 	float damage_taken_tint_cooldown_s;
 
+	// item spawning
 	float damage_since_spawn;
+
+	uint32 stack_size;
 
 	Brain brain;
 };
@@ -190,14 +195,14 @@ struct EntityData {
 	EntityLookup entity_lookups[MAX_ENTITIES];
 };
 
-struct ItemStack {
+struct HotBarSlot {
 	EntityType entity_type;
 	EntityHandle entity_handle;
 	uint32 stack_size;
 };
 
 struct HotBar {
-	ItemStack slots[MAX_HOT_BAR_SLOTS];
+	HotBarSlot slots[MAX_HOT_BAR_SLOTS];
 	uint32 active_item_idx;
 };
 

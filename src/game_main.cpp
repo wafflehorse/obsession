@@ -112,6 +112,7 @@ Entity* get_new_entity(EntityData* entity_data) {
 	entity->z_index = 1;
 	entity->facing_direction = { 1, 0 };
 	entity->owner_handle.generation = -1;
+	entity->stack_size = 1;
 
 	return entity;
 }
@@ -248,6 +249,7 @@ EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
 	set(entity->flags, ENTITY_FLAG_OWNED);
 	set(entity->flags, ENTITY_FLAG_NONSPACIAL);
 	set(entity->flags, ENTITY_FLAG_ITEM_PERSIST_ENTITY);
+	set(entity->flags, ENTITY_FLAG_ITEM);
 	entity->owner_handle = owner;
 	entity->sprite_id = SPRITE_GUN_GREEN;
 
@@ -334,8 +336,12 @@ EntityHandle create_boar_meat_entity(EntityData* entity_data, Vec2 position) {
 	return get_entity_handle(entity, entity_data);
 }
 
-EntityHandle create_item_entity(EntityData* entity_data, EntityType type, Vec2 position, SpriteID sprite_id) {
+EntityHandle create_item_entity(EntityData* entity_data, EntityType type, Vec2 position) {
 	Entity* entity = get_new_entity(entity_data);
+
+	SpriteID sprite_id = entity_sprites[type];
+	
+	ASSERT(sprite_id != SPRITE_UNKNOWN, "Item entities must have sprite specified in entity_sprites\n");
 
 	entity->type = type;
 	entity->sprite_id = sprite_id;
@@ -366,7 +372,7 @@ void init_hot_bar(HotBar* hot_bar) {
 	}
 }
 
-bool slot_can_take_item(Entity* item, ItemStack* slot) {
+bool slot_can_take_item(Entity* item, HotBarSlot* slot) {
 	return slot->stack_size == 0 || 
 	(	
 		slot->entity_type == item->type && 
@@ -376,9 +382,9 @@ bool slot_can_take_item(Entity* item, ItemStack* slot) {
 }
 
 void add_item_to_hot_bar_next_free(Entity* item, HotBar* hot_bar, EntityData* entity_data) {
-	ItemStack* open_slot = NULL;
+	HotBarSlot* open_slot = NULL;
 	for(int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-		ItemStack* slot = &hot_bar->slots[i];
+		HotBarSlot* slot = &hot_bar->slots[i];
 		if(slot_can_take_item(item, slot)) {
 			open_slot = slot;
 			break;
@@ -394,19 +400,19 @@ void add_item_to_hot_bar_next_free(Entity* item, HotBar* hot_bar, EntityData* en
 		}
 
 		open_slot->entity_type = item->type;
-		open_slot->stack_size++;
+		open_slot->stack_size += item->stack_size;
 	}
 }
 
-EntityHandle get_active_hot_bar_item_handle(HotBar* hot_bar) {
-	return hot_bar->slots[hot_bar->active_item_idx].entity_handle;
+HotBarSlot* get_active_hot_bar_slot(HotBar* hot_bar) {
+	return &hot_bar->slots[hot_bar->active_item_idx];
 }
 
 bool can_hot_bar_take_item(Entity* item, HotBar* hot_bar) {
 	bool can_pick_up_item = false;
 
 	for(int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-		ItemStack* slot = &hot_bar->slots[i];
+		HotBarSlot* slot = &hot_bar->slots[i];
 		if(slot_can_take_item(item, slot)) {
 			can_pick_up_item = true;
 		}
@@ -429,7 +435,7 @@ void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 			.background_rgba = COLOR_BLACK 
 		}, &game_state->frame_arena);
 
-		ItemStack* slot = &game_state->hot_bar.slots[i];
+		HotBarSlot* slot = &game_state->hot_bar.slots[i];
 
 		if(slot->stack_size > 0) {
 			EntityHandle entity_handle = slot->entity_handle;
@@ -486,6 +492,7 @@ struct PlayerWorldInput {
 	Vec2 movement_vec;
 	Vec2 aim_vec;
 	bool shoot;
+	bool drop_item;
 };
 
 void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input, Vec2 screen_size) {
@@ -510,6 +517,10 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
 				int hot_bar_idx = i - KEY_1;
 				game_state->hot_bar.active_item_idx = hot_bar_idx;
 			}
+		}
+
+		if(key_input_states[KEY_G].is_pressed) {
+			input->drop_item = true;
 		}
 
 		input->movement_vec = w_vec_norm(movement_vec);
@@ -720,18 +731,7 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
 }
 
 void spawn_item_entity(EntityType entity_type, Vec2 source_position, GameState* game_state) {
-	EntityHandle entity_handle;
-
-	switch(entity_type) {
-		case ENTITY_TYPE_IRON:
-			entity_handle = create_item_entity(&game_state->entity_data, ENTITY_TYPE_IRON, source_position, SPRITE_IRON);
-			break;
-		case ENTITY_TYPE_BOAR_MEAT:
-			entity_handle = create_item_entity(&game_state->entity_data, ENTITY_TYPE_BOAR_MEAT, source_position, SPRITE_BOAR_MEAT_RAW);
-			break;
-		default:
-			break;
-	}
+	EntityHandle entity_handle = create_item_entity(&game_state->entity_data, entity_type, source_position);
 
 	Entity* item = get_entity(entity_handle, &game_state->entity_data);
 
@@ -938,37 +938,43 @@ Vec2 get_discrete_facing_direction_4_directions(Vec2 facing_direction, Vec2 velo
 	return result;
 }
 
+Vec2 get_held_item_position(Entity* owner, float* z_pos, float* z_index) {
+	*z_pos = 0.5;
+	Vec2 result_position;
+
+	if(owner->facing_direction.x < 0) {
+		result_position = { owner->position.x - 0.3f, owner->position.y };
+	}
+	else {
+		result_position = { owner->position.x + 0.3f, owner->position.y };
+	}
+
+	Vec2 owner_disc_facing_direction = get_discrete_facing_direction_4_directions(owner->facing_direction, owner->velocity);
+	if(owner_disc_facing_direction.y > 0) {
+		*z_index = owner->z_index - 0.01;
+	}
+	else {
+		*z_index = owner->z_index + 0.01;
+	}
+
+	return result_position;
+}
+
 void render_hot_bar_item(GameState* game_state, PlayerWorldInput* player_world_input, RenderGroup* render_group) {
 	Entity* player = game_state->player;
 	HotBar* hot_bar = &game_state->hot_bar;
 
-	ItemStack* slot = &hot_bar->slots[hot_bar->active_item_idx];
+	HotBarSlot* slot = &hot_bar->slots[hot_bar->active_item_idx];
 
 	Entity* slot_entity = get_entity(slot->entity_handle, &game_state->entity_data);
 	if(!slot_entity && slot->stack_size > 0) {
-		Vec2 aim_vec_rel_owner = player_world_input->aim_vec;
-		float z_pos = 0.5f;
-		float z_index;
-		Vec2 position = {};
-		if(aim_vec_rel_owner.x < 0) {
-			position = { player->position.x - 0.3f, player->position.y };
-		}
-		else {
-			position = { player->position.x + 0.3f, player->position.y };
-		}
-
-		Vec2 player_facing_direction = get_discrete_facing_direction_4_directions(player->facing_direction, player->velocity);
-		if(player_facing_direction.y > 0) {
-			z_index = player->z_index - 0.1;
-		}
-		else {
-			z_index = player->z_index + 0.1;
-		}
+		float z_pos, z_index;
+		Vec2 item_position = get_held_item_position(player, &z_pos, &z_index);
 
 		SpriteID sprite_id = entity_sprites[slot->entity_type];
-		position.y += z_pos;
+		item_position.y += z_pos;
 
-		render_sprite(position, sprite_id, render_group, 0, z_index, 0);  
+		render_sprite(item_position, sprite_id, render_group, 0, z_index, 0);  
 	}
 }
 
@@ -1276,13 +1282,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		Vec2 starting_position = entity->position;
 
 		// TODO: is OWNED FLAG needed after stack implementation?
-		if(is_set(entity->flags, ENTITY_FLAG_ITEM) && !is_set(entity->flags, ENTITY_FLAG_OWNED)) {
+		if(is_set(entity->flags, ENTITY_FLAG_ITEM) && !is_set(entity->flags, ENTITY_FLAG_OWNED) && !is_set(entity->flags, ENTITY_FLAG_ITEM_SPAWNING)) {
 			float distance_from_player = w_euclid_dist(game_state->player->position, entity->position);
 			if(distance_from_player < 0.1 && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
 				set(entity->flags, ENTITY_FLAG_OWNED);
 				entity->owner_handle = get_entity_handle(game_state->player, &game_state->entity_data);
+				entity->velocity = {};
+				entity->acceleration = {};
 				add_item_to_hot_bar_next_free(entity, &game_state->hot_bar, &game_state->entity_data);
-			} else if(distance_from_player < 1.5 && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
+			} else if(distance_from_player < ITEM_PICKUP_RANGE && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
 				Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
 				Vec2 player_direction_norm = w_vec_norm(player_offset);	
 				float current_velocity_mag = w_vec_length(entity->velocity);
@@ -1404,10 +1412,51 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);	
 		}
 
-		// TODO: hot bar logic will have to be pulled out if we want this to allow for non-player owners
 		EntityHandle entity_handle = get_entity_handle(entity, &game_state->entity_data);
-		EntityHandle hot_bar_active_item = get_active_hot_bar_item_handle(&game_state->hot_bar);
-		bool is_active_hot_bar_item = are_entities_equal(entity_handle, hot_bar_active_item);
+		HotBarSlot* hot_bar_active_slot = get_active_hot_bar_slot(&game_state->hot_bar);
+
+		if(entity->type == ENTITY_TYPE_PLAYER && player_world_input.drop_item && hot_bar_active_slot->stack_size > 0) {
+			Entity* item_entity = get_entity(hot_bar_active_slot->entity_handle, &game_state->entity_data);
+			if(!item_entity) {
+				float z_pos, z_index;
+				Vec2 item_position = get_held_item_position(entity, &z_pos, &z_index);
+				EntityHandle item_entity_handle = create_item_entity(&game_state->entity_data, hot_bar_active_slot->entity_type, item_position);
+				item_entity = get_entity(item_entity_handle, &game_state->entity_data);
+				item_entity->z_pos = z_pos;
+				item_entity->z_index = z_index;
+				item_entity->stack_size = hot_bar_active_slot->stack_size;
+			}
+			else {
+				unset(item_entity->flags, ENTITY_FLAG_OWNED);	
+				item_entity->owner_handle.generation = -1;
+			}
+
+			Vec2 random_point = random_point_near_position(item_entity->position, 1, 1);
+			Vec2 random_point_rel = w_vec_sub(random_point, item_entity->position);
+
+			if((entity->facing_direction.x > 0 && random_point_rel.x < 0) || (entity->facing_direction.x < 0 && random_point_rel.x > 0)) {
+				random_point_rel.x *= -1;
+			}
+
+			Vec2 velocity_direction = w_vec_norm(random_point_rel);
+			float velocity_mag = w_random_between(3, 4);
+
+			item_entity->velocity = w_vec_mult(velocity_direction, velocity_mag);
+
+			item_entity->z_pos = 0.0001;
+			item_entity->z_velocity = 10;
+			item_entity->z_acceleration = -40;
+
+			set(item_entity->flags, ENTITY_FLAG_ITEM_SPAWNING);
+
+			hot_bar_active_slot->entity_handle.generation = -1;
+			hot_bar_active_slot->stack_size = 0;
+			hot_bar_active_slot->entity_type = ENTITY_TYPE_UNKNOWN;
+		}
+
+
+		// TODO: hot bar logic will have to be pulled out if we want this to allow for non-player owners
+		bool is_active_hot_bar_item = are_entities_equal(entity_handle, hot_bar_active_slot->entity_handle);
 		if(is_active_hot_bar_item) {
 			if(owner) {
 				Vec2 aim_vec_rel_owner = player_world_input.aim_vec;
