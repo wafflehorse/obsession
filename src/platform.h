@@ -45,11 +45,16 @@ struct DebugInfo {
 	ProfileTimer profile_timers[ProfileTimerIDCount];
 };
 
+struct Window {
+	Vec2 size;	
+	Vec2 size_px;
+};
+
 struct GameMemory {
     void* memory;
     long long size;
     uint64 performance_frequency;
-    Vec2 screen_size;
+	Window window;
     char base_path[W_PATH_MAX];
 
     InitializeRenderer* initialize_renderer;

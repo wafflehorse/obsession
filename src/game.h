@@ -12,6 +12,7 @@
 #define ENTITY_MAX_Z 100
 
 #define MAX_HOT_BAR_SLOTS 8 
+#define MAX_ITEM_STACK_SIZE 99
 
 #define MAX_HP_BOAR 500.0f
 
@@ -139,12 +140,12 @@ enum EntityType {
 #define ENTITY_FLAG_OWNED (1 << 1)
 #define ENTITY_FLAG_SPRITE_FLIP_X (1 << 2)
 #define ENTITY_FLAG_KILLABLE (1 << 3)
-// TODO: does this nonspacial flag make sense? Maybe better name for something that doesn't collide with anything?
 #define ENTITY_FLAG_NONSPACIAL (1 << 4)
 #define ENTITY_FLAG_BLOCKER (1 << 5)
 #define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 6)
 #define ENTITY_FLAG_ITEM (1 << 7)
 #define ENTITY_FLAG_ITEM_SPAWNING (1 << 8)
+#define ENTITY_FLAG_ITEM_PERSIST_ENTITY (1 << 9)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
@@ -189,8 +190,14 @@ struct EntityData {
 	EntityLookup entity_lookups[MAX_ENTITIES];
 };
 
+struct ItemStack {
+	EntityType entity_type;
+	EntityHandle entity_handle;
+	uint32 stack_size;
+};
+
 struct HotBar {
-	EntityHandle entity_handles[MAX_HOT_BAR_SLOTS];
+	ItemStack slots[MAX_HOT_BAR_SLOTS];
 	uint32 active_item_idx;
 };
 

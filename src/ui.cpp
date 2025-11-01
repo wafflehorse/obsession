@@ -21,11 +21,11 @@ void init_ui(FontData* font_data, uint32 pixels_per_unit) {
 	i_pixels_per_unit = pixels_per_unit;
 }
 // TODO: this doesn't work with wrapping
-Vec2 get_text_size(const char* text, uint32 scale) {
+Vec2 get_text_size(const char* text, float scale) {
     int i = 0;
     float pos_x = 0;
     float pos_y = 0;
-    float line_height = i_font_data->baked_pixel_size + i_font_data->line_gap + 4;
+    float line_height = (i_font_data->baked_pixel_size + i_font_data->line_gap + 4) * scale;
     uint32 line_count = 1;
 
     stbtt_aligned_quad quad;
@@ -63,7 +63,7 @@ Vec2 get_text_size(const char* text, uint32 scale) {
 struct UIText {
     const char* text;
     Vec2 position; // top left
-    uint32 font_scale;
+    float font_scale;
     bool wrap;
     float max_x;
     Vec4 rgba;
@@ -240,7 +240,7 @@ struct UIElement {
 
 	char text[256];
 	Vec4 rgba;
-	uint32 font_scale;
+	float font_scale;
 
 	Sprite sprite;
 
@@ -319,7 +319,7 @@ UIElement* ui_create_sprite(Sprite sprite, Arena* arena) {
 	return sprite_element;
 }
 
-UIElement* ui_create_text(const char* text, Vec4 rgba, uint32 font_scale, Arena* arena) {
+UIElement* ui_create_text(const char* text, Vec4 rgba, float font_scale, Arena* arena) {
 	UIElement* text_element = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
 
 	w_str_copy(text_element->text, text);
@@ -376,6 +376,19 @@ void ui_push(UIElement* parent, UIElement* child) {
 	}
 }
 
+// TODO: without a z-index specified on the child elements, the absolutely positioned elements
+// will render first and therefore behind the relatively positioned elements
+void ui_push_abs_position(UIElement* parent, UIElement* child, Vec2 rel_position) {
+	child->parent = parent;
+
+	if(parent->child) {
+		child->next = parent->child;
+	}
+
+	parent->child = child;
+	child->rel_position = rel_position;
+}
+
 void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_group) {
 	element->position = position; // position is top_left
 
@@ -395,7 +408,7 @@ void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_grou
 		UIText ui_text = {
 			.text = element->text,
 			.position = position,
-			.font_scale = element->font_scale,
+			.font_scale = (float)element->font_scale,
 			.rgba = element->rgba
 		};
 

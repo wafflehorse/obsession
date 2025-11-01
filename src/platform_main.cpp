@@ -528,12 +528,13 @@ int main(int argc, char* argv[]) {
     game_memory.init_audio = init_audio;
     game_memory.push_audio_samples = push_audio_samples;
     game_memory.performance_frequency = SDL_GetPerformanceFrequency();
-    game_memory.screen_size = { MIN_SCREEN_WIDTH * 2, MIN_SCREEN_HEIGHT * 2 };
+	game_memory.window.size = { MIN_SCREEN_WIDTH * 2, MIN_SCREEN_HEIGHT * 2 };
     w_str_copy(game_memory.base_path, (char*)SDL_GetBasePath());
 
     w_init_waffle_lib(game_memory.base_path);
 
-    window = SDL_CreateWindow("Obsession", game_memory.screen_size.x, game_memory.screen_size.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MOUSE_FOCUS);
+	// TODO: will probably want to query screen size and then create window?
+    window = SDL_CreateWindow("Obsession", game_memory.window.size.x, game_memory.window.size.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MOUSE_FOCUS | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (!window)
     {
         fprintf(stderr, "SDL_CreateWindow Error: %s\n", SDL_GetError());
@@ -542,6 +543,11 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_SetWindowMinimumSize(window, MIN_SCREEN_WIDTH, MIN_SCREEN_HEIGHT);
+	{
+		int screen_size_x, screen_size_y;
+		SDL_GetWindowSizeInPixels(window, &screen_size_x, &screen_size_y);
+		game_memory.window.size_px = { (float)screen_size_x, (float)screen_size_y };
+	}
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -601,10 +607,14 @@ int main(int argc, char* argv[]) {
                 running = false;
                 break;
             case SDL_EVENT_WINDOW_RESIZED:
-                game_memory.screen_size = {
+				game_memory.window.size = {
                     (float)event.window.data1,
                     (float)event.window.data2
                 };
+				int screen_size_x, screen_size_y;
+				SDL_GetWindowSizeInPixels(window, &screen_size_x, &screen_size_y);
+				game_memory.window.size_px.x = (float)screen_size_x;
+				game_memory.window.size_px.y = (float)screen_size_y;
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             case SDL_EVENT_MOUSE_BUTTON_UP:

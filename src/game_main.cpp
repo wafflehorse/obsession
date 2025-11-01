@@ -61,6 +61,11 @@ EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
 	}
 };
 
+SpriteID entity_sprites[ENTITY_TYPE_COUNT] = {
+	[ENTITY_TYPE_IRON] = SPRITE_IRON,
+	[ENTITY_TYPE_BOAR_MEAT] = SPRITE_BOAR_MEAT_RAW
+};
+
 uint32 get_viewport_scale_factor(Vec2 screen_size) {
 	uint32 width_scale = screen_size.x / BASE_RESOLUTION_WIDTH;
 	uint32 height_scale = screen_size.y / BASE_RESOLUTION_HEIGHT;
@@ -242,6 +247,7 @@ EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
 	entity->type = ENTITY_TYPE_GUN;
 	set(entity->flags, ENTITY_FLAG_OWNED);
 	set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+	set(entity->flags, ENTITY_FLAG_ITEM_PERSIST_ENTITY);
 	entity->owner_handle = owner;
 	entity->sprite_id = SPRITE_GUN_GREEN;
 
@@ -356,64 +362,88 @@ Entity* get_entity(EntityHandle handle, EntityData* entity_data) {
 
 void init_hot_bar(HotBar* hot_bar) {
 	for(int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-		hot_bar->entity_handles[i].generation = -1;
+		hot_bar->slots[i].entity_handle.generation = -1;
 	}
 }
 
+bool slot_can_take_item(Entity* item, ItemStack* slot) {
+	return slot->stack_size == 0 || 
+	(	
+		slot->entity_type == item->type && 
+		!is_set(item->flags, ENTITY_FLAG_ITEM_PERSIST_ENTITY) && 
+		slot->stack_size < MAX_ITEM_STACK_SIZE
+	);
+}
+
 void add_item_to_hot_bar_next_free(Entity* item, HotBar* hot_bar, EntityData* entity_data) {
-	EntityHandle* slot;
+	ItemStack* open_slot = NULL;
 	for(int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-		slot = &hot_bar->entity_handles[i];
-		Entity* slot_entity = get_entity(*slot, entity_data);
-		if(!slot_entity) {
+		ItemStack* slot = &hot_bar->slots[i];
+		if(slot_can_take_item(item, slot)) {
+			open_slot = slot;
 			break;
 		}
 	}
 
-	ASSERT(!get_entity(*slot, entity_data), "Hot bar is full! Handle that shit");
-
-	*slot = get_entity_handle(item, entity_data);	
-}
-
-bool is_hot_bar_full(HotBar* hot_bar, EntityData* entity_data) {
-	bool is_full;
-	EntityHandle* slot;
-	for(int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-		slot = &hot_bar->entity_handles[i];
-		Entity* slot_entity = get_entity(*slot, entity_data);
-		if(!slot_entity) {
-			is_full = false;
+	if(open_slot) {
+		if(!is_set(item->flags, ENTITY_FLAG_ITEM_PERSIST_ENTITY)) {
+			set(item->flags, ENTITY_FLAG_MARK_FOR_DELETION);
 		}
-	}
+		else {
+			open_slot->entity_handle = get_entity_handle(item, entity_data);
+		}
 
-	if(get_entity(*slot, entity_data)) {
-		is_full = true;
+		open_slot->entity_type = item->type;
+		open_slot->stack_size++;
 	}
-
-	return is_full;
 }
 
 EntityHandle get_active_hot_bar_item_handle(HotBar* hot_bar) {
-	return hot_bar->entity_handles[hot_bar->active_item_idx];
+	return hot_bar->slots[hot_bar->active_item_idx].entity_handle;
+}
+
+bool can_hot_bar_take_item(Entity* item, HotBar* hot_bar) {
+	bool can_pick_up_item = false;
+
+	for(int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
+		ItemStack* slot = &hot_bar->slots[i];
+		if(slot_can_take_item(item, slot)) {
+			can_pick_up_item = true;
+		}
+	}
+
+	return can_pick_up_item;
 }
 
 void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 	UIElement* container = ui_create_container({ .padding = 0.5, .child_gap = 0.2, .opts = UI_ELEMENT_F_CONTAINER_ROW }, &game_state->frame_arena);
 
 	for(int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-		Vec2 slot_size = { pixels_to_units(8) + (2 * 0.5f), pixels_to_units(8) + (2 * 0.5f) };	
+		float slot_padding = 0.5f;
+		Vec2 slot_size = { pixels_to_units(8) + (2 * slot_padding), pixels_to_units(8) + (2 * slot_padding) };	
 		UIElement* slot_container = ui_create_container({
-			.padding = 0.5, 
+			.padding = slot_padding, 
 			.min_size = slot_size,
 			.max_size = slot_size, 
 			.opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND, 
 			.background_rgba = COLOR_BLACK 
 		}, &game_state->frame_arena);
-		EntityHandle entity_handle = game_state->hot_bar.entity_handles[i];
-		Entity* entity = get_entity(entity_handle, &game_state->entity_data);
-		if(entity) {
-			ASSERT(entity->sprite_id != SPRITE_UNKNOWN, "The hot bar only supports rendering the entity sprite id");
-			Sprite sprite = sprite_table[entity->sprite_id];
+
+		ItemStack* slot = &game_state->hot_bar.slots[i];
+
+		if(slot->stack_size > 0) {
+			EntityHandle entity_handle = slot->entity_handle;
+			Entity* entity = get_entity(entity_handle, &game_state->entity_data);
+			Sprite sprite;
+			if(entity) {
+				ASSERT(entity->sprite_id != SPRITE_UNKNOWN, "The hot bar only supports rendering the entity sprite id");
+				sprite = sprite_table[entity->sprite_id];
+			}
+			else {
+				SpriteID sprite_id = entity_sprites[slot->entity_type];
+				sprite = sprite_table[sprite_id];	
+			}
+
 			UIElement* sprite_element = ui_create_sprite(sprite, &game_state->frame_arena);
 			ui_push(slot_container, sprite_element);
 
@@ -426,7 +456,21 @@ void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 				sprite_center_rel_pos.x - (pixels_to_units(sprite.w) / 2),
 				sprite_center_rel_pos.y + (pixels_to_units(sprite.h) / 2)
 			}; 
+
+			if(slot->stack_size > 1) {
+				char stack_size_str[3] = {};
+				snprintf(stack_size_str, 3, "%i", slot->stack_size);
+				UIElement* stack_size_element = ui_create_text(stack_size_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
+				
+				Vec2 stack_size_rel_position = {
+	 				slot_container->size.x - stack_size_element->size.x - pixels_to_units(2),
+					-stack_size_element->size.y / 2
+				};
+
+				ui_push_abs_position(slot_container, stack_size_element, stack_size_rel_position);
+			}
 		}
+
 		ui_push(container, slot_container);
 	}
 
@@ -436,6 +480,57 @@ void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 	};
 
 	ui_draw_element(container, container_top_left, render_group);
+}
+
+struct PlayerWorldInput {
+	Vec2 movement_vec;
+	Vec2 aim_vec;
+	bool shoot;
+};
+
+void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input, Vec2 screen_size) {
+	if(game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
+		KeyInputState* key_input_states = game_input->key_input_states;
+		Vec2 movement_vec = {};
+		if(key_input_states[KEY_W].is_held) {
+			movement_vec.y = 1;
+		}
+		if(key_input_states[KEY_A].is_held) {
+			movement_vec.x = -1;
+		}
+		if(key_input_states[KEY_S].is_held) {
+			movement_vec.y = -1;
+		}
+		if(key_input_states[KEY_D].is_held) {
+			movement_vec.x = 1;
+		}
+
+		for(int i = KEY_1; i < KEY_9; i++) {
+			if(key_input_states[i].is_pressed) {
+				int hot_bar_idx = i - KEY_1;
+				game_state->hot_bar.active_item_idx = hot_bar_idx;
+			}
+		}
+
+		input->movement_vec = w_vec_norm(movement_vec);
+
+		Vec2 mouse_screen_position = {
+			(game_input->mouse_state.position.x / g_pixels_per_unit) - (screen_size.x / g_pixels_per_unit / 2),
+			-(game_input->mouse_state.position.y / g_pixels_per_unit) + (screen_size.y / g_pixels_per_unit / 2)
+		};
+		Vec2 mouse_world_position = w_vec_add(mouse_screen_position, game_state->camera.position);
+		Vec2 player_position = game_state->player->position;
+		input->aim_vec = {
+			mouse_world_position.x - player_position.x,
+			mouse_world_position.y - (player_position.y + 0.5f)
+		};
+
+		input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+	}
+	else if(game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
+		GamepadState* gamepad_state = &game_input->gamepad_state;
+		input->movement_vec = w_vec_norm({ gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_X], -gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_Y] });
+	}
 }
 
 Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
@@ -564,7 +659,7 @@ void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, GameState
 	}
 
 	uint32 hash_bucket = a_id & (MAX_COLLISION_RULES - 1);
-	
+
 	CollisionRule* rule = 0;
 	CollisionRule* found = 0;
 	for(rule = hash[hash_bucket]; rule; rule = rule->next_rule) {
@@ -575,7 +670,7 @@ void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, GameState
 	}
 
 	if(!found) {
-        found = *free_list;
+		found = *free_list;
 		if(!found) {
 			found = (CollisionRule*)w_arena_alloc(&game_state->main_arena, sizeof(CollisionRule));
 		}
@@ -605,11 +700,6 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
 	if(is_set(entity_a->flags, ENTITY_FLAG_KILLABLE) && !is_set(entity_b->flags, ENTITY_FLAG_BLOCKER)) {
 		should_collide = false;
 	} 
-
-    if(entity_a->type == ENTITY_TYPE_PLAYER && entity_b->type == ENTITY_TYPE_WARRIOR) {
-
-
-    }
 
 	if(entity_a->id > entity_b->id) {
 		Entity* temp = entity_a;
@@ -813,6 +903,75 @@ RenderQuad* render_entity(Entity* entity, RenderGroup* render_group) {
 	return quad;
 }
 
+Vec2 get_discrete_facing_direction_4_directions(Vec2 facing_direction, Vec2 velocity) {
+	float mag_y_direction = w_abs(facing_direction.y);
+	float mag_x_direction = w_abs(facing_direction.x);
+	Vec2 result = {};
+
+	if(w_vec_length(velocity) >= 0.1) {
+		if(mag_y_direction > mag_x_direction) {
+			if(facing_direction.y > 0) {
+				result.y = 1;
+			}
+			else {
+				result.y = -1;
+			}
+		}
+		else {
+			if(facing_direction.x > 0) {
+				result.x = 1;
+			}
+			else {
+				result.x = -1;
+			}
+		}
+	}
+	else {
+		if(facing_direction.x > 0) {
+			result.x = 1;
+		}
+		else {
+			result.x = -1;
+		}
+	}
+
+	return result;
+}
+
+void render_hot_bar_item(GameState* game_state, PlayerWorldInput* player_world_input, RenderGroup* render_group) {
+	Entity* player = game_state->player;
+	HotBar* hot_bar = &game_state->hot_bar;
+
+	ItemStack* slot = &hot_bar->slots[hot_bar->active_item_idx];
+
+	Entity* slot_entity = get_entity(slot->entity_handle, &game_state->entity_data);
+	if(!slot_entity && slot->stack_size > 0) {
+		Vec2 aim_vec_rel_owner = player_world_input->aim_vec;
+		float z_pos = 0.5f;
+		float z_index;
+		Vec2 position = {};
+		if(aim_vec_rel_owner.x < 0) {
+			position = { player->position.x - 0.3f, player->position.y };
+		}
+		else {
+			position = { player->position.x + 0.3f, player->position.y };
+		}
+
+		Vec2 player_facing_direction = get_discrete_facing_direction_4_directions(player->facing_direction, player->velocity);
+		if(player_facing_direction.y > 0) {
+			z_index = player->z_index - 0.1;
+		}
+		else {
+			z_index = player->z_index + 0.1;
+		}
+
+		SpriteID sprite_id = entity_sprites[slot->entity_type];
+		position.y += z_pos;
+
+		render_sprite(position, sprite_id, render_group, 0, z_index, 0);  
+	}
+}
+
 void debug_render_entity_colliders(Entity* entity, bool has_collided) {
 #ifdef DEBUG
 	if(!is_set(entity->flags, ENTITY_FLAG_NONSPACIAL)) {
@@ -869,41 +1028,6 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
 	};
 
 	return shake_offset;
-}
-
-Vec2 get_discrete_facing_direction_4_directions(Vec2 facing_direction, Vec2 velocity) {
-	float mag_y_direction = w_abs(facing_direction.y);
-	float mag_x_direction = w_abs(facing_direction.x);
-	Vec2 result = {};
-
-	if(w_vec_length(velocity) >= 0.1) {
-		if(mag_y_direction > mag_x_direction) {
-			if(facing_direction.y > 0) {
-				result.y = 1;
-			}
-			else {
-				result.y = -1;
-			}
-		}
-		else {
-			if(facing_direction.x > 0) {
-				result.x = 1;
-			}
-			else {
-				result.x = -1;
-			}
-		}
-	}
-	else {
-		if(facing_direction.x > 0) {
-			result.x = 1;
-		}
-		else {
-			result.x = -1;
-		}
-	}
-
-	return result;
 }
 
 void update_entity_movement_animation(Entity* entity) {
@@ -965,57 +1089,6 @@ void update_entity_movement_animation(Entity* entity) {
 	}
 }
 
-struct PlayerWorldInput {
-	Vec2 movement_vec;
-	Vec2 aim_vec;
-	bool shoot;
-};
-
-void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input, Vec2 screen_size) {
-	if(game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
-		KeyInputState* key_input_states = game_input->key_input_states;
-		Vec2 movement_vec = {};
-		if(key_input_states[KEY_W].is_held) {
-			movement_vec.y = 1;
-		}
-		if(key_input_states[KEY_A].is_held) {
-			movement_vec.x = -1;
-		}
-		if(key_input_states[KEY_S].is_held) {
-			movement_vec.y = -1;
-		}
-		if(key_input_states[KEY_D].is_held) {
-			movement_vec.x = 1;
-		}
-
-		for(int i = KEY_1; i < KEY_9; i++) {
-			if(key_input_states[i].is_pressed) {
-				int hot_bar_idx = i - KEY_1;
-				game_state->hot_bar.active_item_idx = hot_bar_idx;
-			}
-		}
-
-		input->movement_vec = w_vec_norm(movement_vec);
-
-		Vec2 mouse_screen_position = {
-			(game_input->mouse_state.position.x / g_pixels_per_unit) - (screen_size.x / g_pixels_per_unit / 2),
-			-(game_input->mouse_state.position.y / g_pixels_per_unit) + (screen_size.y / g_pixels_per_unit / 2)
-		};
-		Vec2 mouse_world_position = w_vec_add(mouse_screen_position, game_state->camera.position);
-		Vec2 player_position = game_state->player->position;
-		input->aim_vec = {
-			mouse_world_position.x - player_position.x,
-			mouse_world_position.y - (player_position.y + 0.5f)
-		};
-
-		input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
-	}
-	else if(game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
-		GamepadState* gamepad_state = &game_input->gamepad_state;
-		input->movement_vec = w_vec_norm({ gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_X], -gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_Y] });
-	}
-}
-
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	// ~~~~~~~~~~~~~~~~~~ Debug Flags ~~~~~~~~~~~~~~~~~~~~ //
 	bool debug_should_render_hitboxes = false;
@@ -1025,12 +1098,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	g_base_path = game_memory->base_path;
 	g_sim_dt_s = frame_dt_s;
 
-	game_state->viewport_scale_factor = get_viewport_scale_factor(game_memory->screen_size);
+	game_state->viewport_scale_factor = get_viewport_scale_factor(game_memory->window.size_px);
 	g_pixels_per_unit = BASE_PIXELS_PER_UNIT * game_state->viewport_scale_factor;
 
 	Vec2 viewport = get_viewport(game_state->viewport_scale_factor);
 
-	game_memory->set_viewport(viewport, game_memory->screen_size);
+	game_memory->set_viewport(viewport, game_memory->window.size_px);
 
 	w_init_waffle_lib(g_base_path);
 	w_init_animation(animation_table);
@@ -1080,7 +1153,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			BASE_RESOLUTION_HEIGHT / BASE_PIXELS_PER_UNIT
 		};
 
-		game_memory->initialize_renderer(game_memory->screen_size, viewport, game_state->camera.size, &game_state->main_arena);
+		game_memory->initialize_renderer(game_memory->window.size_px, viewport, game_state->camera.size, &game_state->main_arena);
 		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png");
 		game_memory->load_texture(TEXTURE_ID_SPRITE, "resources/assets/sprite_atlas.png");
 
@@ -1194,7 +1267,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		Entity* entity = &game_state->entity_data.entities[i];
 		update_brain(entity, game_state->player, g_sim_dt_s);
 		if(entity->type == ENTITY_TYPE_PLAYER) {
-			update_player_world_input(game_input, game_state, &player_world_input, game_memory->screen_size);
+			update_player_world_input(game_input, game_state, &player_world_input, game_memory->window.size);
 			float acceleration_mag = 30;
 			Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
 			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
@@ -1202,13 +1275,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		Vec2 starting_position = entity->position;
 
+		// TODO: is OWNED FLAG needed after stack implementation?
 		if(is_set(entity->flags, ENTITY_FLAG_ITEM) && !is_set(entity->flags, ENTITY_FLAG_OWNED)) {
 			float distance_from_player = w_euclid_dist(game_state->player->position, entity->position);
-			if(distance_from_player < 0.1) {
+			if(distance_from_player < 0.1 && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
 				set(entity->flags, ENTITY_FLAG_OWNED);
 				entity->owner_handle = get_entity_handle(game_state->player, &game_state->entity_data);
 				add_item_to_hot_bar_next_free(entity, &game_state->hot_bar, &game_state->entity_data);
-			} else if(distance_from_player < 1.5) {
+			} else if(distance_from_player < 1.5 && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
 				Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
 				Vec2 player_direction_norm = w_vec_norm(player_offset);	
 				float current_velocity_mag = w_vec_length(entity->velocity);
@@ -1325,18 +1399,21 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			update_entity_movement_animation(entity);
 		}
 
+		Entity* owner = get_entity(entity->owner_handle, &game_state->entity_data);
+		if(is_set(entity->flags, ENTITY_FLAG_OWNED) && owner == NULL) {
+			set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);	
+		}
+
 		// TODO: hot bar logic will have to be pulled out if we want this to allow for non-player owners
 		EntityHandle entity_handle = get_entity_handle(entity, &game_state->entity_data);
 		EntityHandle hot_bar_active_item = get_active_hot_bar_item_handle(&game_state->hot_bar);
 		bool is_active_hot_bar_item = are_entities_equal(entity_handle, hot_bar_active_item);
-		if(is_set(entity->flags, ENTITY_FLAG_OWNED) && is_active_hot_bar_item) {
-			Entity* owner = get_entity(entity->owner_handle, &game_state->entity_data);
+		if(is_active_hot_bar_item) {
 			if(owner) {
 				Vec2 aim_vec_rel_owner = player_world_input.aim_vec;
 				entity->z_pos = 0.5f;
 				if(aim_vec_rel_owner.x < 0) {
 					entity->position = { owner->position.x - 0.3f, owner->position.y };
-
 				}
 				else {
 					entity->position = { owner->position.x + 0.3f, owner->position.y };
@@ -1386,9 +1463,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					entity->z_index = owner->z_index + 0.1;
 				}
 			}
-			else {
-				set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);
-			}
 		}
 
 		if(is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->hp <= 0) {
@@ -1396,7 +1470,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
 			EntityAnimations entity_anims = entity_animations[entity->type];
 			if(entity_anims.death != ANIM_UNKNOWN) {
-				w_play_animation(entity_anims.death, &entity->anim_state, ANIMATION_STATE_F_LOCKED);
+				w_play_animation(entity_anims.death, &entity->anim_state, ANIMATION_STATE_F_LOCKED, ANIMATION_PLAY_F_OVERRIDE);
 			}
 			entity->brain.ai_state = AI_STATE_DEAD;
 		}
@@ -1493,6 +1567,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	camera_delta = w_vec_mult(camera_delta, g_sim_dt_s);
 	game_state->camera.position = w_vec_add(game_state->camera.position, camera_delta);
 
+	render_hot_bar_item(game_state, &player_world_input, &main_render_group);
 	render_hot_bar(game_state, &render_group_ui);
 
 	game_memory->push_audio_samples(&game_state->audio_player);
@@ -1522,10 +1597,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	snprintf(avg_preswap_dt_str, 32, "Frame ms: %.3f", avg_preswap_dt_ms); 
 
 
-	UIElement* debug_text_container = ui_create_container({ .padding = 0.5, .child_gap = 0.1, .opts = UI_ELEMENT_F_CONTAINER_COL }, &game_state->frame_arena);
-	UIElement* fps_text_element = ui_create_text(fps_str, COLOR_WHITE, 1, &game_state->frame_arena);
+	UIElement* debug_text_container = ui_create_container({ .padding = 0.25, .child_gap = 0, .opts = UI_ELEMENT_F_CONTAINER_COL }, &game_state->frame_arena);
+	UIElement* fps_text_element = ui_create_text(fps_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
 	ui_push(debug_text_container, fps_text_element);
-	UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, COLOR_WHITE, 1, &game_state->frame_arena);
+	UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
 	ui_push(debug_text_container, frame_time_text_element);
 
 	Vec2 camera_top_left = {

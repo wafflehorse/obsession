@@ -90,6 +90,8 @@ struct Sprite {
 #define ANIMATION_STATE_F_FLIP_X (1 << 0)
 #define ANIMATION_STATE_F_LOCKED (1 << 1)
 
+#define ANIMATION_PLAY_F_OVERRIDE (1 << 0)
+
 struct AnimationState {
 	flags flags;
     AnimationID animation_id;
@@ -710,13 +712,17 @@ bool w_update_animation(AnimationState* anim_state, double dt_s) {
 	return animation_complete;
 }
 
-void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flags opts) {
-	if((anim_state->animation_id != animation_id || opts != anim_state->flags) && !is_set(anim_state->flags, ANIMATION_STATE_F_LOCKED)) {
+void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flags anim_state_opts, flags play_options) {
+	if((anim_state->animation_id != animation_id || anim_state_opts != anim_state->flags) && (!is_set(anim_state->flags, ANIMATION_STATE_F_LOCKED) || is_set(play_options, ANIMATION_PLAY_F_OVERRIDE))) {
 		anim_state->animation_id = animation_id;
 		anim_state->current_frame = 0;
 		anim_state->elapsed_frame_ms = 0;
-		anim_state->flags = opts;
+		anim_state->flags = anim_state_opts;
 	}
+}
+
+void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flags anim_state_opts) {
+	w_play_animation(animation_id, anim_state, anim_state_opts, 0);
 }
 
 void w_play_animation(AnimationID animation_id, AnimationState* anim_state) {

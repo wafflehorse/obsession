@@ -117,10 +117,18 @@
 	[x] Fix warrior animation (stop velocity)
 [x] Add boar death animation
 	- Can take hunter death animation and remove the hunter on the animal
-[] Add stacking in hot bar
+[x] Add absolute positioning option to elements
+[x] Add stacking in hot bar
+[x] Add rendering of non-persisted active item
+[x] Add handling for when hot bar is full (items don't pull towards player and player doesn't end up picking them up)
+[x] Add window on game_memory containing both logical window size and pixel window size
+    - this fixes window resizing to work correctly.
+[x] Adds animation play flag that allows animation to override a locked animation
+    - Fixes warrior not showing death animation when killed in attack animation
+[x] Allow non-integer font scaling.
+    - This is a little bit of a hack to get text small enough for ui elements like stack size
+    - It looks good enough for now
 
-[] Fix issue where warrior disappears if it dies while in attack animation
-	- Maybe need a force mechanism when animation is locked
 [] Fix ore aseprite file uses anim stuff since it breaks them into frames
 	- Add maybe _frames.aseprite file handling that treates it as a sprite sheet 
 [] Add item consumption
