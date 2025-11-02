@@ -62,7 +62,7 @@ EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
 };
 
 SpriteID entity_sprites[ENTITY_TYPE_COUNT] = {
-	[ENTITY_TYPE_IRON] = SPRITE_IRON,
+	[ENTITY_TYPE_IRON] = SPRITE_IRON_1,
 	[ENTITY_TYPE_BOAR_MEAT] = SPRITE_BOAR_MEAT_RAW
 };
 

@@ -293,6 +293,28 @@ int find_sprite_index_by_label(char (*sprite_labels)[256], uint32 label_count, c
 	return -1;
 }
 
+int get_abs_file_paths_in_directory(const char* dir_path, const char* ext, char (*filepaths)[W_PATH_MAX], uint32* file_count) {
+    DIR* dir = opendir(dir_path);
+    if (!dir) {
+        fprintf(stderr, "Failed to open directory");
+        return 0;
+    }
+
+    dirent* file_entry;
+    while ((file_entry = readdir(dir)) != NULL) {
+        if (file_entry->d_type == DT_DIR) {
+            continue;
+        }
+
+        char* file_ext = strrchr(file_entry->d_name, '.');
+        if (w_str_match(file_ext, ext)) {
+            w_get_absolute_path(filepaths[(*file_count)++], dir_path, file_entry->d_name);
+        }
+    }
+
+	return 1;
+}
+
 int main(int argc, char* argv[]) {
     Arena arena;
     arena.size = Megabytes(100);
@@ -304,24 +326,8 @@ int main(int argc, char* argv[]) {
     char (*bitmap_filepaths)[W_PATH_MAX] = (char(*)[W_PATH_MAX])w_arena_alloc(&arena, MAX_BITMAPS * W_PATH_MAX * sizeof(char));
     uint32 bitmap_file_count = 0;
 
-    const char* asset_dir = "./assets/bitmaps";
-    DIR* bitmap_dir = opendir(asset_dir);
-    if (!bitmap_dir) {
-        fprintf(stderr, "Failed to open directory");
-        return 0;
-    }
-
-    dirent* bitmap_entry;
-    while ((bitmap_entry = readdir(bitmap_dir)) != NULL) {
-        if (bitmap_entry->d_type == DT_DIR) {
-            continue;
-        }
-
-        char* ext = strrchr(bitmap_entry->d_name, '.');
-        if (w_str_match(ext, ".png")) {
-            w_get_absolute_path(bitmap_filepaths[bitmap_file_count++], "./assets/bitmaps/", bitmap_entry->d_name);
-        }
-    }
+	get_abs_file_paths_in_directory("./assets/bitmaps/", ".png", bitmap_filepaths, &bitmap_file_count);
+	get_abs_file_paths_in_directory("./assets/bitmaps_gen/", ".png", bitmap_filepaths, &bitmap_file_count);
 
     qsort(bitmap_filepaths, bitmap_file_count, W_PATH_MAX, filepath_sort_cmp);
 
@@ -480,8 +486,8 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        char* ext = strrchr(aseprite_data_entry->d_name, '.');
-        if (w_str_match(ext, ".json")) {
+        char* match = strstr(aseprite_data_entry->d_name, "_anim.json");
+        if (match) {
             w_get_absolute_path(json_filepaths[json_file_count++], "./assets/aseprite_data/", aseprite_data_entry->d_name);
         }
     }
