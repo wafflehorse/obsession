@@ -23,40 +23,32 @@ RenderGroup* g_debug_render_group;
 
 #define DEFAULT_Z_INDEX 1.0f
 
-enum FacingDirection {
-	FACING_DIRECTION_LEFT,
-	FACING_DIRECTION_RIGHT
-};
-
 struct EntityAnimations {
 	AnimationID idle;
-	FacingDirection idle_facing_direction;	
-	AnimationID move_left;
-	AnimationID move_right;
+	AnimationID move;
 	AnimationID move_up;
 	AnimationID move_down;
 	AnimationID death;
+	AnimationID attack;
 };
 
 EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
 	[ENTITY_TYPE_PLAYER] = {
 		.idle = ANIM_HERO_IDLE,
-		.move_left = ANIM_HERO_MOVE_LEFT,
+		.move = ANIM_HERO_MOVE_LEFT,
 		.move_down = ANIM_HERO_MOVE_DOWN,
 		.move_up = ANIM_HERO_MOVE_UP,
-		.idle_facing_direction = FACING_DIRECTION_LEFT,
 		.death = ANIM_HERO_DEAD
 	},
 	[ENTITY_TYPE_WARRIOR] = {
 		.idle = ANIM_WARRIOR_IDLE,
-		.idle_facing_direction = FACING_DIRECTION_LEFT,
-		.move_left = ANIM_WARRIOR_MOVE_LEFT,
-		.death = ANIM_WARRIOR_DEAD
+		.move = ANIM_WARRIOR_MOVE_LEFT,
+		.death = ANIM_WARRIOR_DEAD,
+		.attack = ANIM_WARRIOR_ATTACK
 	},
 	[ENTITY_TYPE_BOAR] = {
 		.idle = ANIM_BOAR_IDLE,
-		.idle_facing_direction = FACING_DIRECTION_RIGHT,
-		.move_right = ANIM_BOAR_WALK,
+		.move = ANIM_BOAR_WALK,
 		.death = ANIM_BOAR_2_DEATH
 	}
 };
@@ -555,10 +547,22 @@ Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
 	return result;
 }
 
+void play_entity_animation_with_direction(AnimationID animation_id, AnimationState* anim_state, Vec2 facing_direction, uint32 anim_state_opts) {
+	if(facing_direction.x > 0) {
+		set(anim_state_opts, ANIMATION_STATE_F_FLIP_X);
+	}
+	w_play_animation(animation_id, anim_state, anim_state_opts);
+}
+
+void play_entity_animation_with_direction(AnimationID animation_id, AnimationState* anim_state, Vec2 facing_direction) { 
+	play_entity_animation_with_direction(animation_id, anim_state, facing_direction, 0);
+}
+
 void update_brain(Entity* entity, Entity* player, double dt_s) {
 	Brain* brain = &entity->brain;
 	brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
 	float distance_to_player = w_euclid_dist(entity->position, player->position);
+	EntityAnimations animations = entity_animations[entity->type];
 	if(brain->type == BRAIN_TYPE_WARRIOR) {
 		if(distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK && brain->ai_state != AI_STATE_DEAD) {
 			brain->ai_state = AI_STATE_CHASE;	
@@ -567,18 +571,22 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 			case AI_STATE_IDLE:
 				if(brain->cooldown_s <= 0) {
 					brain->target_position = random_point_near_position(entity->position, 5, 5);
+					brain->cooldown_s = 10;
 					brain->ai_state = AI_STATE_WANDER;
 				}	
 				entity->velocity = {0, 0};
+				play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
 				break;
 			case AI_STATE_WANDER: {
-				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f) {
+				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
 					brain->ai_state = AI_STATE_IDLE;
 					brain->cooldown_s = w_random_between(1, 6);
 				}
 
 				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
 				entity->velocity = w_vec_mult(wander_direction, 1.0f);
+				entity->facing_direction = w_vec_norm(entity->velocity);
+				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
 				break;
 			}
 			case AI_STATE_CHASE:
@@ -594,14 +602,18 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 					Vec2 chase_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
 					entity->velocity = w_vec_mult(chase_direction, 5.0f);
 				}
+				entity->facing_direction = w_vec_norm(entity->velocity);
+				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
 				break;
 			case AI_STATE_ATTACK: {
 				entity->velocity = { 0, 0 };
-				flags opts = ANIMATION_STATE_F_LOCKED;
 				if(player->position.x < entity->position.x) {
-					set(opts, ANIMATION_STATE_F_FLIP_X);
+					entity->facing_direction.x = -1;
 				}
-				w_play_animation(ANIM_WARRIOR_ATTACK, &entity->anim_state, opts);
+				else {
+					entity->facing_direction.x = 1;
+				}
+				play_entity_animation_with_direction(animations.attack, &entity->anim_state, entity->facing_direction);
 				if(w_animation_complete(&entity->anim_state, dt_s)) {
 					brain->ai_state = AI_STATE_CHASE;
 					brain->cooldown_s = w_random_between(1, 6);
@@ -610,6 +622,11 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 			}
 			case AI_STATE_DEAD:
 				entity->velocity = { 0, 0 };
+				set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+				set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
+				if(animations.death != ANIM_UNKNOWN) {
+					play_entity_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
+				}
 				break;
 		}
 	}
@@ -618,22 +635,31 @@ void update_brain(Entity* entity, Entity* player, double dt_s) {
 			case AI_STATE_IDLE:
 				if(brain->cooldown_s <= 0) {
 					brain->target_position = random_point_near_position(entity->position, 5, 5);
+					brain->cooldown_s = 10;
 					brain->ai_state = AI_STATE_WANDER;
 				}	
 				entity->velocity = {0, 0};
+				play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
 				break;
 			case AI_STATE_WANDER: {
-				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f) {
+				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
 					brain->ai_state = AI_STATE_IDLE;
 					brain->cooldown_s = w_random_between(1, 6);
 				}
 
 				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
 				entity->velocity = w_vec_mult(wander_direction, 1.0f);
+				entity->facing_direction = w_vec_norm(entity->velocity);
+				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
 				break;
 			}
 			case AI_STATE_DEAD:
 				entity->velocity = { 0, 0 };
+				set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+				set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
+				if(animations.death != ANIM_UNKNOWN) {
+					play_entity_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
+				}
 				break;
 			default:
 				break;
@@ -1051,25 +1077,10 @@ void update_entity_movement_animation(Entity* entity) {
 		}
 	}
 
-	flags anim_opts = 0;
-
-	if(animations.move_left != ANIM_UNKNOWN || animations.move_right != ANIM_UNKNOWN) {
+	if(animations.move != ANIM_UNKNOWN) {
 		if(w_vec_length(entity->velocity) >= 0.1) {
-			if(disc_facing_direction.x > 0) {
-				AnimationID animation_id = animations.move_right;
-				if(animation_id == ANIM_UNKNOWN) {
-					animation_id = animations.move_left;
-					anim_opts = ANIMATION_STATE_F_FLIP_X;
-				}
-				w_play_animation(animation_id, &entity->anim_state, anim_opts);		
-			}
-			else if(disc_facing_direction.x < 0) {
-				AnimationID animation_id = animations.move_left;
-				if(animation_id == ANIM_UNKNOWN) {
-					animation_id = animations.move_right;
-					anim_opts = ANIMATION_STATE_F_FLIP_X;
-				}
-				w_play_animation(animation_id, &entity->anim_state, anim_opts);		
+			if(disc_facing_direction.x != 0) {
+				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
 			}
 			else if(disc_facing_direction.y > 0) {
 				w_play_animation(animations.move_up, &entity->anim_state);		
@@ -1079,18 +1090,7 @@ void update_entity_movement_animation(Entity* entity) {
 			}
 		}
 		else {
-			if(disc_facing_direction.x > 0) {
-				if(animations.idle_facing_direction == FACING_DIRECTION_LEFT) {
-					anim_opts = ANIMATION_STATE_F_FLIP_X;
-				}
-				w_play_animation(animations.idle, &entity->anim_state, anim_opts);
-			}
-			else {
-				if(animations.idle_facing_direction == FACING_DIRECTION_RIGHT) {
-					anim_opts = ANIMATION_STATE_F_FLIP_X;
-				}
-				w_play_animation(animations.idle, &entity->anim_state, anim_opts);
-			}
+			play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
 		}
 	}
 }
@@ -1393,17 +1393,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			}
 		}
 
-		//~~~~~~~~~~~ Facing direction update ~~~~~~~~~ //
-
 		if(entity->type == ENTITY_TYPE_PLAYER) {
 			entity->facing_direction = w_vec_norm(player_world_input.aim_vec);
-		}
-		else if(w_vec_length(entity->velocity) > 0.1) {
-			entity->facing_direction = w_vec_norm(entity->velocity);
-		}
-
-		// TODO: do we need a flag for entities with movement animations? Sprite unknown check is weird
-		if(entity->sprite_id == SPRITE_UNKNOWN) {
 			update_entity_movement_animation(entity);
 		}
 
@@ -1515,12 +1506,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		}
 
 		if(is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->hp <= 0) {
-			set(entity->flags, ENTITY_FLAG_NONSPACIAL);
-			set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
-			EntityAnimations entity_anims = entity_animations[entity->type];
-			if(entity_anims.death != ANIM_UNKNOWN) {
-				w_play_animation(entity_anims.death, &entity->anim_state, ANIMATION_STATE_F_LOCKED, ANIMATION_PLAY_F_OVERRIDE);
-			}
 			entity->brain.ai_state = AI_STATE_DEAD;
 		}
 

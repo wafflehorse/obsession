@@ -133,13 +133,15 @@
 [x] Put generated bitmaps in separate directory so that it can be removed and regenerated without wiping other bitmaps
 [x] Fix ore aseprite file uses anim stuff since it breaks them into frames
 	- Add maybe _frames.aseprite file handling that treates it as a sprite sheet 
-[] Fix issue where AI entities collide with blocker causing them to be stuck in the wandering state
+[x] Fix issue where AI entities collide with blocker causing them to be stuck in the wandering state
 	- Since they can never reach their target, they stay stuck there
 	- With path finding this will be less of an issue, but what if we choose a wander target that is out of bounds or within a blocking entity
 		- We probably want some sort of check that the wander target is valid? That might be expensive?
 	- Another issue this had me notice was that the animation will be the idle animation since it's not moving
 		- And I wonder if that means it's better to have the animation state based on the AI_STATE and we can flip based on velocity?
-[] Make animation based on AI state rather than velocity
+	- I just added a timer so they don't get stuck
+[x] Make animation based on AI state rather than velocity
+[x] Simplify animation logic by forcing all animations with a direction to face left
 
 [] Add item consumption
 [] Add centering to container elements (centering children)
