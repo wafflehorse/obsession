@@ -215,7 +215,7 @@ EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	entity->facing_direction.x = 1;
 	entity->facing_direction.y = 0;
 	set(entity->flags, ENTITY_FLAG_KILLABLE);
-	entity->hp = 1000;
+	entity->hp = MAX_HP_PLAYER;
 	
 	Vec2 collider_world_size = {
 		11 / BASE_PIXELS_PER_UNIT,
@@ -277,7 +277,7 @@ EntityHandle create_warrior_entity(EntityData* entity_data, Vec2 position) {
 	w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state);
 	entity->position = position;
 	set(entity->flags, ENTITY_FLAG_KILLABLE);
-	entity->hp = 1000;
+	entity->hp = MAX_HP_WARRIOR;
 
 	Vec2 collider_world_size = {
 		11 / BASE_PIXELS_PER_UNIT,
@@ -777,9 +777,7 @@ void spawn_item_entity(EntityType entity_type, Vec2 source_position, GameState* 
 }
 
 void deal_damage(Entity* target, float damage, GameState* game_state) {
-	if(target->type != ENTITY_TYPE_PLAYER) {
-		target->hp = w_clamp_min(target->hp - damage, 0);
-	}
+	target->hp = w_clamp_min(target->hp - damage, 0);
 	target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
 	EntityItemSpawnInfo spawn_info = game_state->entity_item_spawn_info[target->type];
 	target->damage_since_spawn += damage;
@@ -797,7 +795,7 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
 
 	if(subject->type == ENTITY_TYPE_PROJECTILE) {
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE)) {
-			deal_damage(target, 200, game_state);
+			deal_damage(target, 1, game_state);
 		}
 
 		if(is_set(target->flags, ENTITY_FLAG_KILLABLE) || is_set(target->flags, ENTITY_FLAG_BLOCKER)) {
@@ -844,6 +842,36 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index) {
 	return render_sprite(world_position, sprite_id, render_group, 0, z_index, 0);
 }
+
+SpriteID player_hp_to_ui_sprite[MAX_HP_PLAYER + 1] = {
+	[0] = SPRITE_PLAYER_HP_UI_10,
+	[1] = SPRITE_PLAYER_HP_UI_9,
+	[2] = SPRITE_PLAYER_HP_UI_8,
+	[3] = SPRITE_PLAYER_HP_UI_7,
+	[4] = SPRITE_PLAYER_HP_UI_6,
+	[5] = SPRITE_PLAYER_HP_UI_5,
+	[6] = SPRITE_PLAYER_HP_UI_4,
+	[7] = SPRITE_PLAYER_HP_UI_3,
+	[8] = SPRITE_PLAYER_HP_UI_2,
+	[9] = SPRITE_PLAYER_HP_UI_1,
+	[10] = SPRITE_PLAYER_HP_UI_0
+};
+
+void render_player_hp_ui(uint32 hp, Camera camera, RenderGroup* render_group) {
+	SpriteID ui_sprite = player_hp_to_ui_sprite[hp];
+	Sprite sprite = sprite_table[ui_sprite];
+
+	Vec2 camera_top_left = {
+		camera.position.x - (camera.size.x / 2),
+		camera.position.y + (camera.size.y / 2)
+	};
+
+	Vec2 ui_position = {
+		camera_top_left.x + (pixels_to_units(sprite.w) / 2) + 0.5f,
+
+	render_sprite(ui_position, ui_sprite, render_group, DEFAULT_Z_INDEX);
+}
+
 
 Vec2 get_entity_sprite_world_position(SpriteID sprite_id, Vec2 entity_position, float z_pos, bool flip_x) {
 	Sprite sprite = sprite_table[sprite_id];
@@ -1506,7 +1534,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		}
 
 		if(is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->hp <= 0) {
-			entity->brain.ai_state = AI_STATE_DEAD;
+			if(entity->brain.type != BRAIN_TYPE_NONE) {
+				entity->brain.ai_state = AI_STATE_DEAD;
+			}
+			else {
+				set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);
+			}
 		}
 
 		entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
@@ -1552,7 +1585,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					};
 
 					if(w_check_aabb_overlap(subject_hitbox, target)) {
-						deal_damage(target_entity, 200, game_state);	
+						deal_damage(target_entity, 1, game_state);	
 					}
 				}
 			}		
@@ -1603,6 +1636,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	render_hot_bar_item(game_state, &player_world_input, &main_render_group);
 	render_hot_bar(game_state, &render_group_ui);
+	render_player_hp_ui(game_state->player->hp, game_state->camera, &render_group_ui);	
 
 	game_memory->push_audio_samples(&game_state->audio_player);
 
@@ -1637,12 +1671,17 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
 	ui_push(debug_text_container, frame_time_text_element);
 
-	Vec2 camera_top_left = {
-		game_state->camera.position.x - (game_state->camera.size.x / 2),
+	Vec2 camera_top_right = {
+		game_state->camera.position.x + (game_state->camera.size.x / 2),
 		game_state->camera.position.y + (game_state->camera.size.y / 2)
 	};
 
-	ui_draw_element(debug_text_container, camera_top_left, &debug_render_group);
+	Vec2 debug_text_container_position = {
+		camera_top_right.x - debug_text_container->size.x,
+		camera_top_right.y
+	};
+
+	ui_draw_element(debug_text_container, debug_text_container_position, &debug_render_group);
 
 	game_memory->push_render_group(debug_render_group.quads, debug_render_group.count, game_state->camera.position, debug_render_group.opts);
 #endif

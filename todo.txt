@@ -142,19 +142,28 @@
 	- I just added a timer so they don't get stuck
 [x] Make animation based on AI state rather than velocity
 [x] Simplify animation logic by forcing all animations with a direction to face left
-
+[x] Add player health UI
+[] Fix player damage from warrior
+	- hitbox collides on every frame
+	- Can maybe solve this by assigning the attack an id (entities can have an attack_id) and use the same collision rule hash
+	- Can decide on MAX_ATTACK_IDS which just have to be greater than the max entity id
+[] Add player brain
+[] Add reset on death
 [] Add item consumption
+[] Randomly spawn enemies around the map
+[] Add mech entity
+[] Add mech AI
+	- How should the player control the mech?
+[] Add workbench
+
 [] Add centering to container elements (centering children)
 [] Add support for sprite scaling
 [] Add boar sleeping
 [] Add ground pivots to spritesheet aseprite file types (non animation)
 	- Can hopefully use the pivot value on the same slices that define the bitmap
 	- Then we just need to add the parsing of sprite sheet aseprite json files to pack.cpp
-[] Randomly spawn enemies around the map
 [] Add pathfinding to player when in range
-[] Add reset on death
 [] Add a bed where player sleeps overnight (resets the enemies)
-[] Add player health UI
 [] Create map bounds
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.

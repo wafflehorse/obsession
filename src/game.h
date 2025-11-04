@@ -16,7 +16,9 @@
 
 #define ITEM_PICKUP_RANGE 1.5
 
-#define MAX_HP_BOAR 500.0f
+#define MAX_HP_BOAR 2
+#define MAX_HP_PLAYER 10
+#define MAX_HP_WARRIOR 4
 
 struct FontData {
     uint32 ascent;
@@ -177,7 +179,7 @@ struct Entity {
 	// projectile
 	float distance_traveled;
 
-	float hp;
+	uint32 hp;
 	float damage_taken_tint_cooldown_s;
 
 	// item spawning
