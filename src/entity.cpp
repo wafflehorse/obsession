@@ -338,27 +338,17 @@ void deal_damage(Entity* target, float damage, GameState* game_state) {
 	}
 }
 
-Vec2 get_discrete_facing_direction_4_directions(Vec2 facing_direction, Vec2 velocity) {
+Vec2 get_discrete_facing_direction_4_directions(Vec2 facing_direction) {
 	float mag_y_direction = w_abs(facing_direction.y);
 	float mag_x_direction = w_abs(facing_direction.x);
 	Vec2 result = {};
 
-	if(w_vec_length(velocity) >= 0.1) {
-		if(mag_y_direction > mag_x_direction) {
-			if(facing_direction.y > 0) {
-				result.y = 1;
-			}
-			else {
-				result.y = -1;
-			}
+	if(mag_y_direction > mag_x_direction) {
+		if(facing_direction.y > 0) {
+			result.y = 1;
 		}
 		else {
-			if(facing_direction.x > 0) {
-				result.x = 1;
-			}
-			else {
-				result.x = -1;
-			}
+			result.y = -1;
 		}
 	}
 	else {
@@ -384,7 +374,7 @@ Vec2 get_held_item_position(Entity* owner, float* z_pos, float* z_index) {
 		result_position = { owner->position.x + 0.3f, owner->position.y };
 	}
 
-	Vec2 owner_disc_facing_direction = get_discrete_facing_direction_4_directions(owner->facing_direction, owner->velocity);
+	Vec2 owner_disc_facing_direction = get_discrete_facing_direction_4_directions(owner->facing_direction);
 	if(owner_disc_facing_direction.y > 0) {
 		*z_index = owner->z_index - 0.01;
 	}
@@ -494,36 +484,23 @@ RenderQuad* render_entity(Entity* entity, RenderGroup* render_group) {
 	return quad;
 }
 
-void update_entity_movement_animation(Entity* entity) {
+void update_player_movement_animation(Entity* entity, PlayerWorldInput* player_world_input) {
 	EntityAnimations animations = entity_animations[entity->type];
-	Vec2 disc_facing_direction = {};
-	if(animations.move_up != ANIM_UNKNOWN && animations.move_down != ANIM_UNKNOWN) {
-		disc_facing_direction = get_discrete_facing_direction_4_directions(entity->facing_direction, entity->velocity);
+	Vec2 disc_facing_direction = get_discrete_facing_direction_4_directions(entity->facing_direction);
+
+	if(w_vec_length(player_world_input->movement_vec) >= 0) {
+		if(disc_facing_direction.x != 0) {
+			play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
+		}
+		else if(disc_facing_direction.y > 0) {
+			w_play_animation(animations.move_up, &entity->anim_state);		
+		}
+		else {
+			w_play_animation(animations.move_down, &entity->anim_state);	
+		}
 	}
 	else {
-		if(entity->facing_direction.x > 0) {
-			disc_facing_direction.x = 1;
-		}
-		else {
-			disc_facing_direction.x = -1;
-		}
-	}
-
-	if(animations.move != ANIM_UNKNOWN) {
-		if(w_vec_length(entity->velocity) >= 0.1) {
-			if(disc_facing_direction.x != 0) {
-				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
-			}
-			else if(disc_facing_direction.y > 0) {
-				w_play_animation(animations.move_up, &entity->anim_state);		
-			}
-			else {
-				w_play_animation(animations.move_down, &entity->anim_state);	
-			}
-		}
-		else {
-			play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
-		}
+		play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
 	}
 }
 

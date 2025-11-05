@@ -148,8 +148,9 @@
 	- Can maybe solve this by assigning the attack an id (entities can have an attack_id) and use the same collision rule hash
 	- Can decide on MAX_ATTACK_IDS which just have to be greater than the max entity id
 [x] Pull entity code into entity.cpp
-[] Add reset on death
-[] Add player brain
+[x] Make player animations based on intention rather than velocity
+[x] Add player death animation
+[x] Add reset on death
 [] Add item consumption
 [] Randomly spawn enemies around the map
 [] Add mech entity

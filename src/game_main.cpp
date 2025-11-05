@@ -23,6 +23,13 @@ RenderGroup* g_debug_render_group;
 
 #define DEFAULT_Z_INDEX 1.0f
 
+struct PlayerWorldInput {
+	Vec2 movement_vec;
+	Vec2 aim_vec;
+	bool shoot;
+	bool drop_item;
+};
+
 Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
 	float random_x = w_random_between(-x_range, x_range);
 	float random_y = w_random_between(-y_range, y_range);
@@ -217,13 +224,6 @@ void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 
 	ui_draw_element(container, container_top_left, render_group);
 }
-
-struct PlayerWorldInput {
-	Vec2 movement_vec;
-	Vec2 aim_vec;
-	bool shoot;
-	bool drop_item;
-};
 
 void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input, Vec2 screen_size) {
 	if(game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
@@ -814,36 +814,34 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
+
+		// ~~~~~~~~~~~~~~ Update entity intentions (brain / player input) ~~~~~~~~~~~~~~~~ //
+		
 		update_brain(entity, game_state, g_sim_dt_s);
+
 		if(entity->type == ENTITY_TYPE_PLAYER) {
-			update_player_world_input(game_input, game_state, &player_world_input, game_memory->window.size);
-			float acceleration_mag = 30;
-			Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
-			entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
+			if(entity->hp > 0) {
+				update_player_world_input(game_input, game_state, &player_world_input, game_memory->window.size);
+				entity->facing_direction = w_vec_norm(player_world_input.aim_vec);
+				update_player_movement_animation(entity, &player_world_input);
+
+				float acceleration_mag = 30;
+				Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
+				entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
+			}
+			else {
+				EntityAnimations animations = entity_animations[entity->type];
+				set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+				w_play_animation(animations.death, &entity->anim_state);
+				if(w_animation_complete(&entity->anim_state, g_sim_dt_s)) {
+					entity->hp = MAX_HP_PLAYER;
+					entity->position = { 0, 0 };
+					unset(entity->flags, ENTITY_FLAG_NONSPACIAL);
+				}
+			}
 		}
 
 		Vec2 starting_position = entity->position;
-
-		// TODO: is OWNED FLAG needed after stack implementation?
-		if(is_set(entity->flags, ENTITY_FLAG_ITEM) && !is_set(entity->flags, ENTITY_FLAG_OWNED) && !is_set(entity->flags, ENTITY_FLAG_ITEM_SPAWNING)) {
-			float distance_from_player = w_euclid_dist(game_state->player->position, entity->position);
-			if(distance_from_player < 0.1 && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
-				set(entity->flags, ENTITY_FLAG_OWNED);
-				entity->owner_handle = get_entity_handle(game_state->player, &game_state->entity_data);
-				entity->velocity = {};
-				entity->acceleration = {};
-				add_item_to_hot_bar_next_free(entity, &game_state->hot_bar, &game_state->entity_data);
-			} else if(distance_from_player < ITEM_PICKUP_RANGE && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
-				Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
-				Vec2 player_direction_norm = w_vec_norm(player_offset);	
-				float current_velocity_mag = w_vec_length(entity->velocity);
-				if(current_velocity_mag == 0) {
-					current_velocity_mag = 3;
-				}
-				entity->velocity = w_vec_mult(player_direction_norm, current_velocity_mag);
-				entity->acceleration = w_vec_mult(player_direction_norm, 15.0f);
-			}
-		}
 
 		// bool has_collided = false;
 		// Note: This is an optimization
@@ -916,6 +914,27 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		entity->z_pos = (0.5f * entity->z_acceleration * w_square(g_sim_dt_s)) + (entity->z_velocity * g_sim_dt_s) + entity->z_pos; 
 		entity->z_pos = w_clamp_min(entity->z_pos, 0);
 		entity->z_velocity = entity->z_acceleration * g_sim_dt_s + entity->z_velocity;
+		
+		// TODO: is OWNED FLAG needed after stack implementation?
+		if(is_set(entity->flags, ENTITY_FLAG_ITEM) && !is_set(entity->flags, ENTITY_FLAG_OWNED) && !is_set(entity->flags, ENTITY_FLAG_ITEM_SPAWNING)) {
+			float distance_from_player = w_euclid_dist(game_state->player->position, entity->position);
+			if(distance_from_player < 0.1 && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
+				set(entity->flags, ENTITY_FLAG_OWNED);
+				entity->owner_handle = get_entity_handle(game_state->player, &game_state->entity_data);
+				entity->velocity = {};
+				entity->acceleration = {};
+				add_item_to_hot_bar_next_free(entity, &game_state->hot_bar, &game_state->entity_data);
+			} else if(distance_from_player < ITEM_PICKUP_RANGE && can_hot_bar_take_item(entity, &game_state->hot_bar)) {
+				Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
+				Vec2 player_direction_norm = w_vec_norm(player_offset);	
+				float current_velocity_mag = w_vec_length(entity->velocity);
+				if(current_velocity_mag == 0) {
+					current_velocity_mag = 3;
+				}
+				entity->velocity = w_vec_mult(player_direction_norm, current_velocity_mag);
+				entity->acceleration = w_vec_mult(player_direction_norm, 15.0f);
+			}
+		}
 
 		if(is_set(entity->flags, ENTITY_FLAG_ITEM_SPAWNING) && entity->z_pos == 0) {
 			entity->z_velocity = 0;
@@ -934,11 +953,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			if(entity->distance_traveled > MAX_PROJECTILE_DISTANCE) {
 				set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION);
 			}
-		}
-
-		if(entity->type == ENTITY_TYPE_PLAYER) {
-			entity->facing_direction = w_vec_norm(player_world_input.aim_vec);
-			update_entity_movement_animation(entity);
 		}
 
 		Entity* owner = get_entity(entity->owner_handle, &game_state->entity_data);
@@ -1038,7 +1052,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					}
 				}
 
-				Vec2 owner_facing_direction = get_discrete_facing_direction_4_directions(owner->facing_direction, owner->velocity);
+				// TODO: maybe the facing_direction should be discrete to begin with?
+				Vec2 owner_facing_direction = get_discrete_facing_direction_4_directions(owner->facing_direction);
 				if(owner_facing_direction.y > 0) {
 					entity->z_index = owner->z_index - 0.1;
 				}
