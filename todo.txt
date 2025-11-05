@@ -143,10 +143,11 @@
 [x] Make animation based on AI state rather than velocity
 [x] Simplify animation logic by forcing all animations with a direction to face left
 [x] Add player health UI
-[] Fix player damage from warrior
+[x] Fix player damage from warrior
 	- hitbox collides on every frame
 	- Can maybe solve this by assigning the attack an id (entities can have an attack_id) and use the same collision rule hash
 	- Can decide on MAX_ATTACK_IDS which just have to be greater than the max entity id
+[] Pull entity code into entity.cpp
 [] Add player brain
 [] Add reset on death
 [] Add item consumption

@@ -20,6 +20,10 @@
 #define MAX_HP_PLAYER 10
 #define MAX_HP_WARRIOR 4
 
+#define ATTACK_ID_MAX_IDS 512
+#define ATTACK_ID_START (MAX_ENTITIES - 1)
+#define ATTACK_ID_LAST (ATTACK_ID_START + ATTACK_ID_MAX_IDS - 1)
+
 struct FontData {
     uint32 ascent;
     uint32 descent;
@@ -181,6 +185,7 @@ struct Entity {
 
 	uint32 hp;
 	float damage_taken_tint_cooldown_s;
+	uint32 attack_id;
 
 	// item spawning
 	float damage_since_spawn;
@@ -229,4 +234,5 @@ struct GameState {
 	Entity* player;
 	HotBar hot_bar;
 	EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
+	uint32 attack_id_next;
 };

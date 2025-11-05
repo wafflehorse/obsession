@@ -558,113 +558,14 @@ void play_entity_animation_with_direction(AnimationID animation_id, AnimationSta
 	play_entity_animation_with_direction(animation_id, anim_state, facing_direction, 0);
 }
 
-void update_brain(Entity* entity, Entity* player, double dt_s) {
-	Brain* brain = &entity->brain;
-	brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
-	float distance_to_player = w_euclid_dist(entity->position, player->position);
-	EntityAnimations animations = entity_animations[entity->type];
-	if(brain->type == BRAIN_TYPE_WARRIOR) {
-		if(distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK && brain->ai_state != AI_STATE_DEAD) {
-			brain->ai_state = AI_STATE_CHASE;	
-		}
-		switch(brain->ai_state) {
-			case AI_STATE_IDLE:
-				if(brain->cooldown_s <= 0) {
-					brain->target_position = random_point_near_position(entity->position, 5, 5);
-					brain->cooldown_s = 10;
-					brain->ai_state = AI_STATE_WANDER;
-				}	
-				entity->velocity = {0, 0};
-				play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
-				break;
-			case AI_STATE_WANDER: {
-				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
-					brain->ai_state = AI_STATE_IDLE;
-					brain->cooldown_s = w_random_between(1, 6);
-				}
+uint32 get_next_attack_id(uint32* attack_id_next) {
+	uint32 result = (*attack_id_next)++;
 
-				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-				entity->velocity = w_vec_mult(wander_direction, 1.0f);
-				entity->facing_direction = w_vec_norm(entity->velocity);
-				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
-				break;
-			}
-			case AI_STATE_CHASE:
-				if(distance_to_player >= 5) {
-					brain->ai_state = AI_STATE_IDLE;	
-					brain->cooldown_s = w_random_between(1, 6);
-				}
-				else if(distance_to_player < 0.5) {
-					brain->ai_state = AI_STATE_ATTACK;
-				}
-				else {
-					brain->target_position = player->position;
-					Vec2 chase_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-					entity->velocity = w_vec_mult(chase_direction, 5.0f);
-				}
-				entity->facing_direction = w_vec_norm(entity->velocity);
-				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
-				break;
-			case AI_STATE_ATTACK: {
-				entity->velocity = { 0, 0 };
-				if(player->position.x < entity->position.x) {
-					entity->facing_direction.x = -1;
-				}
-				else {
-					entity->facing_direction.x = 1;
-				}
-				play_entity_animation_with_direction(animations.attack, &entity->anim_state, entity->facing_direction);
-				if(w_animation_complete(&entity->anim_state, dt_s)) {
-					brain->ai_state = AI_STATE_CHASE;
-					brain->cooldown_s = w_random_between(1, 6);
-				}
-				break;
-			}
-			case AI_STATE_DEAD:
-				entity->velocity = { 0, 0 };
-				set(entity->flags, ENTITY_FLAG_NONSPACIAL);
-				set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
-				if(animations.death != ANIM_UNKNOWN) {
-					play_entity_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
-				}
-				break;
-		}
+	if(*attack_id_next > ATTACK_ID_LAST) {
+		*attack_id_next = ATTACK_ID_START;	
 	}
-	else if(brain->type == BRAIN_TYPE_BOAR) {
-		switch(brain->ai_state) {
-			case AI_STATE_IDLE:
-				if(brain->cooldown_s <= 0) {
-					brain->target_position = random_point_near_position(entity->position, 5, 5);
-					brain->cooldown_s = 10;
-					brain->ai_state = AI_STATE_WANDER;
-				}	
-				entity->velocity = {0, 0};
-				play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
-				break;
-			case AI_STATE_WANDER: {
-				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
-					brain->ai_state = AI_STATE_IDLE;
-					brain->cooldown_s = w_random_between(1, 6);
-				}
 
-				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-				entity->velocity = w_vec_mult(wander_direction, 1.0f);
-				entity->facing_direction = w_vec_norm(entity->velocity);
-				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
-				break;
-			}
-			case AI_STATE_DEAD:
-				entity->velocity = { 0, 0 };
-				set(entity->flags, ENTITY_FLAG_NONSPACIAL);
-				set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
-				if(animations.death != ANIM_UNKNOWN) {
-					play_entity_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
-				}
-				break;
-			default:
-				break;
-		}
-	}
+	return result;
 }
 
 // TODO: make this faster?
@@ -685,17 +586,21 @@ void remove_collision_rules(uint32 id, CollisionRule** hash, CollisionRule** fre
 	}
 }
 
-void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, GameState* game_state) {
-	CollisionRule** hash = game_state->collision_rule_hash;
-	CollisionRule** free_list = &game_state->collision_rule_free_list;
-
-	if(a_id	> b_id) {
-		uint32 temp = a_id;
-		a_id = b_id;
-		b_id = temp;
+uint32 sort_and_get_collision_hash_bucket(uint32* a_id, uint32* b_id) {
+	if(*a_id > *b_id) {
+		uint32 temp = *a_id;
+		*a_id = *b_id;
+		*b_id = temp;
 	}
 
-	uint32 hash_bucket = a_id & (MAX_COLLISION_RULES - 1);
+	uint32 hash_bucket = *a_id & (MAX_COLLISION_RULES - 1);
+	return hash_bucket;
+}
+
+CollisionRule* find_collision_rule(uint32 a_id, uint32 b_id, GameState* game_state) {
+	CollisionRule** hash = game_state->collision_rule_hash;
+
+	uint32 hash_bucket = sort_and_get_collision_hash_bucket(&a_id, &b_id);
 
 	CollisionRule* rule = 0;
 	CollisionRule* found = 0;
@@ -705,6 +610,16 @@ void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, GameState
 			break;
 		}	
 	}
+
+	return found;
+}
+
+void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, GameState* game_state) {
+	CollisionRule** hash = game_state->collision_rule_hash;
+	CollisionRule** free_list = &game_state->collision_rule_free_list;
+
+	CollisionRule* found = find_collision_rule(a_id, b_id, game_state);
+	uint32 hash_bucket = sort_and_get_collision_hash_bucket(&a_id, &b_id);
 
 	if(!found) {
 		found = *free_list;
@@ -818,6 +733,122 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
 	}
 }
 
+void update_brain(Entity* entity, GameState* game_state, double dt_s) {
+	Entity* player = game_state->player;
+	Brain* brain = &entity->brain;
+	brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
+	float distance_to_player = w_euclid_dist(entity->position, player->position);
+	EntityAnimations animations = entity_animations[entity->type];
+	if(brain->type == BRAIN_TYPE_WARRIOR) {
+		if(distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK && brain->ai_state != AI_STATE_DEAD) {
+			brain->ai_state = AI_STATE_CHASE;	
+		}
+		switch(brain->ai_state) {
+			case AI_STATE_IDLE:
+				if(brain->cooldown_s <= 0) {
+					brain->target_position = random_point_near_position(entity->position, 5, 5);
+					brain->cooldown_s = 10;
+					brain->ai_state = AI_STATE_WANDER;
+				}	
+				entity->velocity = {0, 0};
+				play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
+				break;
+			case AI_STATE_WANDER: {
+				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
+					brain->ai_state = AI_STATE_IDLE;
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+
+				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
+				entity->velocity = w_vec_mult(wander_direction, 1.0f);
+				entity->facing_direction = w_vec_norm(entity->velocity);
+				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
+				break;
+			}
+			case AI_STATE_CHASE:
+				if(distance_to_player >= 5) {
+					brain->ai_state = AI_STATE_IDLE;	
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+				else if(distance_to_player < 0.5) {
+					brain->ai_state = AI_STATE_ATTACK;
+				}
+				else {
+					brain->target_position = player->position;
+					Vec2 chase_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
+					entity->velocity = w_vec_mult(chase_direction, 5.0f);
+				}
+				entity->facing_direction = w_vec_norm(entity->velocity);
+				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
+				break;
+			case AI_STATE_ATTACK: {
+				entity->velocity = { 0, 0 };
+				if(player->position.x < entity->position.x) {
+					entity->facing_direction.x = -1;
+				}
+				else {
+					entity->facing_direction.x = 1;
+				}
+				play_entity_animation_with_direction(animations.attack, &entity->anim_state, entity->facing_direction);
+				if(entity->attack_id == 0) {
+					entity->attack_id = get_next_attack_id(&game_state->attack_id_next);
+				}
+				if(w_animation_complete(&entity->anim_state, dt_s)) {
+					entity->attack_id = 0;
+					remove_collision_rules(entity->attack_id, game_state->collision_rule_hash, &game_state->collision_rule_free_list);
+					brain->ai_state = AI_STATE_CHASE;
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+				break;
+			}
+			case AI_STATE_DEAD:
+				entity->velocity = { 0, 0 };
+				set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+				set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
+				if(animations.death != ANIM_UNKNOWN) {
+					play_entity_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
+				}
+				break;
+		}
+	}
+	else if(brain->type == BRAIN_TYPE_BOAR) {
+		switch(brain->ai_state) {
+			case AI_STATE_IDLE:
+				if(brain->cooldown_s <= 0) {
+					brain->target_position = random_point_near_position(entity->position, 5, 5);
+					brain->cooldown_s = 10;
+					brain->ai_state = AI_STATE_WANDER;
+				}	
+				entity->velocity = {0, 0};
+				play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
+				break;
+			case AI_STATE_WANDER: {
+				if(w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
+					brain->ai_state = AI_STATE_IDLE;
+					brain->cooldown_s = w_random_between(1, 6);
+				}
+
+				Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
+				entity->velocity = w_vec_mult(wander_direction, 1.0f);
+				entity->facing_direction = w_vec_norm(entity->velocity);
+				play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
+				break;
+			}
+			case AI_STATE_DEAD:
+				entity->velocity = { 0, 0 };
+				set(entity->flags, ENTITY_FLAG_NONSPACIAL);
+				set(entity->flags, ENTITY_FLAG_DELETE_AFTER_ANIMATION);
+				if(animations.death != ANIM_UNKNOWN) {
+					play_entity_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
+				}
+				break;
+			default:
+				break;
+		}
+	}
+}
+
+
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
 
 RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float rotation_rads, float z_index, uint32 opts) { 
@@ -857,7 +888,7 @@ SpriteID player_hp_to_ui_sprite[MAX_HP_PLAYER + 1] = {
 	[10] = SPRITE_PLAYER_HP_UI_0
 };
 
-void render_player_hp_ui(uint32 hp, Camera camera, RenderGroup* render_group) {
+void render_player_hp_ui(int hp, Camera camera, RenderGroup* render_group) {
 	SpriteID ui_sprite = player_hp_to_ui_sprite[hp];
 	Sprite sprite = sprite_table[ui_sprite];
 
@@ -868,6 +899,8 @@ void render_player_hp_ui(uint32 hp, Camera camera, RenderGroup* render_group) {
 
 	Vec2 ui_position = {
 		camera_top_left.x + (pixels_to_units(sprite.w) / 2) + 0.5f,
+		camera_top_left.y - (pixels_to_units(sprite.h) / 2) - 0.5f
+	};
 
 	render_sprite(ui_position, ui_sprite, render_group, DEFAULT_Z_INDEX);
 }
@@ -1225,6 +1258,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		EntityHandle player_handle = create_player_entity(&game_state->entity_data, (Vec2){ 0, 0 });
 		game_state->player = get_entity(player_handle, &game_state->entity_data);
+
 		create_warrior_entity(&game_state->entity_data, (Vec2){ 7, -5 });
 		create_boar_entity(&game_state->entity_data, (Vec2){ -7, 5 });
 		create_boar_meat_entity(&game_state->entity_data, (Vec2){ 5, 5 });
@@ -1299,7 +1333,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
-		update_brain(entity, game_state->player, g_sim_dt_s);
+		update_brain(entity, game_state, g_sim_dt_s);
 		if(entity->type == ENTITY_TYPE_PLAYER) {
 			update_player_world_input(game_input, game_state, &player_world_input, game_memory->window.size);
 			float acceleration_mag = 30;
@@ -1533,7 +1567,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			}
 		}
 
-		if(is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->hp <= 0) {
+		if(is_set(entity->flags, ENTITY_FLAG_KILLABLE) && entity->hp <= 0 && entity->type != ENTITY_TYPE_PLAYER) {
 			if(entity->brain.type != BRAIN_TYPE_NONE) {
 				entity->brain.ai_state = AI_STATE_DEAD;
 			}
@@ -1575,17 +1609,21 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 					&& !is_set(target_entity->flags, ENTITY_FLAG_NONSPACIAL)
 					&& is_set(target_entity->flags, ENTITY_FLAG_KILLABLE)) {
 
-					Vec2 target_collider_position = w_vec_add(target_entity->position, target_entity->collider.offset);
+					CollisionRule* collision_rule = find_collision_rule(entity->attack_id, target_entity->id, game_state);
+					if(!collision_rule || collision_rule->should_collide) {
+						Vec2 target_collider_position = w_vec_add(target_entity->position, target_entity->collider.offset);
 
-					Rect target = {
-						target_collider_position.x,
-						target_collider_position.y,
-						target_entity->collider.width,
-						target_entity->collider.height
-					};
+						Rect target = {
+							target_collider_position.x,
+							target_collider_position.y,
+							target_entity->collider.width,
+							target_entity->collider.height
+						};
 
-					if(w_check_aabb_overlap(subject_hitbox, target)) {
-						deal_damage(target_entity, 1, game_state);	
+						if(w_check_aabb_overlap(subject_hitbox, target)) {
+							deal_damage(target_entity, 1, game_state);	
+							add_collision_rule(entity->attack_id, target_entity->id, false, game_state);
+						}
 					}
 				}
 			}		
@@ -1620,6 +1658,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	for(int i = 0; i < game_state->entity_data.entity_count; i++) {
 		Entity* entity = &game_state->entity_data.entities[i];
 		if(is_set(entity->flags, ENTITY_FLAG_MARK_FOR_DELETION)) {
+			ASSERT(entity->type != ENTITY_TYPE_PLAYER, "Player entity should never be freed");
 			remove_collision_rules(entity->id, game_state->collision_rule_hash, &game_state->collision_rule_free_list);
 			free_entity(entity->id, &game_state->entity_data);
 			// Ensures we process the element that was inserted to replace the freed entity
