@@ -1,3 +1,5 @@
+#pragma once
+
 #define MAX_SOUND_VARIATIONS 10
 #define MAX_ENTITIES 1000
 #define MAX_COLLISION_RULES 512
