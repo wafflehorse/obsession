@@ -18,8 +18,8 @@ uint32 g_pixels_per_unit;
 double g_sim_dt_s;
 RenderGroup* g_debug_render_group;
 
-#define WORLD_TILE_WIDTH 8
-#define WORLD_TILE_HEIGHT 8 
+#define WORLD_TILE_WIDTH 128 
+#define WORLD_TILE_HEIGHT 128
 
 #define DEFAULT_Z_INDEX 1.0f
 
@@ -356,9 +356,11 @@ void add_collision_rule(uint32 a_id, uint32 b_id, bool should_collide, GameState
 
 // TODO: Do we need to make sure that entities marked for deletion don't collide?
 bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
+	float distance_between = w_euclid_dist(entity_a->position, entity_b->position);
 	if(entity_a->id == entity_b->id 
 		|| is_set(entity_a->flags, ENTITY_FLAG_NONSPACIAL)
-		|| is_set(entity_b->flags, ENTITY_FLAG_NONSPACIAL)) {
+		|| is_set(entity_b->flags, ENTITY_FLAG_NONSPACIAL)
+		|| distance_between > 10) {
 		return false;
 	}
 
@@ -656,6 +658,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	w_init_waffle_lib(g_base_path);
 	w_init_animation(animation_table);
+	w_perlin_init();
 
 	RenderGroup background_render_group = {};
 	background_render_group.id = RENDER_GROUP_ID_BACKGROUND;
@@ -668,17 +671,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	RenderGroup debug_render_group = {};
 	debug_render_group.id = RENDER_GROUP_ID_DEBUG;
 #endif
-
-	uint32 tilemap[WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT] = {
-		0, 0, 0, 0, 0, 0, 2, 0,
-		0, 1, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 3,
-		0, 0, 0, 2, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 2, 0,
-		0, 0, 0, 0, 0, 0, 0, 0,
-		0, 3, 0, 0, 0, 0, 0, 0,
-	};
 
 	Vec2 world_top_left_tile_position = {
 		-WORLD_TILE_WIDTH / 2 + 0.5,
@@ -729,7 +721,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
 			.spawned_entity_type = ENTITY_TYPE_IRON,
-			.damage_required_to_spawn = 200.0f,
+			.damage_required_to_spawn = 3.0f,
 			.spawn_chance = 0.5f
 		};
 		game_state->entity_item_spawn_info[ENTITY_TYPE_BOAR] = {
@@ -754,15 +746,18 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				world_top_left_tile_position.x + col,
 				world_top_left_tile_position.y - row
 			};
-			switch(tilemap[i]) {
-				case 1: {
-					create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
-					break;
-				}
-				case 3: {
-					create_ore_deposit_entity(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
-					break;
-				}
+
+			float scale = 0.9f;
+			float offset = 10000;
+			float noise_val = w_perlin(position.x * scale + offset, position.y * scale + offset);
+			if(noise_val >= 0.8f) {
+
+			}
+			else if(noise_val > 0.795f) {
+				create_ore_deposit_entity(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
+			}
+			else if(noise_val > 0.79f) {
+				create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
 			}
 		}
 	}
@@ -770,15 +765,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
 	game_state->frame_arena.next = game_state->frame_arena.data;
 
-	background_render_group.size = 5000;
+	background_render_group.size = WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT;
 	background_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, background_render_group.size * sizeof(RenderQuad));
-	main_render_group.size = 5000;
+	main_render_group.size = MAX_ENTITIES * 2;
 	main_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, main_render_group.size * sizeof(RenderQuad));
 	render_group_ui.size = 250;
 	render_group_ui.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, render_group_ui.size * sizeof(RenderQuad));
 
 #ifdef DEBUG
-	debug_render_group.size = 500;
+	debug_render_group.size = MAX_ENTITIES * 2;
 	debug_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, debug_render_group.size * sizeof(RenderQuad));
 	g_debug_render_group = &debug_render_group;
 #endif
@@ -787,28 +782,13 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	{
 		RenderQuad* ground = get_next_quad(&background_render_group);
 		ground->world_position = { 0, 0 };
-		ground->world_size = { 64, 64 };
+		ground->world_size = { WORLD_TILE_WIDTH, WORLD_TILE_HEIGHT };
 		Sprite ground_sprite = sprite_table[SPRITE_GROUND_1];
 		ground->sprite_position = { ground_sprite.x, ground_sprite.y };
 		ground->sprite_size = { ground_sprite.w, ground_sprite.h };
 	}
 
 	// ~~~~~~~~~~~~~~~~~~ Render tilemap ~~~~~~~~~~~~~~~~~~~~~~ //
-
-	for(int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
-		uint32 col = i % WORLD_TILE_WIDTH;
-		uint32 row = i / WORLD_TILE_HEIGHT;
-		Vec2 position = {
-			world_top_left_tile_position.x + col,
-			world_top_left_tile_position.y - row
-		};
-		switch(tilemap[i]) {
-			case 2: {
-				render_sprite(position, SPRITE_PLANT_1, &background_render_group, DEFAULT_Z_INDEX);
-				break;
-			}
-		}
-	}
 
 	PlayerWorldInput player_world_input = {};
 

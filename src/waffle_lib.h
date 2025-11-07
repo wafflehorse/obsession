@@ -437,6 +437,10 @@ bool w_rect_has_area(Rect rect) {
 	return (rect.w > 0 && rect.h > 0);
 }
 
+float w_lerp(float a, float b, float t) {
+	return a + (t * (b - a));
+} 
+
 Vec2 w_calc_position(Vec2 acceleration, Vec2 velocity, Vec2 position, double dt_s) {
     return w_vec_add(w_vec_add(w_vec_mult(acceleration, 0.5f * w_square(dt_s)), w_vec_mult(velocity, dt_s)), position);
 }
@@ -717,5 +721,102 @@ void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flag
 void w_play_animation(AnimationID animation_id, AnimationState* anim_state) {
 	w_play_animation(animation_id, anim_state, 0);
 }
+
+// ~~~~~~~~~~~~~~~~~~~~ Perlin Noise ~~~~~~~~~~~~~~~~~~~~~~ //
+
+// NOTE: the classic perlin noise algorithm assumes that (0, 0) is in the bottom left
+
+#define PERLIN_NOISE_PERIOD 256
+#define PERLIN_NOISE_HASH_SIZE (PERLIN_NOISE_PERIOD * 2)
+
+uint32 perlin_perms[PERLIN_NOISE_PERIOD] = { 151,160,137,91,90,15,
+    131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+    190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+    88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
+    77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+    102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
+    135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
+    5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+    223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
+    129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
+    251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
+    49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
+    138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+};
+
+uint32 perlin_hash[PERLIN_NOISE_HASH_SIZE];
+
+void w_perlin_init() {
+	for(int i = 0; i < PERLIN_NOISE_HASH_SIZE; i++) {
+		perlin_hash[i] = perlin_perms[i % PERLIN_NOISE_PERIOD];
+	}
+}
+
+float perlin_fade(float t) {
+	return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+// This function determines the dot product by using the hash to define the
+// gradient vector and x and y to describe the location vector
+float grad(uint32 hash, float x, float y) {
+	float result;
+	switch(hash & 0x7) {
+		case 0x0:
+			result = (x + y) * 0.70710678f;
+			break;
+		case 0x1:
+			result = (-x + y) * 0.70710678f;
+			break;
+		case 0x2:
+			result = (x - y) * 0.70710678f;
+			break;
+		case 0x3:
+			result = (-x - y) * 0.70710678f;
+			break;
+		case 0x4:
+			result = x;
+			break;
+		case 0x5:
+			result = -x;
+			break;
+		case 0x6:
+			result = y;
+			break;
+		case 0x7:
+			result = -y;
+			break;
+		default:
+			result = 0;
+			break;
+	}
+
+	return result;
+}
+
+float w_perlin(float x, float y) {
+	ASSERT(x >= 0 && y >= 0, "coordinates passed to w_perlin must be positive");
+	int xi = (int)x & (PERLIN_NOISE_PERIOD - 1);	
+	int yi = (int)y & (PERLIN_NOISE_PERIOD - 1);	
+	float xf = x - (int)x;
+	float yf = y - (int)y;
+
+	float u = perlin_fade(xf);
+	float v = perlin_fade(yf);
+
+	uint32 aa = perlin_hash[perlin_hash[xi] + yi];
+	uint32 ab = perlin_hash[perlin_hash[xi] + yi + 1];
+	uint32 ba = perlin_hash[perlin_hash[xi + 1] + yi];
+	uint32 bb = perlin_hash[perlin_hash[xi + 1] + yi + 1];
+
+	float w1 = w_lerp(grad(aa, xf, yf), grad(ab, xf, yf - 1), u);
+	float w2 = w_lerp(grad(ba, xf - 1, yf), grad(bb, xf - 1, yf - 1), u);
+
+	float result = w_lerp(w1, w2, v);
+	return (result + 1.0f) * 0.5f;
+}
+
+
+
+
 
 #endif

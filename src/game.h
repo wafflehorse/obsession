@@ -1,7 +1,7 @@
 #pragma once
 
 #define MAX_SOUND_VARIATIONS 10
-#define MAX_ENTITIES 1000
+#define MAX_ENTITIES 10000
 #define MAX_COLLISION_RULES 512
 
 #define GAME_STATE_F_INITIALIZED (1 << 0)

@@ -151,11 +151,14 @@
 [x] Make player animations based on intention rather than velocity
 [x] Add player death animation
 [x] Add reset on death
-[] Add item consumption
+[x] Add perlin noise function
+[x] Randomly spawn blocks and iron around map
 [] Randomly spawn enemies around the map
+[] Add item consumption
 [] Add mech entity
 [] Add mech AI
 	- How should the player control the mech?
+[] Add warrior aggro when shot
 [] Add workbench
 
 [] Add centering to container elements (centering children)
