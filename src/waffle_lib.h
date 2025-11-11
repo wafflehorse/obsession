@@ -815,6 +815,37 @@ float w_perlin(float x, float y) {
 	return (result + 1.0f) * 0.5f;
 }
 
+// ~~~~~~~~~~~~~~ Fractal Brownian Motion ~~~~~~~~~~~~~~~~~ //
+// Ref: https://thebookofshaders.com/13/
+
+struct FBMParams {
+	uint32 octaves;
+	float lacunarity; // Kind of affects how noisey or gappy the noise is
+	float gain;
+	float amp;
+	float freq;
+};
+
+float w_fbm(float x, float y, FBMParams params) {
+	uint32 octaves = params.octaves;
+	float amp = params.amp;
+	float freq = params.freq;
+	float lacunarity = params.lacunarity;
+	float gain = params.gain;
+	float max_amp = 0.0f;
+
+	float result = 0;
+	for(int i = 0; i < octaves; i++) {
+		result += amp * w_perlin(x * freq, y * freq);	
+		max_amp += amp;
+
+		freq *= lacunarity;
+		amp *= gain;
+	}
+
+	return result / max_amp;
+}
+
 
 
 

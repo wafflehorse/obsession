@@ -153,6 +153,7 @@
 [x] Add reset on death
 [x] Add perlin noise function
 [x] Randomly spawn blocks and iron around map
+[x] Replace plain perlin with fbm
 [] Randomly spawn enemies around the map
 [] Add item consumption
 [] Add mech entity

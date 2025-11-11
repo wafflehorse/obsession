@@ -747,16 +747,21 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 				world_top_left_tile_position.y - row
 			};
 
-			float scale = 0.9f;
-			float offset = 10000;
-			float noise_val = w_perlin(position.x * scale + offset, position.y * scale + offset);
-			if(noise_val >= 0.8f) {
+			FBMParams fbm_params = {
+				.amp = 1.0f,
+				.octaves = 4,
+				.freq = 0.06f,
+				.lacunarity = 2.0f,
+				.gain = 0.45f
+			};
 
-			}
-			else if(noise_val > 0.795f) {
+			float offset = 10000;
+			float noise_val = w_fbm(position.x + offset, position.y + offset, fbm_params);
+			noise_val = powf(noise_val, 3);
+			if(noise_val > 0.85f) {
 				create_ore_deposit_entity(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
 			}
-			else if(noise_val > 0.79f) {
+			else if(noise_val < 0.61f && noise_val > 0.6f) {
 				create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
 			}
 		}
