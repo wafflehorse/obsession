@@ -40,8 +40,11 @@ typedef PUSH_RENDER_GROUP(PushRenderGroup);
 #define LOAD_TEXTURE(name) int name(uint32 texture_id, const char* file_path)
 typedef LOAD_TEXTURE(LoadTexture);
 
-#define INITIALIZE_RENDERER(name) int name(Vec2 viewport, Vec2 screen_size, Vec2 camera_size, Arena* arena)
+#define INITIALIZE_RENDERER(name) int name(Vec2 viewport, Vec2 screen_size, Vec2 camera_size, float camera_zoom, Arena* arena)
 typedef INITIALIZE_RENDERER(InitializeRenderer);
 
 #define SET_VIEWPORT(name) void name(Vec2 viewport, Vec2 screen_size)
 typedef SET_VIEWPORT(SetViewport);
+
+#define SET_PROJECTION(name) void name(float camera_width, float camera_height, float camera_zoom)
+typedef SET_PROJECTION(SetProjection);

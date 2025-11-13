@@ -90,11 +90,13 @@ unsigned int create_and_link_gl_program(unsigned int vertex_shader, unsigned int
     return shader_program;
 }
 
-void set_projection_matrix(float width, float height) {
+SET_PROJECTION(set_projection) {
+	float adjusted_camera_width = camera_width / camera_zoom;
+	float adjusted_camera_height = camera_height / camera_zoom;
     // This matrix translates from world coordinates to uv coords from -1 to 1
     float projection_matrix[] = {
-        2.0f / width, 0.0f, 0.0f, 0.0f,          // row 1
-        0.0f, (2.0f / height), 0.0f, 0.0f, // row 2
+        2.0f / adjusted_camera_width, 0.0f, 0.0f, 0.0f,          // row 1
+        0.0f, 2.0f / adjusted_camera_height, 0.0f, 0.0f, // row 2
         0.0f, 0.0f, 1.0f, 0.0f,                          // row 3
         0.0f, 0.0f, 0.0f, 1.0f                          // row 4
     };
@@ -148,7 +150,7 @@ INITIALIZE_RENDERER(initialize_renderer) {
     glUniform1iv(glGetUniformLocation(shader_program, "texture_units"), MAX_LOADED_TEXTURES, texture_units);
 
     // Maps from our world space to opengl clip space (NDC)
-    set_projection_matrix(camera_size.x, camera_size.y);
+    set_projection(camera_size.x, camera_size.y, camera_zoom);
 
     glGenVertexArrays(1, &render_data.quad_vao_id);
     glGenBuffers(1, &render_data.quad_local_vbo_id);

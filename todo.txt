@@ -159,8 +159,8 @@
 [x] Integrate Imgui with debug build
 [x] Create editor tooling for proc gen
 [x] Generate compile_commands.json for better lsp support
-[] Fix player input update when mouse or keyboard focuses imgui panel
-[] Add debug ability to zoom out the camera for better viewing of proc gen results
+[x] Fix player input update when mouse or keyboard focuses imgui panel
+[x] Add debug ability to zoom out the camera for better viewing of proc gen results
 [] Randomly spawn enemies around the map
 [] Add item consumption
 [] Add mech entity

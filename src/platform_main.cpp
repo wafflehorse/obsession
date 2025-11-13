@@ -326,6 +326,10 @@ void handle_sdl_keyboard_mouse_event(SDL_Event* event, GameInput* game_input) {
             key_input_states[KEY_MINUS].is_held = is_down;
             key_input_states[KEY_MINUS].is_pressed = is_down;
             break;
+        case SDLK_EQUALS:
+            key_input_states[KEY_EQUALS].is_held = is_down;
+            key_input_states[KEY_EQUALS].is_pressed = is_down;
+            break;
         case SDLK_PERIOD:
             key_input_states[KEY_PERIOD].is_held = is_down;
             key_input_states[KEY_PERIOD].is_pressed = is_down;
@@ -532,6 +536,7 @@ int main(int argc, char* argv[]) {
     memset(game_memory.memory, 0, game_memory.size);
     game_memory.initialize_renderer = initialize_renderer;
     game_memory.set_viewport = set_viewport;
+	game_memory.set_projection = set_projection;
     game_memory.load_texture = load_texture;
     game_memory.push_render_group = push_render_group;
     game_memory.get_performance_counter = get_performance_counter;

@@ -78,6 +78,7 @@ struct CameraShake {
 struct Camera {
 	Vec2 position;
 	Vec2 size;
+	float zoom;
 	CameraShake shake;
 };
 

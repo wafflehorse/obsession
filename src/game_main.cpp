@@ -242,8 +242,22 @@ void update_tools_input(GameInput* game_input, GameState* game_state) {
 #ifdef DEBUG
 	KeyInputState* key_input_states = game_input->key_input_states;
 
-	if ((key_input_states[KEY_L_CTRL].is_held || key_input_states[KEY_R_CTRL].is_held) && key_input_states[KEY_E].is_pressed) {
-		game_state->is_tools_panel_open = !game_state->is_tools_panel_open;
+	if(key_input_states[KEY_L_CTRL].is_held || key_input_states[KEY_R_CTRL].is_held) {
+		if(key_input_states[KEY_E].is_pressed) {
+			game_state->is_tools_panel_open = !game_state->is_tools_panel_open;
+		}
+
+		if(key_input_states[KEY_MINUS].is_pressed) {
+			game_state->camera.zoom = w_max(game_state->camera.zoom * 0.90f, 0.1f);
+		}
+
+		if(key_input_states[KEY_EQUALS].is_pressed) {
+			game_state->camera.zoom = w_min(game_state->camera.zoom * 1.10f, 1.0f);
+		}
+
+		if(key_input_states[KEY_0].is_pressed) {
+			game_state->camera.zoom = 1.0f;
+		}
 	}
 #endif
 }
@@ -822,8 +836,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			BASE_RESOLUTION_WIDTH / BASE_PIXELS_PER_UNIT,
 			BASE_RESOLUTION_HEIGHT / BASE_PIXELS_PER_UNIT
 		};
+		game_state->camera.zoom = 1;
 
-		game_memory->initialize_renderer(game_memory->window.size_px, viewport, game_state->camera.size, &game_state->main_arena);
+		game_memory->initialize_renderer(game_memory->window.size_px, viewport, game_state->camera.size, game_state->camera.zoom, &game_state->main_arena);
 		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png");
 		game_memory->load_texture(TEXTURE_ID_SPRITE, "resources/assets/sprite_atlas.png");
 
@@ -873,9 +888,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		*ore_fbm_context = {
 			.amp = 1.0f,
 			.octaves = 4,
-			.freq = 0.06f,
+			.freq = 0.05f,
 			.lacunarity = 2.0f,
-			.gain = 0.45f
+			.gain = 0.55f
 		};
 
 		w_perlin_seed(&ore_fbm_context->perlin_context, 12756671);
@@ -890,6 +905,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	update_tools_input(game_input, game_state);
 #endif
 
+	game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
 	init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
 	game_state->frame_arena.next = game_state->frame_arena.data;
 

@@ -63,6 +63,7 @@ struct GameMemory {
 
     InitializeRenderer* initialize_renderer;
 	SetViewport* set_viewport;
+	SetProjection* set_projection;
 	LoadTexture* load_texture;
     PushRenderGroup* push_render_group;
     InitAudio* init_audio;
@@ -137,6 +138,7 @@ enum KeyInput
     KEY_APOSTROPHE,
     KEY_COMMA,
     KEY_MINUS,
+	KEY_EQUALS,
     KEY_PERIOD,
     KEY_BACKSLASH,
     KEY_SLASH,
