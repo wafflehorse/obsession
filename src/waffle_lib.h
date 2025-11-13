@@ -827,11 +827,10 @@ float grad(uint32 hash, float x, float y) {
 }
 
 float w_perlin(float x, float y, PerlinContext* context) {
-	ASSERT(x >= 0 && y >= 0, "coordinates passed to w_perlin must be positive");
-	int xi = (int)x & (PERLIN_NOISE_PERIOD - 1);	
-	int yi = (int)y & (PERLIN_NOISE_PERIOD - 1);	
-	float xf = x - (int)x;
-	float yf = y - (int)y;
+	int xi = (int)floorf(x) & (PERLIN_NOISE_PERIOD - 1);	
+	int yi = (int)floorf(y) & (PERLIN_NOISE_PERIOD - 1);	
+	float xf = x - (int)floorf(x);
+	float yf = y - (int)floorf(y);
 
 	float u = perlin_fade(xf);
 	float v = perlin_fade(yf);
@@ -847,7 +846,8 @@ float w_perlin(float x, float y, PerlinContext* context) {
 	float w2 = w_lerp(grad(ba, xf - 1, yf), grad(bb, xf - 1, yf - 1), u);
 
 	float result = w_lerp(w1, w2, v);
-	return (result + 1.0f) * 0.5f;
+	return result;
+	// return (result + 1.0f) * 0.5f;
 }
 
 // ~~~~~~~~~~~~~~ Fractal Brownian Motion ~~~~~~~~~~~~~~~~~ //
@@ -881,9 +881,4 @@ float w_fbm(float x, float y, FBMContext* params) {
 
 	return result / max_amp;
 }
-
-
-
-
-
 #endif

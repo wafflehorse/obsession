@@ -726,10 +726,9 @@ void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
 			world_top_left_tile_position.y - row
 		};
 
-		float offset = 10000;
+		float offset = 3891502.14;
 		float noise_val = w_fbm(position.x + offset, position.y + offset, fbm_context);
-		noise_val = powf(noise_val, 3);
-		if (noise_val > 0.85f) {
+		if (noise_val > 0.62f) {
 			create_ore_deposit_entity(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
 		}
 		// else if (noise_val < 0.61f && noise_val > 0.6f) {
@@ -888,9 +887,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		*ore_fbm_context = {
 			.amp = 1.0f,
 			.octaves = 4,
-			.freq = 0.05f,
+			.freq = 0.02f,
 			.lacunarity = 2.0f,
-			.gain = 0.55f
+			.gain = 0.85f
 		};
 
 		w_perlin_seed(&ore_fbm_context->perlin_context, 12756671);
