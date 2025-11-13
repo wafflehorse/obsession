@@ -15,6 +15,8 @@
 
 #ifdef DEBUG
 #include "imgui.h"
+
+ImGuiIO* g_debug_imgui_io;
 #endif
 
 char* g_base_path;
@@ -247,6 +249,11 @@ void update_tools_input(GameInput* game_input, GameState* game_state) {
 }
 
 void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input, Vec2 screen_size) {
+#ifdef DEBUG
+	if (g_debug_imgui_io->WantCaptureMouse || g_debug_imgui_io->WantCaptureKeyboard) {
+		return;
+	}
+#endif
 	if (game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
 		KeyInputState* key_input_states = game_input->key_input_states;
 		Vec2 movement_vec = {};
@@ -878,6 +885,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 #ifdef DEBUG
 	ImGui::SetCurrentContext(game_memory->imgui_context);
+	g_debug_imgui_io = &ImGui::GetIO();
+	g_debug_imgui_io->IniFilename = NULL;
 	update_tools_input(game_input, game_state);
 #endif
 

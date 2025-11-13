@@ -647,12 +647,6 @@ int main(int argc, char* argv[]) {
             case SDL_EVENT_MOUSE_BUTTON_UP:
             case SDL_EVENT_KEY_DOWN:
             case SDL_EVENT_KEY_UP:
-// TODO: this needs to be moved into game
-// #ifdef DEBUG
-// 	if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
-// 		continue;
-// 	}
-// #endif
                 handle_sdl_keyboard_mouse_event(&event, &game_input);
                 break;
             case SDL_EVENT_GAMEPAD_ADDED:
@@ -682,7 +676,7 @@ int main(int argc, char* argv[]) {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL3_NewFrame();
 		ImGui::NewFrame();
-		ImGui::ShowDemoWindow();
+		// ImGui::ShowDemoWindow();
 #endif
 
         game.game_update_and_render(&game_memory, &game_input, frame_dt_s);
