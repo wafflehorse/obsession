@@ -721,6 +721,33 @@ void w_play_animation(AnimationID animation_id, AnimationState* anim_state, flag
 void w_play_animation(AnimationID animation_id, AnimationState* anim_state) {
 	w_play_animation(animation_id, anim_state, 0);
 }
+// ~~~~~~~~~~~~~~~~~~~~ XorShift Rand ~~~~~~~~~~~~~~~~~~~~~ //
+
+struct XorShift32Context {
+	uint32 last_number;
+};
+
+void w_xor_shift_seed(XorShift32Context* context, uint32 seed) {
+	if(seed == 0) {
+		seed = 2463534242;
+	}
+
+	context->last_number = seed;
+}
+
+uint32 w_xor_shift_next_u32(XorShift32Context* context) {
+	uint32 x = context->last_number;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	context->last_number = x;
+	return x;
+}
+
+float w_xor_shift_next_f32(XorShift32Context* context) {
+	return (float)(w_xor_shift_next_u32(context)) / (float)UINT32_MAX;
+}
+
 
 // ~~~~~~~~~~~~~~~~~~~~ Perlin Noise ~~~~~~~~~~~~~~~~~~~~~~ //
 
@@ -729,27 +756,33 @@ void w_play_animation(AnimationID animation_id, AnimationState* anim_state) {
 #define PERLIN_NOISE_PERIOD 256
 #define PERLIN_NOISE_HASH_SIZE (PERLIN_NOISE_PERIOD * 2)
 
-uint32 perlin_perms[PERLIN_NOISE_PERIOD] = { 151,160,137,91,90,15,
-    131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-    190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
-    88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
-    77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
-    102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
-    135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
-    5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
-    223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
-    129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
-    251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
-    49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
-    138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+struct PerlinContext {
+	uint32 hash[PERLIN_NOISE_HASH_SIZE];
+	uint32 seed;
 };
 
 uint32 perlin_hash[PERLIN_NOISE_HASH_SIZE];
 
-void w_perlin_init() {
-	for(int i = 0; i < PERLIN_NOISE_HASH_SIZE; i++) {
-		perlin_hash[i] = perlin_perms[i % PERLIN_NOISE_PERIOD];
+void w_perlin_seed(PerlinContext* context, uint32 seed) {
+
+	XorShift32Context rng;
+	w_xor_shift_seed(&rng, seed);
+
+	for(int i = 0; i < PERLIN_NOISE_PERIOD; i++) {
+		context->hash[i] = i;
 	}
+
+	for(int i = PERLIN_NOISE_PERIOD - 1; i > 0; i--) {
+		uint32 j = w_xor_shift_next_u32(&rng) % (i + 1);
+		uint32 tmp = context->hash[i];
+		context->hash[i] = context->hash[j];
+		context->hash[j] = tmp;
+	}
+
+	for(int i = 0; i < PERLIN_NOISE_PERIOD; i++) {
+		context->hash[i + PERLIN_NOISE_PERIOD] = context->hash[i];
+	}
+	context->seed = seed;
 }
 
 float perlin_fade(float t) {
@@ -793,7 +826,7 @@ float grad(uint32 hash, float x, float y) {
 	return result;
 }
 
-float w_perlin(float x, float y) {
+float w_perlin(float x, float y, PerlinContext* context) {
 	ASSERT(x >= 0 && y >= 0, "coordinates passed to w_perlin must be positive");
 	int xi = (int)x & (PERLIN_NOISE_PERIOD - 1);	
 	int yi = (int)y & (PERLIN_NOISE_PERIOD - 1);	
@@ -802,6 +835,8 @@ float w_perlin(float x, float y) {
 
 	float u = perlin_fade(xf);
 	float v = perlin_fade(yf);
+
+	uint32* perlin_hash = context->hash;
 
 	uint32 aa = perlin_hash[perlin_hash[xi] + yi];
 	uint32 ab = perlin_hash[perlin_hash[xi] + yi + 1];
@@ -818,25 +853,26 @@ float w_perlin(float x, float y) {
 // ~~~~~~~~~~~~~~ Fractal Brownian Motion ~~~~~~~~~~~~~~~~~ //
 // Ref: https://thebookofshaders.com/13/
 
-struct FBMParams {
+struct FBMContext {
 	uint32 octaves;
 	float lacunarity; // Kind of affects how noisey or gappy the noise is
 	float gain;
 	float amp;
 	float freq;
+	PerlinContext perlin_context;
 };
 
-float w_fbm(float x, float y, FBMParams params) {
-	uint32 octaves = params.octaves;
-	float amp = params.amp;
-	float freq = params.freq;
-	float lacunarity = params.lacunarity;
-	float gain = params.gain;
+float w_fbm(float x, float y, FBMContext* params) {
+	uint32 octaves = params->octaves;
+	float amp = params->amp;
+	float freq = params->freq;
+	float lacunarity = params->lacunarity;
+	float gain = params->gain;
 	float max_amp = 0.0f;
 
 	float result = 0;
 	for(int i = 0; i < octaves; i++) {
-		result += amp * w_perlin(x * freq, y * freq);	
+		result += amp * w_perlin(x * freq, y * freq, &params->perlin_context);	
 		max_amp += amp;
 
 		freq *= lacunarity;

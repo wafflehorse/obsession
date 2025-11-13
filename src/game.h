@@ -221,6 +221,10 @@ struct EntityItemSpawnInfo {
 	float spawn_chance;
 };
 
+struct WorldGenContext {
+	FBMContext ore_fbm_context;	
+};
+
 struct GameState {
 	flags flags;
 	Camera camera;
@@ -237,4 +241,7 @@ struct GameState {
 	HotBar hot_bar;
 	EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
 	uint32 attack_id_next;
+	WorldGenContext world_gen_context;
+
+	bool is_tools_panel_open;
 };

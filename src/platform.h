@@ -4,6 +4,10 @@
 #include "renderer.h"
 #include "audio.h"
 
+#ifdef DEBUG
+#include "imgui.h"
+#endif
+
 enum ProfileTimerID {
 	ProfileTimerID_GameStateInitialization,
 	ProfileTimerIDCount
@@ -66,6 +70,10 @@ struct GameMemory {
     GetPerformanceCounter* get_performance_counter;
     StartTextInput* start_text_input;
     StopTextInput* stop_text_input;
+
+// Debug
+	
+	ImGuiContext* imgui_context;
 	DebugInfo debug_info;
 };
 
@@ -123,6 +131,7 @@ enum KeyInput
     KEY_RETURN,
     KEY_ESCAPE,
     KEY_BACKSPACE,
+	KEY_CAPSLOCK,
     KEY_TAB,
     KEY_SPACE,
     KEY_APOSTROPHE,

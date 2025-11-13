@@ -25,6 +25,14 @@
 #include "sdl_audio.cpp"
 #include "opengl_renderer.cpp"
 
+#ifdef DEBUG
+
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_opengl3.h"
+
+#endif
+
 static char base_path[W_PATH_MAX];
 
 #define MAX_FRAME_RATE 120.0f
@@ -293,6 +301,10 @@ void handle_sdl_keyboard_mouse_event(SDL_Event* event, GameInput* game_input) {
         case SDLK_BACKSPACE:
             key_input_states[KEY_BACKSPACE].is_held = is_down;
             key_input_states[KEY_BACKSPACE].is_pressed = is_down;
+            break;
+        case SDLK_CAPSLOCK:
+            key_input_states[KEY_CAPSLOCK].is_held = is_down;
+            key_input_states[KEY_CAPSLOCK].is_pressed = is_down;
             break;
         case SDLK_TAB:
             key_input_states[KEY_TAB].is_held = is_down;
@@ -574,6 +586,18 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+#ifdef DEBUG
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	
+	ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
+	ImGui_ImplOpenGL3_Init();
+	game_memory.imgui_context = ImGui::GetCurrentContext();
+#endif
+
     game = load_game_code();
 
     SDL_Gamepad* gamepad;
@@ -602,6 +626,9 @@ int main(int argc, char* argv[]) {
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+#ifdef DEBUG
+			ImGui_ImplSDL3_ProcessEvent(&event);
+#endif
             switch (event.type) {
             case SDL_EVENT_QUIT:
                 running = false;
@@ -620,6 +647,12 @@ int main(int argc, char* argv[]) {
             case SDL_EVENT_MOUSE_BUTTON_UP:
             case SDL_EVENT_KEY_DOWN:
             case SDL_EVENT_KEY_UP:
+// TODO: this needs to be moved into game
+// #ifdef DEBUG
+// 	if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
+// 		continue;
+// 	}
+// #endif
                 handle_sdl_keyboard_mouse_event(&event, &game_input);
                 break;
             case SDL_EVENT_GAMEPAD_ADDED:
@@ -645,12 +678,24 @@ int main(int argc, char* argv[]) {
 
         render_begin_frame();
 
+#ifdef DEBUG
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplSDL3_NewFrame();
+		ImGui::NewFrame();
+		ImGui::ShowDemoWindow();
+#endif
+
         game.game_update_and_render(&game_memory, &game_input, frame_dt_s);
 
         DebugInfo* debug_info = &game_memory.debug_info;
         double pre_render_frame_end_count = SDL_GetPerformanceCounter();
         double preswap_dt_s = ((pre_render_frame_end_count - frame_start_count) / (double)game_memory.performance_frequency);
         debug_info->prebuffer_swap_dt_history[debug_info->prebuffer_swap_dt_history_count++ % FRAME_TIME_HISTORY_MAX_COUNT] = preswap_dt_s;
+
+#ifdef DEBUG
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+#endif
 
         SDL_GL_SwapWindow(window);
 
@@ -666,6 +711,12 @@ int main(int argc, char* argv[]) {
         frame_dt_s = w_min(frame_dt_s, MAX_FRAME_TIME_S);
         frame_start_count = frame_end_count;
     }
+
+#ifdef DEBUG
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
+	ImGui::DestroyContext();
+#endif
 
     SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
