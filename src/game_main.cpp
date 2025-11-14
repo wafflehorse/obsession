@@ -12,6 +12,8 @@
 #include "sound.cpp"
 #include "asset_ids.h"
 #include "asset_tables.h"
+#define STB_PERLIN_IMPLEMENTATION
+#include "stb_perlin.h"
 
 #ifdef DEBUG
 #include "imgui.h"
@@ -681,34 +683,7 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
 
 	return shake_offset;
 }
-// enum ImGuiSliderFlags_
-// {
-//     ImGuiSliderFlags_None               = 0,
-//     ImGuiSliderFlags_Logarithmic        = 1 << 5,       // Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
-//     ImGuiSliderFlags_NoRoundToFormat    = 1 << 6,       // Disable rounding underlying value to match precision of the display format string (e.g. %.3f values are rounded to those 3 digits).
-//     ImGuiSliderFlags_NoInput            = 1 << 7,       // Disable CTRL+Click or Enter key allowing to input text directly into the widget.
-//     ImGuiSliderFlags_WrapAround         = 1 << 8,       // Enable wrapping around from max to min and from min to max. Only supported by DragXXX() functions for now.
-//     ImGuiSliderFlags_ClampOnInput       = 1 << 9,       // Clamp value to min/max bounds when input manually with CTRL+Click. By default CTRL+Click allows going out of bounds.
-//     ImGuiSliderFlags_ClampZeroRange     = 1 << 10,      // Clamp even if min==max==0.0f. Otherwise due to legacy reason DragXXX functions don't clamp with those values. When your clamping limits are dynamic you almost always want to use it.
-//     ImGuiSliderFlags_NoSpeedTweaks      = 1 << 11,      // Disable keyboard modifiers altering tweak speed. Useful if you want to alter tweak speed yourself based on your own logic.
-//     ImGuiSliderFlags_AlwaysClamp        = ImGuiSliderFlags_ClampOnInput | ImGuiSliderFlags_ClampZeroRange,
-//     ImGuiSliderFlags_InvalidMask_       = 0x7000000F,   // [Internal] We treat using those bits as being potentially a 'float power' argument from the previous API that has got miscast to this enum, and will trigger an assert if needed.
-// };
-// ImGui::DragFloat("DragFloat (0 -> 1)", &drag_f, 0.005f, 0.0f, 1.0f, "%.3f", flags);
-// ImGui::DragFloat("DragFloat (0 -> +inf)", &drag_f, 0.005f, 0.0f, FLT_MAX, "%.3f", flags);
-// ImGui::DragFloat("DragFloat (-inf -> 1)", &drag_f, 0.005f, -FLT_MAX, 1.0f, "%.3f", flags);
-// ImGui::DragFloat("DragFloat (-inf -> +inf)", &drag_f, 0.005f, -FLT_MAX, +FLT_MAX, "%.3f", flags);
-// //ImGui::DragFloat("DragFloat (0 -> 0)", &drag_f, 0.005f, 0.0f, 0.0f, "%.3f", flags);           // To test ClampZeroRange
-// //ImGui::DragFloat("DragFloat (100 -> 100)", &drag_f, 0.005f, 100.0f, 100.0f, "%.3f", flags);
-// ImGui::DragInt("DragInt (0 -> 100)", &drag_i, 0.5f, 0, 100, "%d", flags);
-// struct FBMContext {
-// 	uint32 octaves;
-// 	float lacunarity; // Kind of affects how noisey or gappy the noise is
-// 	float gain;
-// 	float amp;
-// 	float freq;
-// 	PerlinContext perlin_context;
-// };
+
 void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
 	for(int i = 0; i < entity_data->entity_count; i++) {
 		if(entity_data->entities[i].type == ENTITY_TYPE_IRON_DEPOSIT) {
@@ -726,9 +701,8 @@ void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
 			world_top_left_tile_position.y - row
 		};
 
-		float offset = 3891502.14;
-		float noise_val = w_fbm(position.x + offset, position.y + offset, fbm_context);
-		if (noise_val > 0.62f) {
+		float noise_val = stb_perlin_fbm_noise3(position.x * fbm_context->freq, position.y * fbm_context->freq, 0, fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves);
+		if (noise_val > 0.7f) {
 			create_ore_deposit_entity(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
 		}
 		// else if (noise_val < 0.61f && noise_val > 0.6f) {
@@ -887,9 +861,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		*ore_fbm_context = {
 			.amp = 1.0f,
 			.octaves = 4,
-			.freq = 0.02f,
+			.freq = 0.04f,
 			.lacunarity = 2.0f,
-			.gain = 0.85f
+			.gain = 0.45f
 		};
 
 		w_perlin_seed(&ore_fbm_context->perlin_context, 12756671);
