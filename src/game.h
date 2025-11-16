@@ -4,6 +4,8 @@
 #define MAX_ENTITIES 10000
 #define MAX_COLLISION_RULES 512
 
+#define MAX_DECORATIONS 1000
+
 #define GAME_STATE_F_INITIALIZED (1 << 0)
 
 #define BASE_RESOLUTION_WIDTH 640 
@@ -64,6 +66,7 @@ enum RenderGroupID {
 	RENDER_GROUP_ID_BACKGROUND,
 	RENDER_GROUP_ID_MAIN,
 	RENDER_GROUP_ID_UI,
+	RENDER_GROUP_ID_DECORATIONS,
 	RENDER_GROUP_ID_COUNT
 };
 
@@ -121,6 +124,21 @@ struct Brain {
 	float cooldown_s;
 	uint32 target_id;
 	Vec2 target_position;
+};
+
+enum DecorationType {
+	DECORATION_TYPE_NONE,
+	DECORATION_TYPE_PLANT	
+};
+
+struct Decoration {
+	Vec2 position;
+	SpriteID sprite_id;
+	DecorationType type;
+};
+
+struct DecorationData {
+	Decoration decorations[MAX_DECORATIONS];
 };
 
 struct EntityLookup {
@@ -224,6 +242,7 @@ struct EntityItemSpawnInfo {
 
 struct WorldGenContext {
 	FBMContext ore_fbm_context;	
+	FBMContext plant_fbm_context;
 };
 
 struct GameState {
@@ -243,6 +262,7 @@ struct GameState {
 	EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
 	uint32 attack_id_next;
 	WorldGenContext world_gen_context;
+	DecorationData decoration_data;
 
 	bool is_tools_panel_open;
 };

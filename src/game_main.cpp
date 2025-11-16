@@ -711,6 +711,47 @@ void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
 	}
 }
 
+void create_decoration(DecorationData* decoration_data, DecorationType type, Vec2 position, SpriteID sprite_id) {
+	Decoration* decorations = decoration_data->decorations;
+	Decoration* decoration = NULL;
+	for(int i = 0; i < MAX_DECORATIONS; i++) {
+		if(decorations[i].type == DECORATION_TYPE_NONE) {
+			decoration = &decorations[i];	
+		}
+	}
+
+	ASSERT(decoration, "MAX_DECORATIONS has been reached");
+
+	decoration->position = position;
+	decoration->sprite_id = sprite_id;
+	decoration->type = type;
+}
+
+void proc_gen_plants(DecorationData* decoration_data, FBMContext* fbm_context) {
+	Decoration* decorations = decoration_data->decorations;
+	for(int i = 0; i < MAX_DECORATIONS; i++) {
+		if(decorations[i].type == DECORATION_TYPE_PLANT) {
+			decoration_data->decorations[i].type = DECORATION_TYPE_NONE;	
+		}
+	}
+
+	Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
+
+	for (int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
+		uint32 col = i % WORLD_TILE_WIDTH;
+		uint32 row = i / WORLD_TILE_HEIGHT;
+		Vec2 position = {
+			world_top_left_tile_position.x + col,
+			world_top_left_tile_position.y - row
+		};
+
+		float noise_val = stb_perlin_fbm_noise3(position.x * fbm_context->freq, position.y * fbm_context->freq, 0, fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves);
+		if (noise_val > 0.7f) {
+			create_decoration(decoration_data, DECORATION_TYPE_PLANT, position, SPRITE_PLANT_1);
+		}
+	}
+}
+
 void debug_render_tools_panel(GameState* game_state) {
 #ifdef DEBUG
 	if(game_state->is_tools_panel_open) {
@@ -744,8 +785,24 @@ void debug_render_tools_panel(GameState* game_state) {
 				ImGui::DragFloat("Freq", &fbm_context->freq, 0.001f, 0, 4, "%.4f", slider_flags);
 				ImGui::DragFloat("Gain", &fbm_context->gain, 0.1f, 0, 8, "%.4f", slider_flags);
 				ImGui::DragFloat("Lacunarity", &fbm_context->lacunarity, 0.1f, 0, 8, "%.4f", slider_flags);
-				if (ImGui::Button("Gen iron ore")) {
+				if (ImGui::Button("Gen")) {
 					proc_gen_iron_ore(&game_state->entity_data, &game_state->world_gen_context.ore_fbm_context);
+				}
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Plants")) {
+				FBMContext* fbm_context = &game_state->world_gen_context.plant_fbm_context;
+				ImGuiSliderFlags slider_flags = 0;
+
+				ImGui::DragInt("Octaves", (int*)&fbm_context->octaves, 0.1f, 1, 16, "%i", slider_flags);
+				ImGui::DragFloat("Amp", &fbm_context->amp, 0.1f, 0, 16, "%.4f", slider_flags);
+				ImGui::DragFloat("Freq", &fbm_context->freq, 0.001f, 0, 4, "%.4f", slider_flags);
+				ImGui::DragFloat("Gain", &fbm_context->gain, 0.1f, 0, 8, "%.4f", slider_flags);
+				ImGui::DragFloat("Lacunarity", &fbm_context->lacunarity, 0.1f, 0, 8, "%.4f", slider_flags);
+				if (ImGui::Button("Gen")) {
+					proc_gen_plants(&game_state->decoration_data, fbm_context);
 				}
 
 				ImGui::TreePop();
@@ -781,8 +838,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	w_init_waffle_lib(g_base_path);
 	w_init_animation(animation_table);
 
+	// TODO: should background just be merged with decorations?
 	RenderGroup background_render_group = {};
 	background_render_group.id = RENDER_GROUP_ID_BACKGROUND;
+	RenderGroup render_group_decorations = {};
+	render_group_decorations.id = RENDER_GROUP_ID_DECORATIONS;
 	RenderGroup main_render_group = {};
 	main_render_group.id = RENDER_GROUP_ID_MAIN;
 	RenderGroup render_group_ui = {};
@@ -868,7 +928,20 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		w_perlin_seed(&ore_fbm_context->perlin_context, 12756671);
 
+		FBMContext* plant_fbm_context = &game_state->world_gen_context.plant_fbm_context;
+
+		*plant_fbm_context = {
+			.amp = 1.0f,
+			.octaves = 4,
+			.freq = 0.2f,
+			.lacunarity = 2.0f,
+			.gain = 0.90f
+		};
+
+		w_perlin_seed(&plant_fbm_context->perlin_context, 32756671);
+
 		proc_gen_iron_ore(&game_state->entity_data, ore_fbm_context);
+		proc_gen_plants(&game_state->decoration_data, plant_fbm_context);
 	}
 
 #ifdef DEBUG
@@ -884,6 +957,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	background_render_group.size = WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT;
 	background_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, background_render_group.size * sizeof(RenderQuad));
+	render_group_decorations.size = MAX_DECORATIONS;
+	render_group_decorations.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, render_group_decorations.size * sizeof(RenderQuad));
 	main_render_group.size = MAX_ENTITIES * 2;
 	main_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, main_render_group.size * sizeof(RenderQuad));
 	render_group_ui.size = 250;
@@ -895,7 +970,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	g_debug_render_group = &debug_render_group;
 #endif
 
-	// ~~~~~~~~~~~~~~~~~~ Render ground ~~~~~~~~~~~~~~~~~~~~~~ //
+	// ~~~~~~~~~~~~~~~~~~ Render decorations ~~~~~~~~~~~~~~~~~~~~~~ //
 	{
 		RenderQuad* ground = get_next_quad(&background_render_group);
 		ground->world_position = { 0, 0 };
@@ -903,6 +978,16 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		Sprite ground_sprite = sprite_table[SPRITE_GROUND_1];
 		ground->sprite_position = { ground_sprite.x, ground_sprite.y };
 		ground->sprite_size = { ground_sprite.w, ground_sprite.h };
+
+		// TODO: in release, there's likely no reason to recreate quads each frame.
+		// Perhaps we can have persistant render groups that don't get wiped each frame
+		Decoration* decorations = game_state->decoration_data.decorations;
+		for(int i = 0; i < MAX_DECORATIONS; i++) {
+			if(decorations[i].type != DECORATION_TYPE_NONE) {
+				Decoration* decoration = &decorations[i];
+				render_sprite(decoration->position, decoration->sprite_id, &render_group_decorations, 0);
+			}	
+		}
 	}
 
 	// ~~~~~~~~~~~~~~~~~~ Render tilemap ~~~~~~~~~~~~~~~~~~~~~~ //
@@ -1279,6 +1364,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	Vec2 rendered_camera_position = w_vec_add(game_state->camera.position, shake_offset);
 
 	game_memory->push_render_group(background_render_group.quads, background_render_group.count, rendered_camera_position, background_render_group.opts);
+	game_memory->push_render_group(render_group_decorations.quads, render_group_decorations.count, rendered_camera_position, render_group_decorations.opts);
 	game_memory->push_render_group(main_render_group.quads, main_render_group.count, rendered_camera_position, main_render_group.opts);
 	game_memory->push_render_group(render_group_ui.quads, render_group_ui.count, game_state->camera.position, render_group_ui.opts);
 
