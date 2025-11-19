@@ -234,6 +234,8 @@ struct MouseState {
         };
     };
 
+	Vec2 position_px;
+
     KeyInputState input_states[MOUSE_INPUT_COUNT];
 };
 

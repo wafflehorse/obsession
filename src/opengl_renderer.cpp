@@ -309,6 +309,11 @@ LOAD_TEXTURE(load_texture) {
     texture->initialized = true;
     render_data.texture_count++;
 
+	texture_info->id = texture->id;
+	texture_info->width = texture->width;
+	texture_info->height = texture->height;
+	texture_info->num_channels = texture->num_channels;
+
     return 0;
 }
 

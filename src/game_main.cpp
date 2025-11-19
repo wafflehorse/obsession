@@ -198,7 +198,7 @@ void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 				sprite = sprite_table[entity->sprite_id];
 			}
 			else {
-				SpriteID sprite_id = entity_sprites[slot->entity_type];
+				SpriteID sprite_id = entity_default_sprites[slot->entity_type];
 				sprite = sprite_table[sprite_id];
 			}
 
@@ -246,7 +246,7 @@ void update_tools_input(GameInput* game_input, GameState* game_state) {
 
 	if(key_input_states[KEY_L_CTRL].is_held || key_input_states[KEY_R_CTRL].is_held) {
 		if(key_input_states[KEY_E].is_pressed) {
-			game_state->is_tools_panel_open = !game_state->is_tools_panel_open;
+			game_state->tools.is_panel_open = !game_state->tools.is_panel_open;
 		}
 
 		if(key_input_states[KEY_MINUS].is_pressed) {
@@ -262,6 +262,16 @@ void update_tools_input(GameInput* game_input, GameState* game_state) {
 		}
 	}
 #endif
+}
+
+Vec2 get_mouse_world_position(Camera* camera, GameInput* game_input, Vec2 window_size_px) {
+	Vec2 mouse_screen_position = {
+		(game_input->mouse_state.position_px.x - (window_size_px.x / 2)) / g_pixels_per_unit,
+		-(game_input->mouse_state.position_px.y - (window_size_px.y / 2)) / g_pixels_per_unit
+	};
+	Vec2 mouse_world_position = w_vec_add(mouse_screen_position, camera->position);
+
+	return mouse_world_position;
 }
 
 void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input, Vec2 screen_size) {
@@ -619,7 +629,7 @@ void render_hot_bar_item(GameState* game_state, PlayerWorldInput* player_world_i
 		float z_pos, z_index;
 		Vec2 item_position = get_held_item_position(player, &z_pos, &z_index);
 
-		SpriteID sprite_id = entity_sprites[slot->entity_type];
+		SpriteID sprite_id = entity_default_sprites[slot->entity_type];
 		item_position.y += z_pos;
 
 		render_sprite(item_position, sprite_id, render_group, 0, z_index, 0);
@@ -752,9 +762,30 @@ void proc_gen_plants(DecorationData* decoration_data, FBMContext* fbm_context) {
 	}
 }
 
+void sprite_to_uv_coordinates(SpriteID sprite_id, Vec2 texture_size, Vec2* uv0, Vec2* uv1) {
+	Sprite sprite = sprite_table[sprite_id];
+
+	uv0->x = sprite.x / texture_size.x;
+	uv0->y = 1 - (sprite.y / texture_size.y);
+
+	uv1->x = (sprite.x + sprite.w) / texture_size.x;
+	uv1->y = 1 - ((sprite.y + sprite.h) / texture_size.y);
+}
+
+void tools_update(GameMemory* game_memory, GameState* game_state, GameInput* game_input) {
+#ifdef DEBUG
+
+	if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN && game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+		Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
+		create_entity(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
+	}
+
+#endif
+}
+
 void debug_render_tools_panel(GameState* game_state) {
 #ifdef DEBUG
-	if(game_state->is_tools_panel_open) {
+	if(game_state->tools.is_panel_open) {
 		const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
 		int panel_width = 260;
 		int panel_height = 420;
@@ -763,9 +794,8 @@ void debug_render_tools_panel(GameState* game_state) {
 
 		uint32 panel_flags = 0;
 		panel_flags |= ImGuiWindowFlags_NoCollapse;
-		if (!ImGui::Begin("Tools", &game_state->is_tools_panel_open, panel_flags))
+		if (!ImGui::Begin("Tools", &game_state->tools.is_panel_open, panel_flags))
 		{
-			// Early out if the window is collapsed, as an optimization.
 			ImGui::End();
 			return;
 		}
@@ -773,6 +803,60 @@ void debug_render_tools_panel(GameState* game_state) {
 		if (ImGui::CollapsingHeader("Entity")) {
 			ImGui::Text("Entity count: %i", game_state->entity_data.entity_count);
 			ImGui::Text("Max entity count: %i", MAX_ENTITIES);
+
+			float available_width = 256;//ImGui::GetContentRegionAvail().x;
+			float x = 0;
+			Vec2 sprite_texture_size = { 
+				(float)game_state->sprite_texture_info.width,
+				(float)game_state->sprite_texture_info.height
+			};
+			float spacing = ImGui::GetStyle().ItemSpacing.x;
+
+			for(int i = 1; i < ENTITY_TYPE_COUNT; i++) {
+				ImGui::PushID(i);
+
+				SpriteID sprite_id = entity_default_sprites[i];
+				Sprite sprite = sprite_table[sprite_id];
+
+				Vec2 image_size = w_vec_mult((Vec2){ sprite.w, sprite.h }, 2);
+
+				Vec2 player_uv0 = {};
+				Vec2 player_uv1 = {};
+				sprite_to_uv_coordinates(sprite_id, sprite_texture_size, &player_uv0, &player_uv1);
+
+
+				if(x + image_size.x + spacing > available_width - 8) {
+					ImGui::NewLine();
+					x = 0;
+				}
+				else if(x > 0.0f) {
+					ImGui::SameLine();
+				}
+
+				x += image_size.x + spacing;
+				
+				bool is_clicked = ImGui::ImageButton(
+					"some_id",
+					game_state->sprite_texture_info.id, 
+					ImVec2(image_size.x, image_size.y), 
+					ImVec2(player_uv0.x, player_uv0.y), 
+					ImVec2(player_uv1.x, player_uv1.y)
+				);
+
+				if(is_clicked) {
+					game_state->tools.selected_entity = (EntityType)i;
+				}
+
+				if(i == game_state->tools.selected_entity) {
+					ImGui::GetWindowDrawList()->AddRect(
+        				ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+        				IM_COL32(255,255,0,255), // yellow
+        				0.0f, 0, 2.0f
+    				);
+				}
+
+				ImGui::PopID();
+			}
 		}
 
 		if (ImGui::CollapsingHeader("Proc Gen")) {
@@ -815,6 +899,9 @@ void debug_render_tools_panel(GameState* game_state) {
 		}
 
 		ImGui::End();
+	}
+	else {
+		game_state->tools.selected_entity = ENTITY_TYPE_UNKNOWN;
 	}
 #endif
 }
@@ -872,8 +959,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		game_state->camera.zoom = 1;
 
 		game_memory->initialize_renderer(game_memory->window.size_px, viewport, game_state->camera.size, game_state->camera.zoom, &game_state->main_arena);
-		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png");
-		game_memory->load_texture(TEXTURE_ID_SPRITE, "resources/assets/sprite_atlas.png");
+		game_memory->load_texture(TEXTURE_ID_FONT, "resources/assets/font_texture.png", &game_state->font_texture_info);
+		game_memory->load_texture(TEXTURE_ID_SPRITE, "resources/assets/sprite_atlas.png", &game_state->sprite_texture_info);
 
 		game_memory->init_audio(&game_state->audio_player);
 		setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60, game_state->sounds, &game_state->main_arena);
@@ -912,7 +999,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		create_warrior_entity(&game_state->entity_data, (Vec2) { 7, -5 });
 		create_boar_entity(&game_state->entity_data, (Vec2) { -7, 5 });
-		EntityHandle gun_handle = create_gun_entity(&game_state->entity_data, player_handle);
+		EntityHandle gun_handle = create_gun_entity(&game_state->entity_data, (Vec2){ -5, 0 });
 		Entity* gun = get_entity(gun_handle, &game_state->entity_data);
 		add_item_to_hot_bar_next_free(gun, &game_state->hot_bar, &game_state->entity_data);
 
@@ -921,7 +1008,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		*ore_fbm_context = {
 			.amp = 1.0f,
 			.octaves = 4,
-			.freq = 0.04f,
+			.freq = 0.12f,
 			.lacunarity = 2.0f,
 			.gain = 0.45f
 		};
@@ -968,6 +1055,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	debug_render_group.size = MAX_ENTITIES * 2;
 	debug_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, debug_render_group.size * sizeof(RenderQuad));
 	g_debug_render_group = &debug_render_group;
+
+	tools_update(game_memory, game_state, game_input);
 #endif
 
 	// ~~~~~~~~~~~~~~~~~~ Render decorations ~~~~~~~~~~~~~~~~~~~~~~ //

@@ -34,10 +34,17 @@ struct RenderGroup {
     RenderGroupOptions opts;
 };
 
+struct TextureInfo {
+    uint32 id;
+    uint32 width;
+    uint32 height;
+    uint32 num_channels;
+};
+
 #define PUSH_RENDER_GROUP(name) void name(RenderQuad *instance_data, uint32 instance_count, Vec2 camera_position, RenderGroupOptions opts)
 typedef PUSH_RENDER_GROUP(PushRenderGroup);
 
-#define LOAD_TEXTURE(name) int name(uint32 texture_id, const char* file_path)
+#define LOAD_TEXTURE(name) int name(uint32 texture_id, const char* file_path, TextureInfo* texture_info)
 typedef LOAD_TEXTURE(LoadTexture);
 
 #define INITIALIZE_RENDERER(name) int name(Vec2 viewport, Vec2 screen_size, Vec2 camera_size, float camera_zoom, Arena* arena)

@@ -157,7 +157,7 @@ enum EntityType {
 	ENTITY_TYPE_GUN,
 	ENTITY_TYPE_WARRIOR,
 	ENTITY_TYPE_PROJECTILE,
-	ENTITY_TYPE_PROP,
+	ENTITY_TYPE_BLOCK,
 	ENTITY_TYPE_BOAR,
 	ENTITY_TYPE_BOAR_MEAT,
 	ENTITY_TYPE_IRON_DEPOSIT,
@@ -245,6 +245,11 @@ struct WorldGenContext {
 	FBMContext plant_fbm_context;
 };
 
+struct Tools {
+	bool is_panel_open;
+	EntityType selected_entity;
+};
+
 struct GameState {
 	flags flags;
 	Camera camera;
@@ -263,6 +268,7 @@ struct GameState {
 	uint32 attack_id_next;
 	WorldGenContext world_gen_context;
 	DecorationData decoration_data;
-
-	bool is_tools_panel_open;
+	TextureInfo sprite_texture_info;
+	TextureInfo font_texture_info;
+	Tools tools;
 };

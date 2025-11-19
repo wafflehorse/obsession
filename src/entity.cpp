@@ -31,9 +31,16 @@ EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
 	}
 };
 
-SpriteID entity_sprites[ENTITY_TYPE_COUNT] = {
+SpriteID entity_default_sprites[ENTITY_TYPE_COUNT] = {
+	[ENTITY_TYPE_PLAYER] = SPRITE_HERO_IDLE_0,
+	[ENTITY_TYPE_GUN] = SPRITE_GUN_GREEN,
+	[ENTITY_TYPE_WARRIOR] = SPRITE_WARRIOR_IDLE_0,
+	[ENTITY_TYPE_PROJECTILE] = SPRITE_GREEN_BULLET_1,
+	[ENTITY_TYPE_BLOCK] = SPRITE_BLOCK_1,
+	[ENTITY_TYPE_BOAR] = SPRITE_BOAR_IDLE_0,
+	[ENTITY_TYPE_BOAR_MEAT] = SPRITE_BOAR_MEAT_RAW,
+	[ENTITY_TYPE_IRON_DEPOSIT] = SPRITE_ORE_IRON_0,
 	[ENTITY_TYPE_IRON] = SPRITE_IRON_1,
-	[ENTITY_TYPE_BOAR_MEAT] = SPRITE_BOAR_MEAT_RAW
 };
 
 Entity* get_new_entity(EntityData* entity_data) {
@@ -122,10 +129,10 @@ Collider get_rect_collider_from_sprite(SpriteID sprite_id) {
 	return result;
 }
 
-EntityHandle create_prop_entity(EntityData* entity_data, Vec2 position, SpriteID sprite_id) {
+EntityHandle create_blocker_entity(EntityData* entity_data, EntityType type, Vec2 position, SpriteID sprite_id) {
 	Entity* entity = get_new_entity(entity_data);
 
-	entity->type = ENTITY_TYPE_PROP;
+	entity->type = type;
 	entity->position = position;
 	entity->sprite_id = sprite_id;
 
@@ -190,15 +197,14 @@ EntityHandle create_player_entity(EntityData* entity_data, Vec2 position) {
 	return get_entity_handle(entity, entity_data);
 }
 
-EntityHandle create_gun_entity(EntityData* entity_data, EntityHandle owner) {
+EntityHandle create_gun_entity(EntityData* entity_data, Vec2 position) {
 	Entity* entity = get_new_entity(entity_data);
 
 	entity->type = ENTITY_TYPE_GUN;
-	set(entity->flags, ENTITY_FLAG_OWNED);
+	entity->position = position;
 	set(entity->flags, ENTITY_FLAG_NONSPACIAL);
 	set(entity->flags, ENTITY_FLAG_ITEM_PERSIST_ENTITY);
 	set(entity->flags, ENTITY_FLAG_ITEM);
-	entity->owner_handle = owner;
 	entity->sprite_id = SPRITE_GUN_GREEN;
 
 	return get_entity_handle(entity, entity_data);
@@ -287,7 +293,7 @@ EntityHandle create_boar_meat_entity(EntityData* entity_data, Vec2 position) {
 EntityHandle create_item_entity(EntityData* entity_data, EntityType type, Vec2 position) {
 	Entity* entity = get_new_entity(entity_data);
 
-	SpriteID sprite_id = entity_sprites[type];
+	SpriteID sprite_id = entity_default_sprites[type];
 	
 	ASSERT(sprite_id != SPRITE_UNKNOWN, "Item entities must have sprite specified in entity_sprites\n");
 
@@ -502,6 +508,41 @@ void update_player_movement_animation(Entity* entity, PlayerWorldInput* player_w
 	else {
 		play_entity_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
 	}
+}
+
+EntityHandle create_entity(EntityData* entity_data, EntityType type, Vec2 position) {
+	EntityHandle entity_handle;
+	switch(type) {
+		case ENTITY_TYPE_GUN:
+			create_gun_entity(entity_data, position);
+			break;
+		case ENTITY_TYPE_WARRIOR:
+			create_warrior_entity(entity_data, position);
+			break;
+		case ENTITY_TYPE_BLOCK:
+			create_blocker_entity(entity_data, ENTITY_TYPE_BLOCK, position, SPRITE_BLOCK_1);
+			break;
+		case ENTITY_TYPE_BOAR:
+			create_boar_entity(entity_data, position);
+			break;
+		case ENTITY_TYPE_BOAR_MEAT:
+			create_boar_meat_entity(entity_data, position);
+			break;
+		case ENTITY_TYPE_IRON_DEPOSIT:
+			create_ore_deposit_entity(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
+			break;
+		case ENTITY_TYPE_IRON:
+			create_item_entity(entity_data, ENTITY_TYPE_IRON, position);
+			break;
+		default:
+			// TODO: this is probably a debug only function, so this assertion is kind of annoying
+			// cause it will force me to not call this with ineligible entities. So commenting out
+			// for now
+			// ASSERT(false, "create_entity does not support this entity type");
+			break;
+	}
+
+	return entity_handle;
 }
 
 

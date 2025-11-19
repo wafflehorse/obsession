@@ -566,6 +566,8 @@ int main(int argc, char* argv[]) {
 		game_memory.window.size_px = { (float)screen_size_x, (float)screen_size_y };
 	}
 
+	float pt_per_px = game_memory.window.size_px.x / game_memory.window.size.x;
+
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -628,6 +630,8 @@ int main(int argc, char* argv[]) {
         clear_inputs(&game_input);
 
         SDL_GetMouseState(&game_input.mouse_state.position.x, &game_input.mouse_state.position.y);
+		game_input.mouse_state.position_px.x = game_input.mouse_state.position.x * pt_per_px;
+		game_input.mouse_state.position_px.y = game_input.mouse_state.position.y * pt_per_px;
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
