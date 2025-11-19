@@ -494,7 +494,7 @@ void update_player_movement_animation(Entity* entity, PlayerWorldInput* player_w
 	EntityAnimations animations = entity_animations[entity->type];
 	Vec2 disc_facing_direction = get_discrete_facing_direction_4_directions(entity->facing_direction);
 
-	if(w_vec_length(player_world_input->movement_vec) >= 0) {
+	if(w_vec_length(player_world_input->movement_vec) > 0) {
 		if(disc_facing_direction.x != 0) {
 			play_entity_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
 		}

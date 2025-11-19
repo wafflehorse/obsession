@@ -166,8 +166,8 @@
 [x] Add ability to place entities in the world using the editor
 [x] Allow for getting mouse world position
 	- Adding a mouse position_px field on the struct and a helper function
-[] Bug: player is always in running animation?
-[] Bug: gun is showing up in first hot bar slot even when not picked up
+[x] Bug: player is always in running animation?
+[x] Bug: gun is showing up in first hot bar slot even when not picked up
 
 [] Randomly spawn enemies around the map
 [] Add item consumption

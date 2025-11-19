@@ -999,9 +999,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 		create_warrior_entity(&game_state->entity_data, (Vec2) { 7, -5 });
 		create_boar_entity(&game_state->entity_data, (Vec2) { -7, 5 });
-		EntityHandle gun_handle = create_gun_entity(&game_state->entity_data, (Vec2){ -5, 0 });
-		Entity* gun = get_entity(gun_handle, &game_state->entity_data);
-		add_item_to_hot_bar_next_free(gun, &game_state->hot_bar, &game_state->entity_data);
+		create_gun_entity(&game_state->entity_data, (Vec2){ -5, 0 });
 
 		FBMContext* ore_fbm_context = &game_state->world_gen_context.ore_fbm_context;
 
