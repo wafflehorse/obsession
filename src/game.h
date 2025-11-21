@@ -67,6 +67,7 @@ enum RenderGroupID {
 	RENDER_GROUP_ID_MAIN,
 	RENDER_GROUP_ID_UI,
 	RENDER_GROUP_ID_DECORATIONS,
+	RENDER_GROUP_ID_TOOLS,
 	RENDER_GROUP_ID_COUNT
 };
 
@@ -248,10 +249,31 @@ struct WorldGenContext {
 struct Tools {
 	bool is_panel_open;
 	EntityType selected_entity;
+	bool entity_palette_should_add_to_init;
+};
+
+struct GameInit {
+	char default_world_init_path[PATH_MAX];
+};
+
+struct WorldInitEntity {
+	EntityType type;	
+	Vec2 position;
+};
+
+#define MAX_WORLD_ENTITY_INITS (MAX_ENTITIES / 2)
+
+struct WorldInit {
+	Vec2 world_size;
+	WorldInitEntity entity_inits[MAX_WORLD_ENTITY_INITS];	
+	uint32 entity_init_count;
 };
 
 struct GameState {
 	flags flags;
+	GameInit game_init_config;
+	WorldInit world_init;
+
 	Camera camera;
 	AudioPlayer audio_player;
 	Sound sounds[SOUND_TYPE_COUNT];

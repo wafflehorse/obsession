@@ -168,10 +168,15 @@
 	- Adding a mouse position_px field on the struct and a helper function
 [x] Bug: player is always in running animation?
 [x] Bug: gun is showing up in first hot bar slot even when not picked up
-[] Add tilemap serialization that will be used to initialize the world
+[x] Add loading of game.init and world_0.init
+[x] Add default creation of game.init and world_0.init
+[x] Add ability for entity palette to place world init entities
+[x] Render world init entities as low alpha default sprites
+[] Bug: stop mouse clicks from placing entities when clicking on imgui panel
+[] Add ability to delete world init entities
+[] Add ability to save world init entities to new file
+	- probably want this to update the default world_init file path in game.init as well
 [] Add toggle for entity palette that edits whether tilemap is being editted vs. just spawning an entity
-[] Add visualization of tilemap by maybe having a low alpha rendering of entites where they spawn (where they live in the
-initialization tilemap)
 - Is tilemap accurate? Or should it be called something else?
 
 [] Randomly spawn enemies around the map

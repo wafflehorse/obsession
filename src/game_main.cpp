@@ -22,21 +22,26 @@ ImGuiIO* g_debug_imgui_io;
 #endif
 
 char* g_base_path;
+char* g_debug_project_dir;
 uint32 g_pixels_per_unit;
 double g_sim_dt_s;
 RenderGroup* g_debug_render_group;
 
-#define WORLD_TILE_WIDTH 128 
-#define WORLD_TILE_HEIGHT 128
+#define DEFAULT_WORLD_WIDTH 128 
+#define DEFAULT_WORLD_HEIGHT 128
 
 Vec2 get_world_top_left_tile_position() {
 	return {
-		-WORLD_TILE_WIDTH / 2 + 0.5,
-		WORLD_TILE_HEIGHT / 2 - 0.5
+		-DEFAULT_WORLD_WIDTH / 2 + 0.5,
+		DEFAULT_WORLD_HEIGHT / 2 - 0.5
 	};	
 }
 
 #define DEFAULT_Z_INDEX 1.0f
+
+#ifdef DEBUG
+#define ABS_PROJECT_RESOURCE_PATH  "/Users/parkerpestana/dev/obsession/resources/"
+#endif
 
 struct PlayerWorldInput {
 	Vec2 movement_vec;
@@ -57,8 +62,10 @@ Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
 }
 
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
+#define RENDER_SPRITE_OPT_ALPHA_SET (1 << 1)
 
-RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float rotation_rads, float z_index, uint32 opts) {
+// TODO: remove this interface and replace with params version
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float alpha, float rotation_rads, float z_index, uint32 opts) {
 	ASSERT(sprite_id != SPRITE_UNKNOWN, "sprite unknown passed to render sprite");
 	RenderQuad* quad = get_next_quad(render_group);
 	quad->world_position = world_position;
@@ -70,6 +77,10 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	quad->rotation_rads = rotation_rads;
 	quad->z_index = z_index;
 
+	if(is_set(opts, RENDER_SPRITE_OPT_ALPHA_SET)) {
+		quad->tint.w = alpha;
+	}
+
 	if (is_set(opts, RENDER_SPRITE_OPT_FLIP_X)) {
 		quad->flip_x = 1;
 	}
@@ -78,7 +89,18 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 }
 
 RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index) {
-	return render_sprite(world_position, sprite_id, render_group, 0, z_index, 0);
+	return render_sprite(world_position, sprite_id, render_group, 1, 0, z_index, 0);
+}
+
+struct RenderSpriteParams {
+	uint32 opts;
+	float rotation_rads;
+	float z_index;
+	float alpha;
+};
+
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, RenderSpriteParams params) {
+	return render_sprite(world_position, sprite_id, render_group, params.alpha, params.rotation_rads, params.z_index, params.opts);
 }
 
 #include "entity.cpp"
@@ -632,7 +654,7 @@ void render_hot_bar_item(GameState* game_state, PlayerWorldInput* player_world_i
 		SpriteID sprite_id = entity_default_sprites[slot->entity_type];
 		item_position.y += z_pos;
 
-		render_sprite(item_position, sprite_id, render_group, 0, z_index, 0);
+		render_sprite(item_position, sprite_id, render_group, { .z_index = z_index });
 	}
 }
 
@@ -703,9 +725,9 @@ void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
 
 	Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
 
-	for (int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
-		uint32 col = i % WORLD_TILE_WIDTH;
-		uint32 row = i / WORLD_TILE_HEIGHT;
+	for (int i = 0; i < DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT; i++) {
+		uint32 col = i % DEFAULT_WORLD_WIDTH;
+		uint32 row = i / DEFAULT_WORLD_HEIGHT;
 		Vec2 position = {
 			world_top_left_tile_position.x + col,
 			world_top_left_tile_position.y - row
@@ -747,9 +769,9 @@ void proc_gen_plants(DecorationData* decoration_data, FBMContext* fbm_context) {
 
 	Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
 
-	for (int i = 0; i < WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT; i++) {
-		uint32 col = i % WORLD_TILE_WIDTH;
-		uint32 row = i / WORLD_TILE_HEIGHT;
+	for (int i = 0; i < DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT; i++) {
+		uint32 col = i % DEFAULT_WORLD_WIDTH;
+		uint32 row = i / DEFAULT_WORLD_HEIGHT;
 		Vec2 position = {
 			world_top_left_tile_position.x + col,
 			world_top_left_tile_position.y - row
@@ -772,13 +794,30 @@ void sprite_to_uv_coordinates(SpriteID sprite_id, Vec2 texture_size, Vec2* uv0, 
 	uv1->y = 1 - ((sprite.y + sprite.h) / texture_size.y);
 }
 
-void tools_update(GameMemory* game_memory, GameState* game_state, GameInput* game_input) {
+void tools_update_and_render(GameMemory* game_memory, GameState* game_state, GameInput* game_input, RenderGroup* render_group) {
 #ifdef DEBUG
+	WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
 
 	if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN && game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
 		Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
-		create_entity(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
+		if(game_state->tools.entity_palette_should_add_to_init) {
+			entity_inits[game_state->world_init.entity_init_count++] = {
+				.type = game_state->tools.selected_entity,
+				.position = mouse_world_position
+			};
+		}
+		else {
+			create_entity(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
+		}
 	}
+
+	if(game_state->tools.entity_palette_should_add_to_init) {
+		for(int i = 0; i < game_state->world_init.entity_init_count; i++) {
+			SpriteID sprite_id = entity_default_sprites[entity_inits[i].type];
+			render_sprite(entity_inits[i].position, sprite_id, render_group, { .alpha = 0.3, .opts = RENDER_SPRITE_OPT_ALPHA_SET });		
+		}
+	}
+
 
 #endif
 }
@@ -803,6 +842,7 @@ void debug_render_tools_panel(GameState* game_state) {
 		if (ImGui::CollapsingHeader("Entity")) {
 			ImGui::Text("Entity count: %i", game_state->entity_data.entity_count);
 			ImGui::Text("Max entity count: %i", MAX_ENTITIES);
+			ImGui::Checkbox("World init", &game_state->tools.entity_palette_should_add_to_init);
 
 			float available_width = 256;//ImGui::GetContentRegionAvail().x;
 			float x = 0;
@@ -823,7 +863,6 @@ void debug_render_tools_panel(GameState* game_state) {
 				Vec2 player_uv0 = {};
 				Vec2 player_uv1 = {};
 				sprite_to_uv_coordinates(sprite_id, sprite_texture_size, &player_uv0, &player_uv1);
-
 
 				if(x + image_size.x + spacing > available_width - 8) {
 					ImGui::NewLine();
@@ -913,6 +952,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	bool debug_should_render_entity_colliders = false;
 	GameState* game_state = (GameState*)game_memory->memory;
 	g_base_path = game_memory->base_path;
+
 	g_sim_dt_s = frame_dt_s;
 
 	game_state->viewport_scale_factor = get_viewport_scale_factor(game_memory->window.size_px);
@@ -934,8 +974,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	main_render_group.id = RENDER_GROUP_ID_MAIN;
 	RenderGroup render_group_ui = {};
 	render_group_ui.id = RENDER_GROUP_ID_UI;
-
 #ifdef DEBUG
+	RenderGroup render_group_tools = {};
+	render_group_tools.id = RENDER_GROUP_ID_TOOLS;
 	RenderGroup debug_render_group = {};
 	debug_render_group.id = RENDER_GROUP_ID_DEBUG;
 #endif
@@ -980,6 +1021,51 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		memcpy(&game_state->font_data, font_data_file_contents.data, sizeof(FontData));
 		w_arena_restore(&game_state->main_arena, arena_marker);
 
+		{
+			char* main_marker = w_arena_marker(&game_state->main_arena);
+
+			FileContents game_init_file_contents;
+			char game_init_file_path[PATH_MAX];
+			w_get_absolute_path(game_init_file_path, ABS_PROJECT_RESOURCE_PATH, "game.init");
+			if(w_read_file_abs(game_init_file_path, &game_init_file_contents, &game_state->main_arena) != 0) {
+				w_get_absolute_path(game_state->game_init_config.default_world_init_path, ABS_PROJECT_RESOURCE_PATH, "world_0.init");
+
+				FILE* f = fopen(game_init_file_path, "wb");
+
+				if(!f) {
+					ASSERT(false, "failed to open file resources/game.init");
+				}
+
+				fwrite(&game_state->game_init_config, sizeof(GameInit), 1, f);
+				fclose(f);
+			}
+			else {
+				memcpy(&game_state->game_init_config, game_init_file_contents.data, sizeof(GameInit));
+			}
+
+			FileContents world_init_file_contents;
+			if(w_read_file(game_state->game_init_config.default_world_init_path, &world_init_file_contents, &game_state->main_arena) != 0) {
+				game_state->world_init.world_size = { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT };
+				game_state->world_init.entity_inits[0].type = ENTITY_TYPE_PLAYER;
+				game_state->world_init.entity_inits[0].position = { 0, 0 };
+				game_state->world_init.entity_init_count = 1;
+
+				FILE* f = fopen(game_state->game_init_config.default_world_init_path, "wb");
+
+				if(!f) {
+					ASSERT(false, "failed to open file resources/world_0.init");
+				}
+
+				fwrite(&game_state->world_init, sizeof(WorldInit), 1, f);
+				fclose(f);
+			}
+			else {
+				memcpy(&game_state->world_init, world_init_file_contents.data, sizeof(WorldInit));
+			}
+
+			w_arena_restore(&game_state->main_arena, main_marker);
+		}
+
 		init_entity_data(&game_state->entity_data);
 		init_hot_bar(&game_state->hot_bar);
 
@@ -994,12 +1080,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			.spawn_chance = 1.0f
 		};
 
-		EntityHandle player_handle = create_player_entity(&game_state->entity_data, (Vec2) { 0, 0 });
-		game_state->player = get_entity(player_handle, &game_state->entity_data);
+		{
+			WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
+			for(int i = 0; i < game_state->world_init.entity_init_count; i++) {
+				create_entity(&game_state->entity_data, entity_inits[i].type, entity_inits[i].position);	
+			}
+		}
 
-		create_warrior_entity(&game_state->entity_data, (Vec2) { 7, -5 });
-		create_boar_entity(&game_state->entity_data, (Vec2) { -7, 5 });
-		create_gun_entity(&game_state->entity_data, (Vec2){ -5, 0 });
+		game_state->player = find_first_entity_of_type(&game_state->entity_data, ENTITY_TYPE_PLAYER);
+		ASSERT(game_state->player, "Player must exist at initialization"); 
 
 		FBMContext* ore_fbm_context = &game_state->world_gen_context.ore_fbm_context;
 
@@ -1040,7 +1129,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
 	game_state->frame_arena.next = game_state->frame_arena.data;
 
-	background_render_group.size = WORLD_TILE_WIDTH * WORLD_TILE_HEIGHT;
+	background_render_group.size = DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT;
 	background_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, background_render_group.size * sizeof(RenderQuad));
 	render_group_decorations.size = MAX_DECORATIONS;
 	render_group_decorations.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, render_group_decorations.size * sizeof(RenderQuad));
@@ -1050,18 +1139,20 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	render_group_ui.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, render_group_ui.size * sizeof(RenderQuad));
 
 #ifdef DEBUG
+	render_group_tools.size = MAX_WORLD_ENTITY_INITS + 1000;
+	render_group_tools.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, render_group_tools.size * sizeof(RenderQuad));
 	debug_render_group.size = MAX_ENTITIES * 2;
 	debug_render_group.quads = (RenderQuad*)w_arena_alloc(&game_state->frame_arena, debug_render_group.size * sizeof(RenderQuad));
 	g_debug_render_group = &debug_render_group;
 
-	tools_update(game_memory, game_state, game_input);
+	tools_update_and_render(game_memory, game_state, game_input, &render_group_tools);
 #endif
 
 	// ~~~~~~~~~~~~~~~~~~ Render decorations ~~~~~~~~~~~~~~~~~~~~~~ //
 	{
 		RenderQuad* ground = get_next_quad(&background_render_group);
 		ground->world_position = { 0, 0 };
-		ground->world_size = { WORLD_TILE_WIDTH, WORLD_TILE_HEIGHT };
+		ground->world_size = { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT };
 		Sprite ground_sprite = sprite_table[SPRITE_GROUND_1];
 		ground->sprite_position = { ground_sprite.x, ground_sprite.y };
 		ground->sprite_size = { ground_sprite.w, ground_sprite.h };
@@ -1490,6 +1581,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
 	ui_draw_element(debug_text_container, debug_text_container_position, &debug_render_group);
 
+	game_memory->push_render_group(render_group_tools.quads, render_group_tools.count, game_state->camera.position, render_group_tools.opts);
 	game_memory->push_render_group(debug_render_group.quads, debug_render_group.count, game_state->camera.position, debug_render_group.opts);
 #endif
 }

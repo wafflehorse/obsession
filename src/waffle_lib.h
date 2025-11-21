@@ -572,6 +572,10 @@ void w_init_waffle_lib(char* base_path) {
 int w_read_file_abs(const char* file_path, FileContents* file_contents, Arena* arena) {
 	FILE* file = fopen(file_path, "rb");
 
+    if(!file) {
+        return -1;
+    }
+
 	fseek(file, 0, SEEK_END);
 	uint32 file_size_bytes = ftell(file);
 	fseek(file, 0, SEEK_SET);

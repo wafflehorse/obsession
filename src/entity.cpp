@@ -59,6 +59,16 @@ Entity* get_new_entity(EntityData* entity_data) {
 	return entity;
 }
 
+Entity* find_first_entity_of_type(EntityData* entity_data, EntityType type) {
+	for(int i = 0; i < entity_data->entity_count; i++) {
+		if(entity_data->entities[i].type == type) {
+			return &entity_data->entities[i];
+		}
+	}
+
+	return NULL;
+}
+
 void free_entity(uint32 id, EntityData* entity_data) {
 	EntityLookup* freed_lookup = &entity_data->entity_lookups[id];
 
@@ -451,7 +461,7 @@ RenderQuad* render_animation_sprite(Vec2 world_position, AnimationState* anim_st
 	Animation animation = animation_table[anim_state->animation_id];
 	SpriteID sprite_id = animation.frames[anim_state->current_frame].sprite_id;
 
-	return render_sprite(world_position, sprite_id, render_group, 0, z_index, opts);
+	return render_sprite(world_position, sprite_id, render_group, { .z_index = z_index, .opts = opts });
 } 
 
 RenderQuad* render_entity(Entity* entity, RenderGroup* render_group) {
@@ -478,7 +488,7 @@ RenderQuad* render_entity(Entity* entity, RenderGroup* render_group) {
 
 	Vec2 sprite_position = get_entity_sprite_world_position(sprite_id, entity->position, entity->z_pos, is_set(opts, RENDER_SPRITE_OPT_FLIP_X));
 
-	quad = render_sprite(sprite_position, sprite_id, render_group, entity->rotation_rads, entity->z_index, opts);
+	quad = render_sprite(sprite_position, sprite_id, render_group, { .rotation_rads = entity->rotation_rads, .z_index = entity->z_index, .opts = opts });
 
 	if(entity->damage_taken_tint_cooldown_s > 0) {
 		float normalized_elapsed = 1 - w_clamp_01(entity->damage_taken_tint_cooldown_s / ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S);
@@ -534,6 +544,19 @@ EntityHandle create_entity(EntityData* entity_data, EntityType type, Vec2 positi
 		case ENTITY_TYPE_IRON:
 			create_item_entity(entity_data, ENTITY_TYPE_IRON, position);
 			break;
+		case ENTITY_TYPE_PLAYER: {
+			bool player_exists = false;
+			for(int i = 0; i < entity_data->entity_count; i++) {
+				if(entity_data->entities[i].type == ENTITY_TYPE_PLAYER) {
+					player_exists = true;
+				}
+			}
+
+			if(!player_exists) {
+				create_player_entity(entity_data, position);
+			}
+			break;
+		}
 		default:
 			// TODO: this is probably a debug only function, so this assertion is kind of annoying
 			// cause it will force me to not call this with ineligible entities. So commenting out
