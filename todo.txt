@@ -172,7 +172,7 @@
 [x] Add default creation of game.init and world_0.init
 [x] Add ability for entity palette to place world init entities
 [x] Render world init entities as low alpha default sprites
-[] Bug: stop mouse clicks from placing entities when clicking on imgui panel
+[x] Bug: stop mouse clicks from placing entities when clicking on imgui panel
 [] Add ability to delete world init entities
 [] Add ability to save world init entities to new file
 	- probably want this to update the default world_init file path in game.init as well

@@ -796,19 +796,24 @@ void sprite_to_uv_coordinates(SpriteID sprite_id, Vec2 texture_size, Vec2* uv0, 
 
 void tools_update_and_render(GameMemory* game_memory, GameState* game_state, GameInput* game_input, RenderGroup* render_group) {
 #ifdef DEBUG
+	update_tools_input(game_input, game_state);
+
 	WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
 
-	if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN && game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
-		Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
-		if(game_state->tools.entity_palette_should_add_to_init) {
-			entity_inits[game_state->world_init.entity_init_count++] = {
-				.type = game_state->tools.selected_entity,
-				.position = mouse_world_position
-			};
+	if(!g_debug_imgui_io->WantCaptureMouse) {
+		if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN && game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+			Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
+			if(game_state->tools.entity_palette_should_add_to_init) {
+				entity_inits[game_state->world_init.entity_init_count++] = {
+					.type = game_state->tools.selected_entity,
+					.position = mouse_world_position
+				};
+			}
+			else {
+				create_entity(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
+			}
 		}
-		else {
-			create_entity(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
-		}
+
 	}
 
 	if(game_state->tools.entity_palette_should_add_to_init) {
@@ -1122,7 +1127,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	ImGui::SetCurrentContext(game_memory->imgui_context);
 	g_debug_imgui_io = &ImGui::GetIO();
 	g_debug_imgui_io->IniFilename = NULL;
-	update_tools_input(game_input, game_state);
 #endif
 
 	game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
