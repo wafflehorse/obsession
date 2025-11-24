@@ -453,10 +453,28 @@ Vec2 w_calc_position_delta(Vec2 acceleration, Vec2 velocity, Vec2 position, doub
 	return w_vec_add(w_vec_mult(acceleration, 0.5f * w_square(dt_s)), w_vec_mult(velocity, dt_s));
 }
 
+Vec2 w_rect_top_left(Rect subject) {
+	return { subject.x - (subject.w / 2), subject.y + (subject.h / 2) };
+}
+
+bool w_check_point_in_rect(Rect subject, Vec2 point) {
+	Vec2 subject_top_left = w_rect_top_left(subject);
+
+	if(point.x >= subject_top_left.x &&
+		point.x <= (subject_top_left.x + subject.w) &&
+		point.y <= subject_top_left.y &&
+		point.y >= (subject_top_left.y - subject.h)
+	) {
+		return true;		
+	}
+
+	return false;
+}
+
 bool w_check_aabb_overlap(Rect subject, Rect target)
 {
-	Vec2 subject_top_left = { subject.x - (subject.w / 2), subject.y + (subject.h / 2) };
-	Vec2 target_top_left = { target.x - (target.w / 2), target.y + (target.h / 2) };
+	Vec2 subject_top_left = w_rect_top_left(subject);
+	Vec2 target_top_left = w_rect_top_left(target);
 	if (subject_top_left.x <= target_top_left.x + target.w &&
 		subject_top_left.x + subject.w >= target_top_left.x &&
 		subject_top_left.y >= target_top_left.y - target.h &&
@@ -603,6 +621,19 @@ int w_read_file(const char* rel_path, FileContents* file_contents, Arena* arena)
 	return w_read_file_abs(abs_path, file_contents, arena);
 }
 
+int w_file_write_bin(const char* abs_path, char* data, int size) {
+	FILE* f = fopen(abs_path, "wb");
+
+	if(!f) {
+		return -1;
+	}
+
+	fwrite(data, size, 1, f);
+	fclose(f);
+
+	return 0;
+}
+
 int w_read_wav_file(const char* file_path, WavFile* wav_file, Arena* arena) {
 	FileContents file_contents;
 	int read_file_result = w_read_file(file_path, &file_contents, arena);
@@ -663,6 +694,13 @@ time_t get_last_file_write_time(const char* file_path_rel) {
 	else {
 		return -1;
 	}
+}
+
+void w_timestamp_str(char* timestamp_str, int size) {
+	time_t now = time(NULL);	
+	struct tm *t = localtime(&now);
+
+	strftime(timestamp_str, size, "%Y%m%d_%H%M%S", t);
 }
 
 static Animation* i_animation_table;

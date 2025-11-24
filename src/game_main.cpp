@@ -41,6 +41,7 @@ Vec2 get_world_top_left_tile_position() {
 
 #ifdef DEBUG
 #define ABS_PROJECT_RESOURCE_PATH  "/Users/parkerpestana/dev/obsession/resources/"
+#define ABS_GAME_INIT_PATH "/Users/parkerpestana/dev/obsession/resources/game.init"
 #endif
 
 struct PlayerWorldInput {
@@ -62,10 +63,10 @@ Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
 }
 
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
-#define RENDER_SPRITE_OPT_ALPHA_SET (1 << 1)
+#define RENDER_SPRITE_OPT_TINT_SET (1 << 1)
 
 // TODO: remove this interface and replace with params version
-RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float alpha, float rotation_rads, float z_index, uint32 opts) {
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, Vec4 tint, float rotation_rads, float z_index, uint32 opts) {
 	ASSERT(sprite_id != SPRITE_UNKNOWN, "sprite unknown passed to render sprite");
 	RenderQuad* quad = get_next_quad(render_group);
 	quad->world_position = world_position;
@@ -77,8 +78,8 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	quad->rotation_rads = rotation_rads;
 	quad->z_index = z_index;
 
-	if(is_set(opts, RENDER_SPRITE_OPT_ALPHA_SET)) {
-		quad->tint.w = alpha;
+	if(is_set(opts, RENDER_SPRITE_OPT_TINT_SET)) {
+		quad->tint = tint;
 	}
 
 	if (is_set(opts, RENDER_SPRITE_OPT_FLIP_X)) {
@@ -89,18 +90,18 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 }
 
 RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index) {
-	return render_sprite(world_position, sprite_id, render_group, 1, 0, z_index, 0);
+	return render_sprite(world_position, sprite_id, render_group, { 1, 1, 1, 1 }, 0, z_index, 0);
 }
 
 struct RenderSpriteParams {
 	uint32 opts;
 	float rotation_rads;
 	float z_index;
-	float alpha;
+	Vec4 tint;
 };
 
 RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, RenderSpriteParams params) {
-	return render_sprite(world_position, sprite_id, render_group, params.alpha, params.rotation_rads, params.z_index, params.opts);
+	return render_sprite(world_position, sprite_id, render_group, params.tint, params.rotation_rads, params.z_index, params.opts);
 }
 
 #include "entity.cpp"
@@ -291,6 +292,7 @@ Vec2 get_mouse_world_position(Camera* camera, GameInput* game_input, Vec2 window
 		(game_input->mouse_state.position_px.x - (window_size_px.x / 2)) / g_pixels_per_unit,
 		-(game_input->mouse_state.position_px.y - (window_size_px.y / 2)) / g_pixels_per_unit
 	};
+	mouse_screen_position = w_vec_mult(mouse_screen_position, 1.0f / camera->zoom);
 	Vec2 mouse_world_position = w_vec_add(mouse_screen_position, camera->position);
 
 	return mouse_world_position;
@@ -798,16 +800,38 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 #ifdef DEBUG
 	update_tools_input(game_input, game_state);
 
+	Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
 	WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
+	int hovered_over_entity_init = -1;
 
 	if(!g_debug_imgui_io->WantCaptureMouse) {
+		for(int i = 0; i < game_state->world_init.entity_init_count; i++) {
+			Sprite sprite = get_entity_default_sprite(entity_inits[i].type);
+			Rect target = {
+				entity_inits[i].position.x,
+				entity_inits[i].position.y,
+				pixels_to_units(sprite.w),
+				pixels_to_units(sprite.h)
+			};
+			if(w_check_point_in_rect(target, mouse_world_position)) {
+				hovered_over_entity_init = i;
+				break;
+			}
+		}
+
 		if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN && game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
-			Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
 			if(game_state->tools.entity_palette_should_add_to_init) {
-				entity_inits[game_state->world_init.entity_init_count++] = {
-					.type = game_state->tools.selected_entity,
-					.position = mouse_world_position
-				};
+				if(hovered_over_entity_init != -1) {
+					if(entity_inits[hovered_over_entity_init].type != ENTITY_TYPE_PLAYER) {
+						entity_inits[hovered_over_entity_init] = entity_inits[game_state->world_init.entity_init_count-- - 1];
+					}
+				}
+				else {
+					entity_inits[game_state->world_init.entity_init_count++] = {
+						.type = game_state->tools.selected_entity,
+						.position = mouse_world_position
+					};
+				}
 			}
 			else {
 				create_entity(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
@@ -819,7 +843,11 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 	if(game_state->tools.entity_palette_should_add_to_init) {
 		for(int i = 0; i < game_state->world_init.entity_init_count; i++) {
 			SpriteID sprite_id = entity_default_sprites[entity_inits[i].type];
-			render_sprite(entity_inits[i].position, sprite_id, render_group, { .alpha = 0.3, .opts = RENDER_SPRITE_OPT_ALPHA_SET });		
+			Vec4 tint = { 1, 1, 1, 0.3 };
+			if(hovered_over_entity_init == i) {
+				tint.x = 4;
+			}
+			render_sprite(entity_inits[i].position, sprite_id, render_group, { .tint = tint, .opts = RENDER_SPRITE_OPT_TINT_SET });		
 		}
 	}
 
@@ -827,7 +855,7 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 #endif
 }
 
-void debug_render_tools_panel(GameState* game_state) {
+void debug_render_tools_panel(GameMemory* game_memory, GameState* game_state, GameInput* game_input) {
 #ifdef DEBUG
 	if(game_state->tools.is_panel_open) {
 		const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
@@ -843,6 +871,10 @@ void debug_render_tools_panel(GameState* game_state) {
 			ImGui::End();
 			return;
 		}
+
+        Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
+
+        ImGui::Text("Mouse world position: %.3f, %.3f", mouse_world_position.x, mouse_world_position.y);
 
 		if (ImGui::CollapsingHeader("Entity")) {
 			ImGui::Text("Entity count: %i", game_state->entity_data.entity_count);
@@ -901,6 +933,23 @@ void debug_render_tools_panel(GameState* game_state) {
 
 				ImGui::PopID();
 			}
+
+			if(ImGui::Button("Save world init")) {
+				char new_filename[256];
+				char timestamp[256];
+				char filepath[PATH_MAX];
+
+				w_timestamp_str(timestamp, 256);
+				snprintf(new_filename, 256, "world_init_%s", timestamp);
+				
+				w_get_absolute_path(filepath, ABS_PROJECT_RESOURCE_PATH, new_filename);
+				w_str_copy(game_state->game_init_config.default_world_init_path, filepath);	
+
+				w_file_write_bin(filepath, (char*)&game_state->world_init, sizeof(WorldInit));
+				w_file_write_bin(ABS_GAME_INIT_PATH, (char*)&game_state->game_init_config, sizeof(GameInit));
+			};
+
+			ImGui::Text("Current World Init: %s", game_state->game_init_config.default_world_init_path);
 		}
 
 		if (ImGui::CollapsingHeader("Proc Gen")) {
@@ -1030,39 +1079,25 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 			char* main_marker = w_arena_marker(&game_state->main_arena);
 
 			FileContents game_init_file_contents;
-			char game_init_file_path[PATH_MAX];
-			w_get_absolute_path(game_init_file_path, ABS_PROJECT_RESOURCE_PATH, "game.init");
-			if(w_read_file_abs(game_init_file_path, &game_init_file_contents, &game_state->main_arena) != 0) {
+			if(w_read_file_abs(ABS_GAME_INIT_PATH, &game_init_file_contents, &game_state->main_arena) != 0) {
 				w_get_absolute_path(game_state->game_init_config.default_world_init_path, ABS_PROJECT_RESOURCE_PATH, "world_0.init");
 
-				FILE* f = fopen(game_init_file_path, "wb");
-
-				if(!f) {
-					ASSERT(false, "failed to open file resources/game.init");
-				}
-
-				fwrite(&game_state->game_init_config, sizeof(GameInit), 1, f);
-				fclose(f);
+				bool result = w_file_write_bin(ABS_GAME_INIT_PATH, (char*)&game_state->game_init_config, sizeof(GameInit));
+				ASSERT(result == 0, "failed to open file resources/game.init");
 			}
 			else {
 				memcpy(&game_state->game_init_config, game_init_file_contents.data, sizeof(GameInit));
 			}
 
 			FileContents world_init_file_contents;
-			if(w_read_file(game_state->game_init_config.default_world_init_path, &world_init_file_contents, &game_state->main_arena) != 0) {
+			if(w_read_file_abs(game_state->game_init_config.default_world_init_path, &world_init_file_contents, &game_state->main_arena) != 0) {
 				game_state->world_init.world_size = { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT };
 				game_state->world_init.entity_inits[0].type = ENTITY_TYPE_PLAYER;
 				game_state->world_init.entity_inits[0].position = { 0, 0 };
 				game_state->world_init.entity_init_count = 1;
 
-				FILE* f = fopen(game_state->game_init_config.default_world_init_path, "wb");
-
-				if(!f) {
-					ASSERT(false, "failed to open file resources/world_0.init");
-				}
-
-				fwrite(&game_state->world_init, sizeof(WorldInit), 1, f);
-				fclose(f);
+				bool result = w_file_write_bin(game_state->game_init_config.default_world_init_path, (char*)&game_state->world_init, sizeof(WorldInit));
+				ASSERT(result == 0, "failed to open file resources/world_0.init");
 			}
 			else {
 				memcpy(&game_state->world_init, world_init_file_contents.data, sizeof(WorldInit));
@@ -1551,7 +1586,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	game_memory->push_render_group(render_group_ui.quads, render_group_ui.count, game_state->camera.position, render_group_ui.opts);
 
 #ifdef DEBUG
-	debug_render_tools_panel(game_state);
+	debug_render_tools_panel(game_memory, game_state, game_input);
 	DebugInfo* debug_info = &game_memory->debug_info;
 	double avg_rendered_frame_time_s = w_avg(debug_info->rendered_dt_history, w_min(debug_info->rendered_dt_history_count, FRAME_TIME_HISTORY_MAX_COUNT));
 	double fps = 0;

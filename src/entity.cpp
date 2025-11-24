@@ -43,6 +43,10 @@ SpriteID entity_default_sprites[ENTITY_TYPE_COUNT] = {
 	[ENTITY_TYPE_IRON] = SPRITE_IRON_1,
 };
 
+Sprite get_entity_default_sprite(EntityType type) {
+	return sprite_table[entity_default_sprites[type]];
+}
+
 Entity* get_new_entity(EntityData* entity_data) {
 	uint32 idx = entity_data->entity_count;
 	Entity* entity = &entity_data->entities[entity_data->entity_count++];

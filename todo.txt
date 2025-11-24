@@ -173,12 +173,14 @@
 [x] Add ability for entity palette to place world init entities
 [x] Render world init entities as low alpha default sprites
 [x] Bug: stop mouse clicks from placing entities when clicking on imgui panel
-[] Add ability to delete world init entities
+[x] Add ability to delete world init entities
+[x] Fix mouse world position when camera zoom isn't 1
 [] Add ability to save world init entities to new file
 	- probably want this to update the default world_init file path in game.init as well
 [] Add toggle for entity palette that edits whether tilemap is being editted vs. just spawning an entity
 - Is tilemap accurate? Or should it be called something else?
 
+[] Add mouse_world_position to game state
 [] Randomly spawn enemies around the map
 [] Add item consumption
 [] Add mech entity
