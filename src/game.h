@@ -29,12 +29,12 @@
 #define ATTACK_ID_LAST (ATTACK_ID_START + ATTACK_ID_MAX_IDS - 1)
 
 struct FontData {
-    uint32 ascent;
-    uint32 descent;
-    uint32 line_gap;
-    float baked_pixel_size;
-    Vec2 texture_dimensions;
-    stbtt_packedchar char_data[95];
+	uint32 ascent;
+	uint32 descent;
+	uint32 line_gap;
+	float baked_pixel_size;
+	Vec2 texture_dimensions;
+	stbtt_packedchar char_data[95];
 };
 
 enum TextureID {
@@ -43,22 +43,22 @@ enum TextureID {
 };
 
 enum SoundType {
-    SOUND_UNKNOWN,
-    SOUND_BACKGROUND_MUSIC,
+	SOUND_UNKNOWN,
+	SOUND_BACKGROUND_MUSIC,
 	SOUND_BASIC_GUN_SHOT,
-    SOUND_TYPE_COUNT
+	SOUND_TYPE_COUNT
 };
 
 struct SoundSampleData {
-    int16* samples;
-    uint64 sample_count;
+	int16* samples;
+	uint64 sample_count;
 };
 
 struct Sound {
-    SoundType type;
-    uint8 num_variations;
-    SoundSampleData variations[MAX_SOUND_VARIATIONS];
-    float default_volume;
+	SoundType type;
+	uint8 num_variations;
+	SoundSampleData variations[MAX_SOUND_VARIATIONS];
+	float default_volume;
 };
 
 enum RenderGroupID {
@@ -129,7 +129,7 @@ struct Brain {
 
 enum DecorationType {
 	DECORATION_TYPE_NONE,
-	DECORATION_TYPE_PLANT	
+	DECORATION_TYPE_PLANT
 };
 
 struct Decoration {
@@ -166,16 +166,16 @@ enum EntityType {
 	ENTITY_TYPE_COUNT
 };
 
-#define ENTITY_FLAG_MARK_FOR_DELETION (1 << 0)
-#define ENTITY_FLAG_OWNED (1 << 1)
-#define ENTITY_FLAG_SPRITE_FLIP_X (1 << 2)
-#define ENTITY_FLAG_KILLABLE (1 << 3)
-#define ENTITY_FLAG_NONSPACIAL (1 << 4)
-#define ENTITY_FLAG_BLOCKER (1 << 5)
-#define ENTITY_FLAG_DELETE_AFTER_ANIMATION (1 << 6)
-#define ENTITY_FLAG_ITEM (1 << 7)
-#define ENTITY_FLAG_ITEM_SPAWNING (1 << 8)
-#define ENTITY_FLAG_ITEM_PERSIST_ENTITY (1 << 9)
+#define ENTITY_F_MARK_FOR_DELETION (1 << 0)
+#define ENTITY_F_OWNED (1 << 1)
+#define ENTITY_F_SPRITE_FLIP_X (1 << 2)
+#define ENTITY_F_KILLABLE (1 << 3)
+#define ENTITY_F_NONSPACIAL (1 << 4)
+#define ENTITY_F_BLOCKER (1 << 5)
+#define ENTITY_F_DELETE_AFTER_ANIMATION (1 << 6)
+#define ENTITY_F_ITEM (1 << 7)
+#define ENTITY_F_ITEM_SPAWNING (1 << 8)
+#define ENTITY_F_ITEM_PERSIST_ENTITY (1 << 9)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
@@ -242,7 +242,7 @@ struct EntityItemSpawnInfo {
 };
 
 struct WorldGenContext {
-	FBMContext ore_fbm_context;	
+	FBMContext ore_fbm_context;
 	FBMContext plant_fbm_context;
 };
 
@@ -261,7 +261,7 @@ struct GameInit {
 };
 
 struct WorldInitEntity {
-	EntityType type;	
+	EntityType type;
 	Vec2 position;
 };
 
@@ -269,7 +269,7 @@ struct WorldInitEntity {
 
 struct WorldInit {
 	Vec2 world_size;
-	WorldInitEntity entity_inits[MAX_WORLD_ENTITY_INITS];	
+	WorldInitEntity entity_inits[MAX_WORLD_ENTITY_INITS];
 	uint32 entity_init_count;
 };
 
