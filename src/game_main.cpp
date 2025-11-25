@@ -806,10 +806,12 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 
 	if(!g_debug_imgui_io->WantCaptureMouse) {
 		for(int i = 0; i < game_state->world_init.entity_init_count; i++) {
+			SpriteID sprite_id = entity_default_sprites[entity_inits[i].type];
+			Vec2 target_position = get_entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
 			Sprite sprite = get_entity_default_sprite(entity_inits[i].type);
 			Rect target = {
-				entity_inits[i].position.x,
-				entity_inits[i].position.y,
+				target_position.x,
+				target_position.y,
 				pixels_to_units(sprite.w),
 				pixels_to_units(sprite.h)
 			};
@@ -819,14 +821,14 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 			}
 		}
 
-		if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN && game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+		if(game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
 			if(game_state->tools.entity_palette_should_add_to_init) {
 				if(hovered_over_entity_init != -1) {
 					if(entity_inits[hovered_over_entity_init].type != ENTITY_TYPE_PLAYER) {
 						entity_inits[hovered_over_entity_init] = entity_inits[game_state->world_init.entity_init_count-- - 1];
 					}
 				}
-				else {
+				else if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN) {
 					entity_inits[game_state->world_init.entity_init_count++] = {
 						.type = game_state->tools.selected_entity,
 						.position = mouse_world_position
@@ -847,7 +849,9 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 			if(hovered_over_entity_init == i) {
 				tint.x = 4;
 			}
-			render_sprite(entity_inits[i].position, sprite_id, render_group, { .tint = tint, .opts = RENDER_SPRITE_OPT_TINT_SET });		
+
+			Vec2 sprite_position = get_entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
+			render_sprite(sprite_position, sprite_id, render_group, { .tint = tint, .opts = RENDER_SPRITE_OPT_TINT_SET });		
 		}
 	}
 
