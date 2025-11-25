@@ -15,12 +15,6 @@
 #define STB_PERLIN_IMPLEMENTATION
 #include "stb_perlin.h"
 
-#ifdef DEBUG
-#include "imgui.h"
-
-ImGuiIO* g_debug_imgui_io;
-#endif
-
 char* g_base_path;
 char* g_debug_project_dir;
 uint32 g_pixels_per_unit;
@@ -104,7 +98,101 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 	return render_sprite(world_position, sprite_id, render_group, params.tint, params.rotation_rads, params.z_index, params.opts);
 }
 
+Vec2 get_mouse_world_position(Camera* camera, GameInput* game_input, Vec2 window_size_px) {
+	Vec2 mouse_screen_position = {
+		(game_input->mouse_state.position_px.x - (window_size_px.x / 2)) / g_pixels_per_unit,
+		-(game_input->mouse_state.position_px.y - (window_size_px.y / 2)) / g_pixels_per_unit
+	};
+	mouse_screen_position = w_vec_mult(mouse_screen_position, 1.0f / camera->zoom);
+	Vec2 mouse_world_position = w_vec_add(mouse_screen_position, camera->position);
+
+	return mouse_world_position;
+}
+
+float pixels_to_units(float pixels) {
+	return pixels / BASE_PIXELS_PER_UNIT;
+}
+
+Vec2 pixels_to_units(Vec2 pixels) {
+	return {
+		pixels.x / BASE_PIXELS_PER_UNIT,
+		pixels.y / BASE_PIXELS_PER_UNIT
+	};
+}
+
 #include "entity.cpp"
+
+void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
+	for(int i = 0; i < entity_data->entity_count; i++) {
+		if(entity_data->entities[i].type == ENTITY_TYPE_IRON_DEPOSIT) {
+			set(entity_data->entities[i].flags, ENTITY_FLAG_MARK_FOR_DELETION);
+		}
+	}
+
+	Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
+
+	for (int i = 0; i < DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT; i++) {
+		uint32 col = i % DEFAULT_WORLD_WIDTH;
+		uint32 row = i / DEFAULT_WORLD_HEIGHT;
+		Vec2 position = {
+			world_top_left_tile_position.x + col,
+			world_top_left_tile_position.y - row
+		};
+
+		float noise_val = stb_perlin_fbm_noise3(position.x * fbm_context->freq, position.y * fbm_context->freq, 0, fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves);
+		if (noise_val > 0.7f) {
+			create_ore_deposit_entity(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
+		}
+		// else if (noise_val < 0.61f && noise_val > 0.6f) {
+		// 	create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
+		// }
+	}
+}
+
+void create_decoration(DecorationData* decoration_data, DecorationType type, Vec2 position, SpriteID sprite_id) {
+	Decoration* decorations = decoration_data->decorations;
+	Decoration* decoration = NULL;
+	for(int i = 0; i < MAX_DECORATIONS; i++) {
+		if(decorations[i].type == DECORATION_TYPE_NONE) {
+			decoration = &decorations[i];	
+		}
+	}
+
+	ASSERT(decoration, "MAX_DECORATIONS has been reached");
+
+	decoration->position = position;
+	decoration->sprite_id = sprite_id;
+	decoration->type = type;
+}
+
+void proc_gen_plants(DecorationData* decoration_data, FBMContext* fbm_context) {
+	Decoration* decorations = decoration_data->decorations;
+	for(int i = 0; i < MAX_DECORATIONS; i++) {
+		if(decorations[i].type == DECORATION_TYPE_PLANT) {
+			decoration_data->decorations[i].type = DECORATION_TYPE_NONE;	
+		}
+	}
+
+	Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
+
+	for (int i = 0; i < DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT; i++) {
+		uint32 col = i % DEFAULT_WORLD_WIDTH;
+		uint32 row = i / DEFAULT_WORLD_HEIGHT;
+		Vec2 position = {
+			world_top_left_tile_position.x + col,
+			world_top_left_tile_position.y - row
+		};
+
+		float noise_val = stb_perlin_fbm_noise3(position.x * fbm_context->freq, position.y * fbm_context->freq, 0, fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves);
+		if (noise_val > 0.7f) {
+			create_decoration(decoration_data, DECORATION_TYPE_PLANT, position, SPRITE_PLANT_1);
+		}
+	}
+}
+
+#ifdef DEBUG
+#include "engine_tools.cpp"
+#endif
 
 uint32 get_viewport_scale_factor(Vec2 screen_size) {
 	uint32 width_scale = screen_size.x / BASE_RESOLUTION_WIDTH;
@@ -128,17 +216,6 @@ void init_entity_data(EntityData* entity_data) {
 		lookup->generation = 0;
 		lookup->idx = i;
 	}
-}
-
-float pixels_to_units(float pixels) {
-	return pixels / BASE_PIXELS_PER_UNIT;
-}
-
-Vec2 pixels_to_units(Vec2 pixels) {
-	return {
-		pixels.x / BASE_PIXELS_PER_UNIT,
-		pixels.y / BASE_PIXELS_PER_UNIT
-	};
 }
 
 void init_hot_bar(HotBar* hot_bar) {
@@ -263,44 +340,9 @@ void render_hot_bar(GameState* game_state, RenderGroup* render_group) {
 	ui_draw_element(container, container_top_left, render_group);
 }
 
-void update_tools_input(GameInput* game_input, GameState* game_state) {
-#ifdef DEBUG
-	KeyInputState* key_input_states = game_input->key_input_states;
-
-	if(key_input_states[KEY_L_CTRL].is_held || key_input_states[KEY_R_CTRL].is_held) {
-		if(key_input_states[KEY_E].is_pressed) {
-			game_state->tools.is_panel_open = !game_state->tools.is_panel_open;
-		}
-
-		if(key_input_states[KEY_MINUS].is_pressed) {
-			game_state->camera.zoom = w_max(game_state->camera.zoom * 0.90f, 0.1f);
-		}
-
-		if(key_input_states[KEY_EQUALS].is_pressed) {
-			game_state->camera.zoom = w_min(game_state->camera.zoom * 1.10f, 1.0f);
-		}
-
-		if(key_input_states[KEY_0].is_pressed) {
-			game_state->camera.zoom = 1.0f;
-		}
-	}
-#endif
-}
-
-Vec2 get_mouse_world_position(Camera* camera, GameInput* game_input, Vec2 window_size_px) {
-	Vec2 mouse_screen_position = {
-		(game_input->mouse_state.position_px.x - (window_size_px.x / 2)) / g_pixels_per_unit,
-		-(game_input->mouse_state.position_px.y - (window_size_px.y / 2)) / g_pixels_per_unit
-	};
-	mouse_screen_position = w_vec_mult(mouse_screen_position, 1.0f / camera->zoom);
-	Vec2 mouse_world_position = w_vec_add(mouse_screen_position, camera->position);
-
-	return mouse_world_position;
-}
-
 void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input, Vec2 screen_size) {
 #ifdef DEBUG
-	if (g_debug_imgui_io->WantCaptureMouse || g_debug_imgui_io->WantCaptureKeyboard) {
+	if (is_set(game_state->tools.flags, TOOLS_F_CAPTURING_INPUT)) {
 		return;
 	}
 #endif
@@ -718,291 +760,6 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
 	return shake_offset;
 }
 
-void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
-	for(int i = 0; i < entity_data->entity_count; i++) {
-		if(entity_data->entities[i].type == ENTITY_TYPE_IRON_DEPOSIT) {
-			set(entity_data->entities[i].flags, ENTITY_FLAG_MARK_FOR_DELETION);
-		}
-	}
-
-	Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
-
-	for (int i = 0; i < DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT; i++) {
-		uint32 col = i % DEFAULT_WORLD_WIDTH;
-		uint32 row = i / DEFAULT_WORLD_HEIGHT;
-		Vec2 position = {
-			world_top_left_tile_position.x + col,
-			world_top_left_tile_position.y - row
-		};
-
-		float noise_val = stb_perlin_fbm_noise3(position.x * fbm_context->freq, position.y * fbm_context->freq, 0, fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves);
-		if (noise_val > 0.7f) {
-			create_ore_deposit_entity(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
-		}
-		// else if (noise_val < 0.61f && noise_val > 0.6f) {
-		// 	create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
-		// }
-	}
-}
-
-void create_decoration(DecorationData* decoration_data, DecorationType type, Vec2 position, SpriteID sprite_id) {
-	Decoration* decorations = decoration_data->decorations;
-	Decoration* decoration = NULL;
-	for(int i = 0; i < MAX_DECORATIONS; i++) {
-		if(decorations[i].type == DECORATION_TYPE_NONE) {
-			decoration = &decorations[i];	
-		}
-	}
-
-	ASSERT(decoration, "MAX_DECORATIONS has been reached");
-
-	decoration->position = position;
-	decoration->sprite_id = sprite_id;
-	decoration->type = type;
-}
-
-void proc_gen_plants(DecorationData* decoration_data, FBMContext* fbm_context) {
-	Decoration* decorations = decoration_data->decorations;
-	for(int i = 0; i < MAX_DECORATIONS; i++) {
-		if(decorations[i].type == DECORATION_TYPE_PLANT) {
-			decoration_data->decorations[i].type = DECORATION_TYPE_NONE;	
-		}
-	}
-
-	Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
-
-	for (int i = 0; i < DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT; i++) {
-		uint32 col = i % DEFAULT_WORLD_WIDTH;
-		uint32 row = i / DEFAULT_WORLD_HEIGHT;
-		Vec2 position = {
-			world_top_left_tile_position.x + col,
-			world_top_left_tile_position.y - row
-		};
-
-		float noise_val = stb_perlin_fbm_noise3(position.x * fbm_context->freq, position.y * fbm_context->freq, 0, fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves);
-		if (noise_val > 0.7f) {
-			create_decoration(decoration_data, DECORATION_TYPE_PLANT, position, SPRITE_PLANT_1);
-		}
-	}
-}
-
-void sprite_to_uv_coordinates(SpriteID sprite_id, Vec2 texture_size, Vec2* uv0, Vec2* uv1) {
-	Sprite sprite = sprite_table[sprite_id];
-
-	uv0->x = sprite.x / texture_size.x;
-	uv0->y = 1 - (sprite.y / texture_size.y);
-
-	uv1->x = (sprite.x + sprite.w) / texture_size.x;
-	uv1->y = 1 - ((sprite.y + sprite.h) / texture_size.y);
-}
-
-void tools_update_and_render(GameMemory* game_memory, GameState* game_state, GameInput* game_input, RenderGroup* render_group) {
-#ifdef DEBUG
-	update_tools_input(game_input, game_state);
-
-	Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
-	WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
-	int hovered_over_entity_init = -1;
-
-	if(!g_debug_imgui_io->WantCaptureMouse) {
-		for(int i = 0; i < game_state->world_init.entity_init_count; i++) {
-			SpriteID sprite_id = entity_default_sprites[entity_inits[i].type];
-			Vec2 target_position = get_entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
-			Sprite sprite = get_entity_default_sprite(entity_inits[i].type);
-			Rect target = {
-				target_position.x,
-				target_position.y,
-				pixels_to_units(sprite.w),
-				pixels_to_units(sprite.h)
-			};
-			if(w_check_point_in_rect(target, mouse_world_position)) {
-				hovered_over_entity_init = i;
-				break;
-			}
-		}
-
-		if(game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
-			if(game_state->tools.entity_palette_should_add_to_init) {
-				if(hovered_over_entity_init != -1) {
-					if(entity_inits[hovered_over_entity_init].type != ENTITY_TYPE_PLAYER) {
-						entity_inits[hovered_over_entity_init] = entity_inits[game_state->world_init.entity_init_count-- - 1];
-					}
-				}
-				else if(game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN) {
-					entity_inits[game_state->world_init.entity_init_count++] = {
-						.type = game_state->tools.selected_entity,
-						.position = mouse_world_position
-					};
-				}
-			}
-			else {
-				create_entity(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
-			}
-		}
-
-	}
-
-	if(game_state->tools.entity_palette_should_add_to_init) {
-		for(int i = 0; i < game_state->world_init.entity_init_count; i++) {
-			SpriteID sprite_id = entity_default_sprites[entity_inits[i].type];
-			Vec4 tint = { 1, 1, 1, 0.3 };
-			if(hovered_over_entity_init == i) {
-				tint.x = 4;
-			}
-
-			Vec2 sprite_position = get_entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
-			render_sprite(sprite_position, sprite_id, render_group, { .tint = tint, .opts = RENDER_SPRITE_OPT_TINT_SET });		
-		}
-	}
-
-
-#endif
-}
-
-void debug_render_tools_panel(GameMemory* game_memory, GameState* game_state, GameInput* game_input) {
-#ifdef DEBUG
-	if(game_state->tools.is_panel_open) {
-		const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-		int panel_width = 260;
-		int panel_height = 420;
-		ImGui::SetNextWindowSize(ImVec2(panel_width, panel_height), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x, main_viewport->WorkPos.y + 80), ImGuiCond_FirstUseEver);
-
-		uint32 panel_flags = 0;
-		panel_flags |= ImGuiWindowFlags_NoCollapse;
-		if (!ImGui::Begin("Tools", &game_state->tools.is_panel_open, panel_flags))
-		{
-			ImGui::End();
-			return;
-		}
-
-        Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
-
-        ImGui::Text("Mouse world position: %.3f, %.3f", mouse_world_position.x, mouse_world_position.y);
-
-		if (ImGui::CollapsingHeader("Entity")) {
-			ImGui::Text("Entity count: %i", game_state->entity_data.entity_count);
-			ImGui::Text("Max entity count: %i", MAX_ENTITIES);
-			ImGui::Checkbox("World init", &game_state->tools.entity_palette_should_add_to_init);
-
-			float available_width = 256;//ImGui::GetContentRegionAvail().x;
-			float x = 0;
-			Vec2 sprite_texture_size = { 
-				(float)game_state->sprite_texture_info.width,
-				(float)game_state->sprite_texture_info.height
-			};
-			float spacing = ImGui::GetStyle().ItemSpacing.x;
-
-			for(int i = 1; i < ENTITY_TYPE_COUNT; i++) {
-				ImGui::PushID(i);
-
-				SpriteID sprite_id = entity_default_sprites[i];
-				Sprite sprite = sprite_table[sprite_id];
-
-				Vec2 image_size = w_vec_mult((Vec2){ sprite.w, sprite.h }, 2);
-
-				Vec2 player_uv0 = {};
-				Vec2 player_uv1 = {};
-				sprite_to_uv_coordinates(sprite_id, sprite_texture_size, &player_uv0, &player_uv1);
-
-				if(x + image_size.x + spacing > available_width - 8) {
-					ImGui::NewLine();
-					x = 0;
-				}
-				else if(x > 0.0f) {
-					ImGui::SameLine();
-				}
-
-				x += image_size.x + spacing;
-				
-				bool is_clicked = ImGui::ImageButton(
-					"some_id",
-					game_state->sprite_texture_info.id, 
-					ImVec2(image_size.x, image_size.y), 
-					ImVec2(player_uv0.x, player_uv0.y), 
-					ImVec2(player_uv1.x, player_uv1.y)
-				);
-
-				if(is_clicked) {
-					game_state->tools.selected_entity = (EntityType)i;
-				}
-
-				if(i == game_state->tools.selected_entity) {
-					ImGui::GetWindowDrawList()->AddRect(
-        				ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
-        				IM_COL32(255,255,0,255), // yellow
-        				0.0f, 0, 2.0f
-    				);
-				}
-
-				ImGui::PopID();
-			}
-
-			if(ImGui::Button("Save world init")) {
-				char new_filename[256];
-				char timestamp[256];
-				char filepath[PATH_MAX];
-
-				w_timestamp_str(timestamp, 256);
-				snprintf(new_filename, 256, "world_init_%s", timestamp);
-				
-				w_get_absolute_path(filepath, ABS_PROJECT_RESOURCE_PATH, new_filename);
-				w_str_copy(game_state->game_init_config.default_world_init_path, filepath);	
-
-				w_file_write_bin(filepath, (char*)&game_state->world_init, sizeof(WorldInit));
-				w_file_write_bin(ABS_GAME_INIT_PATH, (char*)&game_state->game_init_config, sizeof(GameInit));
-			};
-
-			ImGui::Text("Current World Init: %s", game_state->game_init_config.default_world_init_path);
-		}
-
-		if (ImGui::CollapsingHeader("Proc Gen")) {
-			if (ImGui::TreeNode("Iron Ore")) {
-				FBMContext* fbm_context = &game_state->world_gen_context.ore_fbm_context;
-				ImGuiSliderFlags slider_flags = 0;
-
-				ImGui::DragInt("Octaves", (int*)&fbm_context->octaves, 0.1f, 1, 16, "%i", slider_flags);
-				ImGui::DragFloat("Amp", &fbm_context->amp, 0.1f, 0, 16, "%.4f", slider_flags);
-				ImGui::DragFloat("Freq", &fbm_context->freq, 0.001f, 0, 4, "%.4f", slider_flags);
-				ImGui::DragFloat("Gain", &fbm_context->gain, 0.1f, 0, 8, "%.4f", slider_flags);
-				ImGui::DragFloat("Lacunarity", &fbm_context->lacunarity, 0.1f, 0, 8, "%.4f", slider_flags);
-				if (ImGui::Button("Gen")) {
-					proc_gen_iron_ore(&game_state->entity_data, &game_state->world_gen_context.ore_fbm_context);
-				}
-
-				ImGui::TreePop();
-			}
-
-			if (ImGui::TreeNode("Plants")) {
-				FBMContext* fbm_context = &game_state->world_gen_context.plant_fbm_context;
-				ImGuiSliderFlags slider_flags = 0;
-
-				ImGui::DragInt("Octaves", (int*)&fbm_context->octaves, 0.1f, 1, 16, "%i", slider_flags);
-				ImGui::DragFloat("Amp", &fbm_context->amp, 0.1f, 0, 16, "%.4f", slider_flags);
-				ImGui::DragFloat("Freq", &fbm_context->freq, 0.001f, 0, 4, "%.4f", slider_flags);
-				ImGui::DragFloat("Gain", &fbm_context->gain, 0.1f, 0, 8, "%.4f", slider_flags);
-				ImGui::DragFloat("Lacunarity", &fbm_context->lacunarity, 0.1f, 0, 8, "%.4f", slider_flags);
-				if (ImGui::Button("Gen")) {
-					proc_gen_plants(&game_state->decoration_data, fbm_context);
-				}
-
-				ImGui::TreePop();
-			}
-
-		}
-
-		if (ImGui::CollapsingHeader("Render groups")) {
-
-		}
-
-		ImGui::End();
-	}
-	else {
-		game_state->tools.selected_entity = ENTITY_TYPE_UNKNOWN;
-	}
-#endif
-}
-
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	// ~~~~~~~~~~~~~~~~~~ Debug Flags ~~~~~~~~~~~~~~~~~~~~ //
 	bool debug_should_render_hitboxes = false;
@@ -1161,12 +918,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 		proc_gen_iron_ore(&game_state->entity_data, ore_fbm_context);
 		proc_gen_plants(&game_state->decoration_data, plant_fbm_context);
 	}
-
-#ifdef DEBUG
-	ImGui::SetCurrentContext(game_memory->imgui_context);
-	g_debug_imgui_io = &ImGui::GetIO();
-	g_debug_imgui_io->IniFilename = NULL;
-#endif
 
 	game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
 	init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
@@ -1590,7 +1341,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 	game_memory->push_render_group(render_group_ui.quads, render_group_ui.count, game_state->camera.position, render_group_ui.opts);
 
 #ifdef DEBUG
-	debug_render_tools_panel(game_memory, game_state, game_input);
 	DebugInfo* debug_info = &game_memory->debug_info;
 	double avg_rendered_frame_time_s = w_avg(debug_info->rendered_dt_history, w_min(debug_info->rendered_dt_history_count, FRAME_TIME_HISTORY_MAX_COUNT));
 	double fps = 0;

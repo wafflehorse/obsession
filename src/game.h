@@ -246,7 +246,11 @@ struct WorldGenContext {
 	FBMContext plant_fbm_context;
 };
 
+
+#define TOOLS_F_CAPTURING_INPUT (1 << 0)
+
 struct Tools {
+	flags flags;
 	bool is_panel_open;
 	EntityType selected_entity;
 	bool entity_palette_should_add_to_init;
