@@ -8,26 +8,25 @@
 #include "imgui.h"
 #endif
 
-enum ProfileTimerID {
-	ProfileTimerID_GameStateInitialization,
-	ProfileTimerIDCount
-};
+enum ProfileTimerID { ProfileTimerID_GameStateInitialization, ProfileTimerIDCount };
 
 struct ProfileTimer {
-	uint64 ticks_elapsed;
-	double time_elapsed_ms;
-	uint32 hit_count;
+    uint64 ticks_elapsed;
+    double time_elapsed_ms;
+    uint32 hit_count;
 };
 
 #ifdef DEBUG
-	#define StartTimedBlock(ID) uint64 start_perf_counter_##ID = debug_game_memory->get_performance_counter();
-	#define EndTimedBlock(ID) uint64 elapsed_perf_counter_##ID = debug_game_memory->get_performance_counter() - start_perf_counter_##ID; \
-	debug_game_memory->debug_info.profile_timers[ProfileTimerID_##ID].ticks_elapsed += elapsed_perf_counter_##ID; \
-	debug_game_memory->debug_info.profile_timers[ProfileTimerID_##ID].time_elapsed_ms += (elapsed_perf_counter_##ID / (double)debug_game_memory->performance_frequency) * 1000; \
-	debug_game_memory->debug_info.profile_timers[ProfileTimerID_##ID].hit_count++;
+#define StartTimedBlock(ID) uint64 start_perf_counter_##ID = debug_game_memory->get_performance_counter();
+#define EndTimedBlock(ID)                                                                                              \
+    uint64 elapsed_perf_counter_##ID = debug_game_memory->get_performance_counter() - start_perf_counter_##ID;         \
+    debug_game_memory->debug_info.profile_timers[ProfileTimerID_##ID].ticks_elapsed += elapsed_perf_counter_##ID;      \
+    debug_game_memory->debug_info.profile_timers[ProfileTimerID_##ID].time_elapsed_ms +=                               \
+        (elapsed_perf_counter_##ID / (double)debug_game_memory->performance_frequency) * 1000;                         \
+    debug_game_memory->debug_info.profile_timers[ProfileTimerID_##ID].hit_count++;
 #else
-	#define StartTimedBlock(ID)
-	#define EndTimedBlock(ID)
+#define StartTimedBlock(ID)
+#define EndTimedBlock(ID)
 #endif
 
 #define GET_PERFORMANCE_COUNTER(name) uint64 name()
@@ -42,29 +41,29 @@ typedef STOP_TEXT_INPUT(StopTextInput);
 #define FRAME_TIME_HISTORY_MAX_COUNT 120
 
 struct DebugInfo {
-	double rendered_dt_history[FRAME_TIME_HISTORY_MAX_COUNT];
-	uint32 rendered_dt_history_count;
-	double prebuffer_swap_dt_history[FRAME_TIME_HISTORY_MAX_COUNT];
-	uint32 prebuffer_swap_dt_history_count;
-	ProfileTimer profile_timers[ProfileTimerIDCount];
+    double rendered_dt_history[FRAME_TIME_HISTORY_MAX_COUNT];
+    uint32 rendered_dt_history_count;
+    double prebuffer_swap_dt_history[FRAME_TIME_HISTORY_MAX_COUNT];
+    uint32 prebuffer_swap_dt_history_count;
+    ProfileTimer profile_timers[ProfileTimerIDCount];
 };
 
 struct Window {
-	Vec2 size;	
-	Vec2 size_px;
+    Vec2 size;
+    Vec2 size_px;
 };
 
 struct GameMemory {
     void* memory;
     long long size;
     uint64 performance_frequency;
-	Window window;
+    Window window;
     char base_path[W_PATH_MAX];
 
     InitializeRenderer* initialize_renderer;
-	SetViewport* set_viewport;
-	SetProjection* set_projection;
-	LoadTexture* load_texture;
+    SetViewport* set_viewport;
+    SetProjection* set_projection;
+    LoadTexture* load_texture;
     PushRenderGroup* push_render_group;
     InitAudio* init_audio;
     PushAudioSamples* push_audio_samples;
@@ -72,27 +71,20 @@ struct GameMemory {
     StartTextInput* start_text_input;
     StopTextInput* stop_text_input;
 
-// Debug
-	
-	ImGuiContext* imgui_context;
-	DebugInfo debug_info;
+    // Debug
+
+    ImGuiContext* imgui_context;
+    DebugInfo debug_info;
 };
 
-enum InputType {
-	INPUT_TYPE_UNKNOWN,
-	INPUT_TYPE_KEYBOARD_MOUSE,
-	INPUT_TYPE_GAMEPAD,
-	INPUT_TYPE_COUNT
-};
+enum InputType { INPUT_TYPE_UNKNOWN, INPUT_TYPE_KEYBOARD_MOUSE, INPUT_TYPE_GAMEPAD, INPUT_TYPE_COUNT };
 
-struct KeyInputState
-{
+struct KeyInputState {
     bool is_pressed;
     bool is_held;
 };
 
-enum KeyInput
-{
+enum KeyInput {
     KEY_A,
     KEY_B,
     KEY_C,
@@ -132,13 +124,13 @@ enum KeyInput
     KEY_RETURN,
     KEY_ESCAPE,
     KEY_BACKSPACE,
-	KEY_CAPSLOCK,
+    KEY_CAPSLOCK,
     KEY_TAB,
     KEY_SPACE,
     KEY_APOSTROPHE,
     KEY_COMMA,
     KEY_MINUS,
-	KEY_EQUALS,
+    KEY_EQUALS,
     KEY_PERIOD,
     KEY_BACKSLASH,
     KEY_SLASH,
@@ -158,24 +150,24 @@ enum KeyInput
 };
 
 enum TextInput {
-    TEXT_SPACE = 32,  // ' '
-    TEXT_EXCLAMATION = 33,  // '!'
-    TEXT_QUOTE = 34,  // '"'
-    TEXT_HASH = 35,  // '#'
-    TEXT_DOLLAR = 36,  // '$'
-    TEXT_PERCENT = 37,  // '%'
-    TEXT_AMPERSAND = 38,  // '&'
+    TEXT_SPACE = 32,       // ' '
+    TEXT_EXCLAMATION = 33, // '!'
+    TEXT_QUOTE = 34,       // '"'
+    TEXT_HASH = 35,        // '#'
+    TEXT_DOLLAR = 36,      // '$'
+    TEXT_PERCENT = 37,     // '%'
+    TEXT_AMPERSAND = 38,   // '&'
     TEXT_APOSTROPHE = 39,  // '\''
     TEXT_LEFT_PAREN = 40,  // '('
-    TEXT_RIGHT_PAREN = 41,  // ')'
-    TEXT_ASTERISK = 42,  // '*'
-    TEXT_PLUS = 43,  // '+'
-    TEXT_COMMA = 44,  // ','
-    TEXT_MINUS = 45,  // '-'
-    TEXT_PERIOD = 46,  // '.'
-    TEXT_SLASH = 47,  // '/'
+    TEXT_RIGHT_PAREN = 41, // ')'
+    TEXT_ASTERISK = 42,    // '*'
+    TEXT_PLUS = 43,        // '+'
+    TEXT_COMMA = 44,       // ','
+    TEXT_MINUS = 45,       // '-'
+    TEXT_PERIOD = 46,      // '.'
+    TEXT_SLASH = 47,       // '/'
 
-    TEXT_0 = 48,  // '0'
+    TEXT_0 = 48, // '0'
     TEXT_1 = 49,
     TEXT_2 = 50,
     TEXT_3 = 51,
@@ -186,44 +178,83 @@ enum TextInput {
     TEXT_8 = 56,
     TEXT_9 = 57,
 
-    TEXT_COLON = 58,  // ':'
-    TEXT_SEMICOLON = 59,  // ';'
-    TEXT_LESS_THAN = 60,  // '<'
-    TEXT_EQUALS = 61,  // '='
-    TEXT_GREATER_THAN = 62,  // '>'
-    TEXT_QUESTION = 63, // '?'
-    TEXT_AT = 64, // '@'
+    TEXT_COLON = 58,        // ':'
+    TEXT_SEMICOLON = 59,    // ';'
+    TEXT_LESS_THAN = 60,    // '<'
+    TEXT_EQUALS = 61,       // '='
+    TEXT_GREATER_THAN = 62, // '>'
+    TEXT_QUESTION = 63,     // '?'
+    TEXT_AT = 64,           // '@'
 
-    TEXT_A = 65, TEXT_B, TEXT_C, TEXT_D, TEXT_E, TEXT_F, TEXT_G,
-    TEXT_H, TEXT_I, TEXT_J, TEXT_K, TEXT_L, TEXT_M, TEXT_N,
-    TEXT_O, TEXT_P, TEXT_Q, TEXT_R, TEXT_S, TEXT_T, TEXT_U,
-    TEXT_V, TEXT_W, TEXT_X, TEXT_Y, TEXT_Z,  // 65–90
+    TEXT_A = 65,
+    TEXT_B,
+    TEXT_C,
+    TEXT_D,
+    TEXT_E,
+    TEXT_F,
+    TEXT_G,
+    TEXT_H,
+    TEXT_I,
+    TEXT_J,
+    TEXT_K,
+    TEXT_L,
+    TEXT_M,
+    TEXT_N,
+    TEXT_O,
+    TEXT_P,
+    TEXT_Q,
+    TEXT_R,
+    TEXT_S,
+    TEXT_T,
+    TEXT_U,
+    TEXT_V,
+    TEXT_W,
+    TEXT_X,
+    TEXT_Y,
+    TEXT_Z, // 65–90
 
     TEXT_LEFT_BRACKET = 91,  // '['
-    TEXT_BACKSLASH = 92,  // '\\'
-    TEXT_RIGHT_BRACKET = 93,  // ']'
-    TEXT_CARET = 94,  // '^'
-    TEXT_UNDERSCORE = 95,  // '_'
-    TEXT_GRAVE = 96,  // '`'
+    TEXT_BACKSLASH = 92,     // '\\'
+    TEXT_RIGHT_BRACKET = 93, // ']'
+    TEXT_CARET = 94,         // '^'
+    TEXT_UNDERSCORE = 95,    // '_'
+    TEXT_GRAVE = 96,         // '`'
 
-    TEXT_a = 97, TEXT_b, TEXT_c, TEXT_d, TEXT_e, TEXT_f, TEXT_g,
-    TEXT_h, TEXT_i, TEXT_j, TEXT_k, TEXT_l, TEXT_m, TEXT_n,
-    TEXT_o, TEXT_p, TEXT_q, TEXT_r, TEXT_s, TEXT_t, TEXT_u,
-    TEXT_v, TEXT_w, TEXT_x, TEXT_y, TEXT_z,  // 97–122
+    TEXT_a = 97,
+    TEXT_b,
+    TEXT_c,
+    TEXT_d,
+    TEXT_e,
+    TEXT_f,
+    TEXT_g,
+    TEXT_h,
+    TEXT_i,
+    TEXT_j,
+    TEXT_k,
+    TEXT_l,
+    TEXT_m,
+    TEXT_n,
+    TEXT_o,
+    TEXT_p,
+    TEXT_q,
+    TEXT_r,
+    TEXT_s,
+    TEXT_t,
+    TEXT_u,
+    TEXT_v,
+    TEXT_w,
+    TEXT_x,
+    TEXT_y,
+    TEXT_z, // 97–122
 
-    TEXT_LEFT_BRACE = 123, // '{'
-    TEXT_PIPE = 124, // '|'
+    TEXT_LEFT_BRACE = 123,  // '{'
+    TEXT_PIPE = 124,        // '|'
     TEXT_RIGHT_BRACE = 125, // '}'
-    TEXT_TILDE = 126,  // '~'
+    TEXT_TILDE = 126,       // '~'
     TEXT_INPUT_COUNT
 };
 
-enum MouseInput {
-    MOUSE_LEFT_BUTTON,
-    MOUSE_RIGHT_BUTTON,
-    MOUSE_MIDDLE_BUTTON,
-    MOUSE_INPUT_COUNT
-};
+enum MouseInput { MOUSE_LEFT_BUTTON, MOUSE_RIGHT_BUTTON, MOUSE_MIDDLE_BUTTON, MOUSE_INPUT_COUNT };
 
 struct MouseState {
     union {
@@ -234,62 +265,62 @@ struct MouseState {
         };
     };
 
-	Vec2 position_px;
+    Vec2 position_px;
 
     KeyInputState input_states[MOUSE_INPUT_COUNT];
 };
 
 struct ButtonInputState {
-	bool is_pressed;
-	bool is_held;
+    bool is_pressed;
+    bool is_held;
 };
 
 enum GamepadButtonID {
-	GAMEPAD_BUTTON_SOUTH,
-	GAMEPAD_BUTTON_NORTH,
-	GAMEPAD_BUTTON_EAST,
-	GAMEPAD_BUTTON_WEST,
-	GAMEPAD_BUTTON_LEFT_STICK,
-	GAMEPAD_BUTTON_RIGHT_STICK,
-	GAMEPAD_BUTTON_LEFT_SHOULDER,
-	GAMEPAD_BUTTON_RIGHT_SHOULDER,
-	GAMEPAD_BUTTON_DPAD_UP,
-	GAMEPAD_BUTTON_DPAD_DOWN,
-	GAMEPAD_BUTTON_DPAD_LEFT,
-	GAMEPAD_BUTTON_DPAD_RIGHT,
-	GAMEPAD_BUTTON_START,
-	GAMEPAD_BUTTON_BACK,
-	GAMEPAD_BUTTON_GUIDE,
-	GAMEPAD_BUTTON_COUNT
+    GAMEPAD_BUTTON_SOUTH,
+    GAMEPAD_BUTTON_NORTH,
+    GAMEPAD_BUTTON_EAST,
+    GAMEPAD_BUTTON_WEST,
+    GAMEPAD_BUTTON_LEFT_STICK,
+    GAMEPAD_BUTTON_RIGHT_STICK,
+    GAMEPAD_BUTTON_LEFT_SHOULDER,
+    GAMEPAD_BUTTON_RIGHT_SHOULDER,
+    GAMEPAD_BUTTON_DPAD_UP,
+    GAMEPAD_BUTTON_DPAD_DOWN,
+    GAMEPAD_BUTTON_DPAD_LEFT,
+    GAMEPAD_BUTTON_DPAD_RIGHT,
+    GAMEPAD_BUTTON_START,
+    GAMEPAD_BUTTON_BACK,
+    GAMEPAD_BUTTON_GUIDE,
+    GAMEPAD_BUTTON_COUNT
 };
 
 enum GamepadAxisID {
-	GAMEPAD_AXIS_LEFT_STICK_X,
-	GAMEPAD_AXIS_LEFT_STICK_Y,
-	GAMEPAD_AXIS_RIGHT_STICK_X,
-	GAMEPAD_AXIS_RIGHT_STICK_Y,
-	GAMEPAD_AXIS_LEFT_TRIGGER,
-	GAMEPAD_AXIS_RIGHT_TRIGGER,
-	GAMEPAD_AXIS_COUNT
+    GAMEPAD_AXIS_LEFT_STICK_X,
+    GAMEPAD_AXIS_LEFT_STICK_Y,
+    GAMEPAD_AXIS_RIGHT_STICK_X,
+    GAMEPAD_AXIS_RIGHT_STICK_Y,
+    GAMEPAD_AXIS_LEFT_TRIGGER,
+    GAMEPAD_AXIS_RIGHT_TRIGGER,
+    GAMEPAD_AXIS_COUNT
 };
 
 struct GamepadState {
-	ButtonInputState buttons[GAMEPAD_BUTTON_COUNT];
-	float axes[GAMEPAD_AXIS_COUNT];
+    ButtonInputState buttons[GAMEPAD_BUTTON_COUNT];
+    float axes[GAMEPAD_AXIS_COUNT];
 };
 
 #define GAME_INPUT_F_KEYBOARD_MOUSE_ACTIVE (1 << 0)
 #define GAME_INPUT_F_GAMEPAD_ACTIVE (1 << 1)
 
 struct GameInput {
-	flags flags;
+    flags flags;
     KeyInputState key_input_states[KEY_INPUT_COUNT];
     bool text_input_states[TEXT_INPUT_COUNT]; // not sure if we still need this
     char text_buffer[100];
     MouseState mouse_state;
-	GamepadState gamepad_state;
-	InputType active_input_type;
+    GamepadState gamepad_state;
+    InputType active_input_type;
 };
 
-#define GAME_UPDATE_AND_RENDER(name) void name(GameMemory *game_memory, GameInput *game_input, double frame_dt_s)
+#define GAME_UPDATE_AND_RENDER(name) void name(GameMemory* game_memory, GameInput* game_input, double frame_dt_s)
 typedef GAME_UPDATE_AND_RENDER(GameUpdateAndRender);

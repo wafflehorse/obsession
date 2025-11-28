@@ -3,7 +3,7 @@
 #define MAX_PLAYED_SOUNDS 10
 
 struct AudioSampleBuffer {
-	uint32 sound_type;
+    uint32 sound_type;
     float volume;
     int16* samples;
     uint64 sample_count;
@@ -12,7 +12,7 @@ struct AudioSampleBuffer {
 
 struct AudioPlayer {
     AudioSampleBuffer buffers[MAX_PLAYED_SOUNDS];
-	uint32 isolated_sound;
+    uint32 isolated_sound;
 };
 
 #define INIT_AUDIO(name) int name(AudioPlayer* audio_player)

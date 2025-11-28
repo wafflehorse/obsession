@@ -39,8 +39,8 @@ static char base_path[W_PATH_MAX];
 #define MIN_FRAME_TIME_S 1 / MAX_FRAME_RATE
 #define MAX_FRAME_TIME_S 1 / 30.f
 
-#define MIN_SCREEN_WIDTH 640 
-#define MIN_SCREEN_HEIGHT 360 
+#define MIN_SCREEN_WIDTH 640
+#define MIN_SCREEN_HEIGHT 360
 
 static SDL_Window* window;
 
@@ -65,9 +65,9 @@ GameCode load_game_code() {
 
     if (!game.game_code_lib) {
         fprintf(stderr, "Failed to load game_main shared lib: %s\n", SDL_GetError());
-    }
-    else {
-        game.game_update_and_render = (GameUpdateAndRender*)SDL_LoadFunction(game.game_code_lib, "game_update_and_render");
+    } else {
+        game.game_update_and_render =
+            (GameUpdateAndRender*)SDL_LoadFunction(game.game_code_lib, "game_update_and_render");
 
         if (!game.game_update_and_render) {
             fprintf(stderr, "Failed to function pointer to game_update_and_render: %s\n", SDL_GetError());
@@ -142,8 +142,7 @@ void handle_sdl_keyboard_mouse_event(SDL_Event* event, GameInput* game_input) {
             mouse_state->input_states[MOUSE_MIDDLE_BUTTON].is_held = is_down;
             break;
         }
-    }
-    else if ((event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) && !event->key.repeat) {
+    } else if ((event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) && !event->key.repeat) {
         bool is_down = event->type == SDL_EVENT_KEY_DOWN;
         switch (event->key.key) {
         case SDLK_A:
@@ -391,12 +390,12 @@ void handle_sdl_keyboard_mouse_event(SDL_Event* event, GameInput* game_input) {
             key_input_states[KEY_GRAVE].is_pressed = is_down;
             break;
         }
-    }
-    else if (event->type == SDL_EVENT_TEXT_INPUT) {
+    } else if (event->type == SDL_EVENT_TEXT_INPUT) {
         const char* input = event->text.text;
         // the first condition here is just to protect against weirdness
         // the second condition ensures we only process single byte chars
-        // This might make for a shitty typing experience in which case we will have to handle multi-byte input which could be multi-byte chars that we'd have to filter out.
+        // This might make for a shitty typing experience in which case we will have to handle multi-byte input which
+        // could be multi-byte chars that we'd have to filter out.
         if (input[0] != '\0' && input[1] == '\0') {
             if (input[0] >= 32 && input[0] < TEXT_INPUT_COUNT) {
                 text_input_states[(int)input[0]] = true;
@@ -470,59 +469,56 @@ void update_gamepad_state(GameInput* game_input, SDL_Gamepad* gamepad) {
         gamepad_state->buttons[GAMEPAD_BUTTON_GUIDE].is_held = true;
     }
 
-	float stick_deadzone = 8000;
-	float trigger_deadzone = 800;
+    float stick_deadzone = 8000;
+    float trigger_deadzone = 800;
 
-	float left_stick_x = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX);
-	float left_stick_y = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY);
-	float right_stick_x = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHTX);
-	float right_stick_y = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHTY);
-	float left_trigger = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
-	float right_trigger = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
+    float left_stick_x = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX);
+    float left_stick_y = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY);
+    float right_stick_x = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHTX);
+    float right_stick_y = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHTY);
+    float left_trigger = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
+    float right_trigger = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
 
-	float left_stick_mag = w_vec_length({left_stick_x, left_stick_y});
-	float right_stick_mag = w_vec_length({right_stick_x, right_stick_y});
+    float left_stick_mag = w_vec_length({left_stick_x, left_stick_y});
+    float right_stick_mag = w_vec_length({right_stick_x, right_stick_y});
 
-	if(left_stick_mag < stick_deadzone) {
-		left_stick_x = 0;
-		left_stick_y = 0;
-	}
-	if(right_stick_mag < stick_deadzone) {
-		right_stick_x = 0;
-		right_stick_y = 0;
-	}
-	if(left_trigger < trigger_deadzone) {
-		left_trigger = 0;
-	}
-	if(right_trigger < trigger_deadzone) {
-		right_trigger = 0;
-	}
+    if (left_stick_mag < stick_deadzone) {
+        left_stick_x = 0;
+        left_stick_y = 0;
+    }
+    if (right_stick_mag < stick_deadzone) {
+        right_stick_x = 0;
+        right_stick_y = 0;
+    }
+    if (left_trigger < trigger_deadzone) {
+        left_trigger = 0;
+    }
+    if (right_trigger < trigger_deadzone) {
+        right_trigger = 0;
+    }
 
-	gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_X] = left_stick_x;
-	gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_Y] = left_stick_y;
-	gamepad_state->axes[GAMEPAD_AXIS_RIGHT_STICK_X] = right_stick_x;
-	gamepad_state->axes[GAMEPAD_AXIS_RIGHT_STICK_Y] = right_stick_y;
-	gamepad_state->axes[GAMEPAD_AXIS_LEFT_TRIGGER] = left_trigger;
-	gamepad_state->axes[GAMEPAD_AXIS_RIGHT_TRIGGER] = right_trigger;
+    gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_X] = left_stick_x;
+    gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_Y] = left_stick_y;
+    gamepad_state->axes[GAMEPAD_AXIS_RIGHT_STICK_X] = right_stick_x;
+    gamepad_state->axes[GAMEPAD_AXIS_RIGHT_STICK_Y] = right_stick_y;
+    gamepad_state->axes[GAMEPAD_AXIS_LEFT_TRIGGER] = left_trigger;
+    gamepad_state->axes[GAMEPAD_AXIS_RIGHT_TRIGGER] = right_trigger;
 }
 
 int main(int argc, char* argv[]) {
     w_str_copy(base_path, (char*)SDL_GetBasePath());
 
-    if (!SDL_Init(SDL_INIT_VIDEO))
-    {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "SDL_Init Video error: %s\n", SDL_GetError());
         return 1;
     }
 
-    if (!SDL_Init(SDL_INIT_AUDIO))
-    {
+    if (!SDL_Init(SDL_INIT_AUDIO)) {
         fprintf(stderr, "SDL_Init Audio error: %s\n", SDL_GetError());
         return 1;
     }
 
-    if (!SDL_Init(SDL_INIT_GAMEPAD))
-    {
+    if (!SDL_Init(SDL_INIT_GAMEPAD)) {
         fprintf(stderr, "SDL_Init Gamepad error: %s\n", SDL_GetError());
         return 1;
     }
@@ -536,7 +532,7 @@ int main(int argc, char* argv[]) {
     memset(game_memory.memory, 0, game_memory.size);
     game_memory.initialize_renderer = initialize_renderer;
     game_memory.set_viewport = set_viewport;
-	game_memory.set_projection = set_projection;
+    game_memory.set_projection = set_projection;
     game_memory.load_texture = load_texture;
     game_memory.push_render_group = push_render_group;
     game_memory.get_performance_counter = get_performance_counter;
@@ -545,64 +541,62 @@ int main(int argc, char* argv[]) {
     game_memory.init_audio = init_audio;
     game_memory.push_audio_samples = push_audio_samples;
     game_memory.performance_frequency = SDL_GetPerformanceFrequency();
-	game_memory.window.size = { MIN_SCREEN_WIDTH * 2, MIN_SCREEN_HEIGHT * 2 };
+    game_memory.window.size = {MIN_SCREEN_WIDTH * 2, MIN_SCREEN_HEIGHT * 2};
     w_str_copy(game_memory.base_path, (char*)SDL_GetBasePath());
 
     w_init_waffle_lib(game_memory.base_path);
 
-	// TODO: will probably want to query screen size and then create window?
-    window = SDL_CreateWindow("Obsession", game_memory.window.size.x, game_memory.window.size.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MOUSE_FOCUS | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    if (!window)
-    {
+    // TODO: will probably want to query screen size and then create window?
+    window = SDL_CreateWindow("Obsession", game_memory.window.size.x, game_memory.window.size.y,
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MOUSE_FOCUS |
+                                  SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    if (!window) {
         fprintf(stderr, "SDL_CreateWindow Error: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
     }
 
     SDL_SetWindowMinimumSize(window, MIN_SCREEN_WIDTH, MIN_SCREEN_HEIGHT);
-	{
-		int screen_size_x, screen_size_y;
-		SDL_GetWindowSizeInPixels(window, &screen_size_x, &screen_size_y);
-		game_memory.window.size_px = { (float)screen_size_x, (float)screen_size_y };
-	}
+    {
+        int screen_size_x, screen_size_y;
+        SDL_GetWindowSizeInPixels(window, &screen_size_x, &screen_size_y);
+        game_memory.window.size_px = {(float)screen_size_x, (float)screen_size_y};
+    }
 
-	float pt_per_px = game_memory.window.size_px.x / game_memory.window.size.x;
+    float pt_per_px = game_memory.window.size_px.x / game_memory.window.size.x;
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    if (!gl_context)
-    {
+    if (!gl_context) {
         fprintf(stderr, "Failed to load OpenGL context: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
     }
 
     // Vsync
-    if (!SDL_GL_SetSwapInterval(1))
-    {
+    if (!SDL_GL_SetSwapInterval(1)) {
         fprintf(stderr, "Failed to turn on vsync!");
     }
 
     GameCode game;
-    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
-    {
+    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         fprintf(stderr, "Failed to initialize GLAD\n");
         return 1;
     }
 
 #ifdef DEBUG
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-	
-	ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
-	ImGui_ImplOpenGL3_Init();
-	game_memory.imgui_context = ImGui::GetCurrentContext();
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+
+    ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
+    ImGui_ImplOpenGL3_Init();
+    game_memory.imgui_context = ImGui::GetCurrentContext();
 #endif
 
     game = load_game_code();
@@ -630,27 +624,24 @@ int main(int argc, char* argv[]) {
         clear_inputs(&game_input);
 
         SDL_GetMouseState(&game_input.mouse_state.position.x, &game_input.mouse_state.position.y);
-		game_input.mouse_state.position_px.x = game_input.mouse_state.position.x * pt_per_px;
-		game_input.mouse_state.position_px.y = game_input.mouse_state.position.y * pt_per_px;
+        game_input.mouse_state.position_px.x = game_input.mouse_state.position.x * pt_per_px;
+        game_input.mouse_state.position_px.y = game_input.mouse_state.position.y * pt_per_px;
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
 #ifdef DEBUG
-			ImGui_ImplSDL3_ProcessEvent(&event);
+            ImGui_ImplSDL3_ProcessEvent(&event);
 #endif
             switch (event.type) {
             case SDL_EVENT_QUIT:
                 running = false;
                 break;
             case SDL_EVENT_WINDOW_RESIZED:
-				game_memory.window.size = {
-                    (float)event.window.data1,
-                    (float)event.window.data2
-                };
-				int screen_size_x, screen_size_y;
-				SDL_GetWindowSizeInPixels(window, &screen_size_x, &screen_size_y);
-				game_memory.window.size_px.x = (float)screen_size_x;
-				game_memory.window.size_px.y = (float)screen_size_y;
+                game_memory.window.size = {(float)event.window.data1, (float)event.window.data2};
+                int screen_size_x, screen_size_y;
+                SDL_GetWindowSizeInPixels(window, &screen_size_x, &screen_size_y);
+                game_memory.window.size_px.x = (float)screen_size_x;
+                game_memory.window.size_px.y = (float)screen_size_y;
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -682,22 +673,25 @@ int main(int argc, char* argv[]) {
         render_begin_frame();
 
 #ifdef DEBUG
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplSDL3_NewFrame();
-		ImGui::NewFrame();
-		// ImGui::ShowDemoWindow();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        ImGui::NewFrame();
+        // ImGui::ShowDemoWindow();
 #endif
 
         game.game_update_and_render(&game_memory, &game_input, frame_dt_s);
 
         DebugInfo* debug_info = &game_memory.debug_info;
         double pre_render_frame_end_count = SDL_GetPerformanceCounter();
-        double preswap_dt_s = ((pre_render_frame_end_count - frame_start_count) / (double)game_memory.performance_frequency);
-        debug_info->prebuffer_swap_dt_history[debug_info->prebuffer_swap_dt_history_count++ % FRAME_TIME_HISTORY_MAX_COUNT] = preswap_dt_s;
+        double preswap_dt_s =
+            ((pre_render_frame_end_count - frame_start_count) / (double)game_memory.performance_frequency);
+        debug_info
+            ->prebuffer_swap_dt_history[debug_info->prebuffer_swap_dt_history_count++ % FRAME_TIME_HISTORY_MAX_COUNT] =
+            preswap_dt_s;
 
 #ifdef DEBUG
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 #endif
 
         SDL_GL_SwapWindow(window);
@@ -709,16 +703,17 @@ int main(int argc, char* argv[]) {
             frame_dt_s = (frame_end_count - frame_start_count) / (double)game_memory.performance_frequency;
         }
 
-        debug_info->rendered_dt_history[debug_info->rendered_dt_history_count++ % FRAME_TIME_HISTORY_MAX_COUNT] = frame_dt_s;
+        debug_info->rendered_dt_history[debug_info->rendered_dt_history_count++ % FRAME_TIME_HISTORY_MAX_COUNT] =
+            frame_dt_s;
 
         frame_dt_s = w_min(frame_dt_s, MAX_FRAME_TIME_S);
         frame_start_count = frame_end_count;
     }
 
 #ifdef DEBUG
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplSDL3_Shutdown();
-	ImGui::DestroyContext();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
 #endif
 
     SDL_GL_DestroyContext(gl_context);

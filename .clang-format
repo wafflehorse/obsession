@@ -1,0 +1,15 @@
+BasedOnStyle: LLVM
+SortIncludes: false
+
+# Optional: keep clang-format from grouping includes
+IncludeBlocks: Preserve
+
+# Optional: common tweaks for C/C++ handmade-style engines
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+PointerAlignment: Left
+DerivePointerAlignment: false

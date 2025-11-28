@@ -5,10 +5,10 @@ static SDL_AudioStream* sdl_audio_stream;
 
 #define AUDIO_FREQ 44100
 #ifdef _WIN32
-	#define TARGET_BUFFER_SIZE_BYTES 3528 // ~ 20ms latency
+#define TARGET_BUFFER_SIZE_BYTES 3528 // ~ 20ms latency
 #else
-	// I find that on mac, it's not clearing the queue fast enough to handle a 3528 buffer size
-	#define TARGET_BUFFER_SIZE_BYTES 5292 // ~ 30ms latency
+// I find that on mac, it's not clearing the queue fast enough to handle a 3528 buffer size
+#define TARGET_BUFFER_SIZE_BYTES 5292 // ~ 30ms latency
 #endif
 
 INIT_AUDIO(init_audio) {
@@ -44,40 +44,39 @@ PUSH_AUDIO_SAMPLES(push_audio_samples) {
 
                 int16* curr_sample = buffer->samples + buffer->samples_read;
 
-				if (frames_remaining < num_frames_to_write) {
-					num_frames_to_write = frames_remaining;
-				}
+                if (frames_remaining < num_frames_to_write) {
+                    num_frames_to_write = frames_remaining;
+                }
 
-				if(audio_player->isolated_sound == 0 || buffer->sound_type == audio_player->isolated_sound) {
-					for (int j = 0; j < num_frames_to_write; j++) {
-						out_buffer[2 * j] += (int16)(*curr_sample * buffer->volume);
-						curr_sample += 1;
-						out_buffer[(2 * j) + 1] += (int16)(*curr_sample * buffer->volume);
-						curr_sample += 1;
-					}
-				}
+                if (audio_player->isolated_sound == 0 || buffer->sound_type == audio_player->isolated_sound) {
+                    for (int j = 0; j < num_frames_to_write; j++) {
+                        out_buffer[2 * j] += (int16)(*curr_sample * buffer->volume);
+                        curr_sample += 1;
+                        out_buffer[(2 * j) + 1] += (int16)(*curr_sample * buffer->volume);
+                        curr_sample += 1;
+                    }
+                }
 
-				if (frames_written < num_frames_to_write) {
-					frames_written = num_frames_to_write;
-				}
+                if (frames_written < num_frames_to_write) {
+                    frames_written = num_frames_to_write;
+                }
 
-				buffer->samples_read += num_frames_to_write * 2;
+                buffer->samples_read += num_frames_to_write * 2;
 
-				if (buffer->samples_read >= buffer->sample_count) {
-					buffer->samples = NULL;
-					buffer->samples_read = 0;
-					buffer->sample_count = 0;
-				}
-			}
-			else {
-				*buffer = {};
-			}
-		}
+                if (buffer->samples_read >= buffer->sample_count) {
+                    buffer->samples = NULL;
+                    buffer->samples_read = 0;
+                    buffer->sample_count = 0;
+                }
+            } else {
+                *buffer = {};
+            }
+        }
 
-		if(frames_written > 0) {
-			if (!SDL_PutAudioStreamData(sdl_audio_stream, out_buffer, frames_written * 4)) {
-				fprintf(stderr, "Failed to PutAudioStreamData\n");
-			}
-		}
-	}
+        if (frames_written > 0) {
+            if (!SDL_PutAudioStreamData(sdl_audio_stream, out_buffer, frames_written * 4)) {
+                fprintf(stderr, "Failed to PutAudioStreamData\n");
+            }
+        }
+    }
 }

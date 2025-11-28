@@ -37,8 +37,7 @@ struct OpenGLRenderData {
 
 static OpenGLRenderData render_data = {};
 
-uint32 load_and_compile_shader(const char* shader_file_path, GLenum shader_type, Arena* arena)
-{
+uint32 load_and_compile_shader(const char* shader_file_path, GLenum shader_type, Arena* arena) {
     char* arena_marker = arena->next;
     FileContents file_contents = {};
     if (w_read_file(shader_file_path, &file_contents, arena) != 0) {
@@ -56,8 +55,7 @@ uint32 load_and_compile_shader(const char* shader_file_path, GLenum shader_type,
     char infoLog[512];
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &success);
 
-    if (!success)
-    {
+    if (!success) {
         glGetShaderInfoLog(shader_id, 512, NULL, infoLog);
         fprintf(stderr, "Error compiling shader file: %s\n", shader_file_path);
         fprintf(stderr, "Error info: %s\n", infoLog);
@@ -69,8 +67,7 @@ uint32 load_and_compile_shader(const char* shader_file_path, GLenum shader_type,
     return shader_id;
 }
 
-unsigned int create_and_link_gl_program(unsigned int vertex_shader, unsigned int frag_shader)
-{
+unsigned int create_and_link_gl_program(unsigned int vertex_shader, unsigned int frag_shader) {
     uint32 shader_program;
     shader_program = glCreateProgram();
     glAttachShader(shader_program, vertex_shader);
@@ -80,8 +77,7 @@ unsigned int create_and_link_gl_program(unsigned int vertex_shader, unsigned int
     int success;
     char infoLog[512];
     glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
-    if (!success)
-    {
+    if (!success) {
         glGetProgramInfoLog(shader_program, 512, NULL, infoLog);
         fprintf(stderr, "Error linking shader program: %s\n", infoLog);
         return 0;
@@ -91,25 +87,35 @@ unsigned int create_and_link_gl_program(unsigned int vertex_shader, unsigned int
 }
 
 SET_PROJECTION(set_projection) {
-	float adjusted_camera_width = camera_width / camera_zoom;
-	float adjusted_camera_height = camera_height / camera_zoom;
+    float adjusted_camera_width = camera_width / camera_zoom;
+    float adjusted_camera_height = camera_height / camera_zoom;
     // This matrix translates from world coordinates to uv coords from -1 to 1
     float projection_matrix[] = {
-        2.0f / adjusted_camera_width, 0.0f, 0.0f, 0.0f,          // row 1
-        0.0f, 2.0f / adjusted_camera_height, 0.0f, 0.0f, // row 2
-        0.0f, 0.0f, 1.0f, 0.0f,                          // row 3
-        0.0f, 0.0f, 0.0f, 1.0f                          // row 4
+        2.0f / adjusted_camera_width,
+        0.0f,
+        0.0f,
+        0.0f, // row 1
+        0.0f,
+        2.0f / adjusted_camera_height,
+        0.0f,
+        0.0f, // row 2
+        0.0f,
+        0.0f,
+        1.0f,
+        0.0f, // row 3
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f // row 4
     };
 
-    glUniformMatrix4fv(glGetUniformLocation(render_data.shader_program_id, "projection_matrix"), 1, GL_FALSE, projection_matrix);
+    glUniformMatrix4fv(glGetUniformLocation(render_data.shader_program_id, "projection_matrix"), 1, GL_FALSE,
+                       projection_matrix);
 }
 
 SET_VIEWPORT(set_viewport) {
     Vec2 size_diff = w_vec_sub(screen_size, viewport);
-    Vec2 viewport_position = {
-        size_diff.x / 2,
-        size_diff.y / 2
-    };
+    Vec2 viewport_position = {size_diff.x / 2, size_diff.y / 2};
 
     glViewport(viewport_position.x, viewport_position.y, viewport.x, viewport.y);
 }
@@ -121,15 +127,14 @@ INITIALIZE_RENDERER(initialize_renderer) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    unsigned int vertex_shader = load_and_compile_shader("resources/shaders/vertex_shader.glsl", GL_VERTEX_SHADER, arena);
-    if (vertex_shader == 0)
-    {
+    unsigned int vertex_shader =
+        load_and_compile_shader("resources/shaders/vertex_shader.glsl", GL_VERTEX_SHADER, arena);
+    if (vertex_shader == 0) {
         return 1;
     }
 
     unsigned int frag_shader = load_and_compile_shader("resources/shaders/frag_shader.glsl", GL_FRAGMENT_SHADER, arena);
-    if (vertex_shader == 0)
-    {
+    if (vertex_shader == 0) {
         return 1;
     }
 
@@ -146,7 +151,7 @@ INITIALIZE_RENDERER(initialize_renderer) {
     // this might already happen by default but doing it anyways to be explicit
     glUniform1i(glGetUniformLocation(shader_program, "our_texture"), 0); // this maps our_texture to texture unit 0
 
-    int texture_units[MAX_LOADED_TEXTURES] = { 0, 1 };
+    int texture_units[MAX_LOADED_TEXTURES] = {0, 1};
     glUniform1iv(glGetUniformLocation(shader_program, "texture_units"), MAX_LOADED_TEXTURES, texture_units);
 
     // Maps from our world space to opengl clip space (NDC)
@@ -160,19 +165,20 @@ INITIALIZE_RENDERER(initialize_renderer) {
 
     // defines local space used for both geometry and texture
     float vertices[] = {
-        -0.5f, 0.5f, 0.0f, // top left
-        0.5f, 0.5f, 0.0f, // top right
+        -0.5f, 0.5f,  0.0f, // top left
+        0.5f,  0.5f,  0.0f, // top right
         -0.5f, -0.5f, 0.0f, // bottom left
-        0.5f, 0.5f, 0.0f, // top right
+        0.5f,  0.5f,  0.0f, // top right
         -0.5f, -0.5f, 0.0f, // bottom left
-        0.5f, -0.5f, 0.0f  // bottom right
+        0.5f,  -0.5f, 0.0f  // bottom right
     };
 
     // Setup local space vertex buffer
     glBindBuffer(GL_ARRAY_BUFFER, render_data.quad_local_vbo_id);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // have to do glVertexAttribPointer before unbinding the VBO, because they refer to the currently bound GL_ARRAY_BUFFER
+    // have to do glVertexAttribPointer before unbinding the VBO, because they refer to the currently bound
+    // GL_ARRAY_BUFFER
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
@@ -231,7 +237,7 @@ INITIALIZE_RENDERER(initialize_renderer) {
     glVertexAttribIPointer(10, 1, GL_INT, sizeof(RenderQuad), (void*)offsetof(RenderQuad, flip_x));
     glEnableVertexAttribArray(10);
     glVertexAttribDivisor(10, 1);
-	
+
     // z_index
     glVertexAttribPointer(11, 1, GL_FLOAT, GL_FALSE, sizeof(RenderQuad), (void*)offsetof(RenderQuad, z_index));
     glEnableVertexAttribArray(11);
@@ -266,13 +272,12 @@ LOAD_TEXTURE(load_texture) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    //The y-axis is flipped in opengl where the bottom is y = 0 and top is y = 1
+    // The y-axis is flipped in opengl where the bottom is y = 0 and top is y = 1
     stbi_set_flip_vertically_on_load(true);
 
     int texture_width, texture_height, nrChannels;
     unsigned char* texture_data = stbi_load(file_path, &texture_width, &texture_height, &nrChannels, 0);
-    if (!texture_data)
-    {
+    if (!texture_data) {
         fprintf(stderr, "Failed to load texture asset: %s\n", file_path);
         return -1;
     }
@@ -280,23 +285,19 @@ LOAD_TEXTURE(load_texture) {
     GLenum source_format;
     if (nrChannels == 4) {
         source_format = GL_RGBA;
-    }
-    else if (nrChannels == 3) {
+    } else if (nrChannels == 3) {
         source_format = GL_RGB;
-    }
-    else if (nrChannels == 1) {
+    } else if (nrChannels == 1) {
         source_format = GL_RED;
-    }
-    else {
+    } else {
         ASSERT(false, "Unsupported number of channels in texture image file\n");
     }
 
-
     if (nrChannels == 1) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, texture_width, texture_height, 0, GL_RED, GL_UNSIGNED_BYTE, texture_data);
-    }
-    else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width, texture_height, 0, source_format, GL_UNSIGNED_BYTE, texture_data);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width, texture_height, 0, source_format, GL_UNSIGNED_BYTE,
+                     texture_data);
     }
     // glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -309,10 +310,10 @@ LOAD_TEXTURE(load_texture) {
     texture->initialized = true;
     render_data.texture_count++;
 
-	texture_info->id = texture->id;
-	texture_info->width = texture->width;
-	texture_info->height = texture->height;
-	texture_info->num_channels = texture->num_channels;
+    texture_info->id = texture->id;
+    texture_info->width = texture->width;
+    texture_info->height = texture->height;
+    texture_info->num_channels = texture->num_channels;
 
     return 0;
 }
@@ -332,32 +333,32 @@ PUSH_RENDER_GROUP(push_render_group) {
     for (int i = 0; i < MAX_LOADED_TEXTURES; i++) {
         OpenGLTexture* texture = &render_data.textures[i];
 
-        // texture_matrices[i] = { 
+        // texture_matrices[i] = {
         // 	1.0f / texture->width, 0.0f, 0.0f, 0.0f,   // row 1
         // 	0.0f, -1.0f / texture->height, 0.0f, 0.0f, // row 2
         // 	0.0f, 0.0f, 1.0f, 0.0f,                   // row 3
         // 	0.0f, 1.0f, 0.0f, 1.0f                    // row 4
-        // };	
+        // };
 
-        texture_matrices[i][0] = 1.0f / texture->width;   // row 1, col 1
-        texture_matrices[i][1] = 0.0f;                    // row 2, col 1
-        texture_matrices[i][2] = 0.0f;                    // row 3, col 1
-        texture_matrices[i][3] = 0.0f;                    // row 4, col 1
+        texture_matrices[i][0] = 1.0f / texture->width; // row 1, col 1
+        texture_matrices[i][1] = 0.0f;                  // row 2, col 1
+        texture_matrices[i][2] = 0.0f;                  // row 3, col 1
+        texture_matrices[i][3] = 0.0f;                  // row 4, col 1
 
         texture_matrices[i][4] = 0.0f;                    // row 1, col 2
         texture_matrices[i][5] = -1.0f / texture->height; // row 2, col 2
         texture_matrices[i][6] = 0.0f;                    // row 3, col 2
         texture_matrices[i][7] = 0.0f;                    // row 4, col 2
 
-        texture_matrices[i][8] = 0.0f;                    // row 1, col 3
-        texture_matrices[i][9] = 0.0f;                    // row 2, col 3
-        texture_matrices[i][10] = 1.0f;                    // row 3, col 3
-        texture_matrices[i][11] = 0.0f;                    // row 4, col 3
+        texture_matrices[i][8] = 0.0f;  // row 1, col 3
+        texture_matrices[i][9] = 0.0f;  // row 2, col 3
+        texture_matrices[i][10] = 1.0f; // row 3, col 3
+        texture_matrices[i][11] = 0.0f; // row 4, col 3
 
-        texture_matrices[i][12] = 0.0f;                    // row 1, col 4
-        texture_matrices[i][13] = 1.0f;                    // row 2, col 4
-        texture_matrices[i][14] = 0.0f;                    // row 3, col 4
-        texture_matrices[i][15] = 1.0f;                    // row 4, col 4
+        texture_matrices[i][12] = 0.0f; // row 1, col 4
+        texture_matrices[i][13] = 1.0f; // row 2, col 4
+        texture_matrices[i][14] = 0.0f; // row 3, col 4
+        texture_matrices[i][15] = 1.0f; // row 4, col 4
 
         texture_num_channels[i] = texture->num_channels;
 
@@ -365,9 +366,12 @@ PUSH_RENDER_GROUP(push_render_group) {
         glBindTexture(GL_TEXTURE_2D, texture->id);
     }
 
-    glUniformMatrix4fv(glGetUniformLocation(render_data.shader_program_id, "texture_matrices"), MAX_LOADED_TEXTURES, GL_FALSE, (float*)texture_matrices);
-    glUniform3f(glGetUniformLocation(render_data.shader_program_id, "camera_position"), camera_position.x, camera_position.y, 0.0f);
-    glUniform1iv(glGetUniformLocation(render_data.shader_program_id, "texture_num_channels"), MAX_LOADED_TEXTURES, texture_num_channels);
+    glUniformMatrix4fv(glGetUniformLocation(render_data.shader_program_id, "texture_matrices"), MAX_LOADED_TEXTURES,
+                       GL_FALSE, (float*)texture_matrices);
+    glUniform3f(glGetUniformLocation(render_data.shader_program_id, "camera_position"), camera_position.x,
+                camera_position.y, 0.0f);
+    glUniform1iv(glGetUniformLocation(render_data.shader_program_id, "texture_num_channels"), MAX_LOADED_TEXTURES,
+                 texture_num_channels);
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(RenderQuad) * instance_count, instance_data, GL_DYNAMIC_DRAW);
 

@@ -185,6 +185,7 @@
 [x] Prefix all entity functions with entity_
 [x] Extract hotbar code to hotbar.cpp
 [x] Clean up entity flag names
+[x] Introduce clang-format
 
 [] Add mouse_world_position to game state
 [] Randomly spawn enemies around the map
