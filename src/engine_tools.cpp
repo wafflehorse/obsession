@@ -52,12 +52,18 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
         Vec2 mouse_world_position =
             get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
 
-        ImGui::Text("Mouse world position: %.3f, %.3f", mouse_world_position.x, mouse_world_position.y);
+        ImGui::Text("Mouse coord: %.3f, %.3f", mouse_world_position.x, mouse_world_position.y);
 
         if (ImGui::CollapsingHeader("Entity")) {
             ImGui::Text("Entity count: %i", game_state->entity_data.entity_count);
             ImGui::Text("Max entity count: %i", MAX_ENTITIES);
             ImGui::Checkbox("World init", &game_state->tools.entity_palette_should_add_to_init);
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Clear")) {
+                game_state->tools.selected_entity = ENTITY_TYPE_UNKNOWN;
+            }
 
             float available_width = 256; // ImGui::GetContentRegionAvail().x;
             float x = 0;
@@ -171,10 +177,16 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
     // Note: tells imgui not to save ini file
     imgui_io->IniFilename = NULL;
 
-    if (imgui_io->WantCaptureMouse || imgui_io->WantCaptureKeyboard) {
-        set(game_state->tools.flags, TOOLS_F_CAPTURING_INPUT);
+    if (imgui_io->WantCaptureMouse || game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN) {
+        set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT);
     } else {
-        unset(game_state->tools.flags, TOOLS_F_CAPTURING_INPUT);
+        unset(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT);
+    }
+
+    if (imgui_io->WantCaptureKeyboard) {
+        set(game_state->tools.flags, TOOLS_F_CAPTURING_KEYBOARD_INPUT);
+    } else {
+        unset(game_state->tools.flags, TOOLS_F_CAPTURING_KEYBOARD_INPUT);
     }
 
     tools_update_input(game_input, game_state);

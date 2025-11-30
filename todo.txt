@@ -186,8 +186,14 @@
 [x] Extract hotbar code to hotbar.cpp
 [x] Clean up entity flag names
 [x] Introduce clang-format
+[x] Fix entity placing so that mouse doesn't trigger player action
+[x] Add selected entity clear button to tools
+[] Automate food supply
+	[x] Add some sort of foragable food entity
+	[x] Add ability to pick up food items
+	[] Add food storage box
+	[] Add food gathering robot
 
-[] Add mouse_world_position to game state
 [] Randomly spawn enemies around the map
 [] Add item consumption
 [] Add mech entity
@@ -196,6 +202,7 @@
 [] Add warrior aggro when shot
 [] Add workbench
 
+[] Add mouse_world_position to game state
 [] Add centering to container elements (centering children)
 [] Add support for sprite scaling
 [] Add boar sleeping

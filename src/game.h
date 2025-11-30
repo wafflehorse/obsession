@@ -23,6 +23,7 @@
 #define MAX_HP_BOAR 2
 #define MAX_HP_PLAYER 10
 #define MAX_HP_WARRIOR 4
+#define MAX_HP_PLANT_CORN 2
 
 #define ATTACK_ID_MAX_IDS 512
 #define ATTACK_ID_START (MAX_ENTITIES - 1)
@@ -142,6 +143,8 @@ enum EntityType {
     ENTITY_TYPE_BOAR_MEAT,
     ENTITY_TYPE_IRON_DEPOSIT,
     ENTITY_TYPE_IRON,
+    ENTITY_TYPE_PLANT_CORN,
+    ENTITY_TYPE_ITEM_CORN,
     ENTITY_TYPE_COUNT
 };
 
@@ -225,7 +228,8 @@ struct WorldGenContext {
     FBMContext plant_fbm_context;
 };
 
-#define TOOLS_F_CAPTURING_INPUT (1 << 0)
+#define TOOLS_F_CAPTURING_KEYBOARD_INPUT (1 << 0)
+#define TOOLS_F_CAPTURING_MOUSE_INPUT (1 << 1)
 
 struct Tools {
     flags flags;

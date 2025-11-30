@@ -213,11 +213,6 @@ void init_entity_data(EntityData* entity_data) {
 
 void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input,
                                Vec2 screen_size) {
-#ifdef DEBUG
-    if (is_set(game_state->tools.flags, TOOLS_F_CAPTURING_INPUT)) {
-        return;
-    }
-#endif
     if (game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
         KeyInputState* key_input_states = game_input->key_input_states;
         Vec2 movement_vec = {};
@@ -254,8 +249,13 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
         Vec2 player_position = game_state->player->position;
         input->aim_vec = {mouse_world_position.x - player_position.x,
                           mouse_world_position.y - (player_position.y + 0.5f)};
-
+#ifdef DEBUG
+        if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
+            input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+        }
+#else
         input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+#endif
     } else if (game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
         GamepadState* gamepad_state = &game_input->gamepad_state;
         input->movement_vec = w_vec_norm(
@@ -708,6 +708,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         game_state->entity_item_spawn_info[ENTITY_TYPE_BOAR] = {.spawned_entity_type = ENTITY_TYPE_BOAR_MEAT,
                                                                 .damage_required_to_spawn = MAX_HP_BOAR,
                                                                 .spawn_chance = 1.0f};
+        game_state->entity_item_spawn_info[ENTITY_TYPE_PLANT_CORN] = {.spawned_entity_type = ENTITY_TYPE_ITEM_CORN,
+                                                                      .damage_required_to_spawn = MAX_HP_PLANT_CORN,
+                                                                      .spawn_chance = 1.0f};
 
         {
             WorldInitEntity* entity_inits = game_state->world_init.entity_inits;

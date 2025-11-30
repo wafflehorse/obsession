@@ -22,17 +22,17 @@ EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
                              .attack = ANIM_WARRIOR_ATTACK},
     [ENTITY_TYPE_BOAR] = {.idle = ANIM_BOAR_IDLE, .move = ANIM_BOAR_WALK, .death = ANIM_BOAR_2_DEATH}};
 
-SpriteID entity_default_sprites[ENTITY_TYPE_COUNT] = {
-    [ENTITY_TYPE_PLAYER] = SPRITE_HERO_IDLE_0,
-    [ENTITY_TYPE_GUN] = SPRITE_GUN_GREEN,
-    [ENTITY_TYPE_WARRIOR] = SPRITE_WARRIOR_IDLE_0,
-    [ENTITY_TYPE_PROJECTILE] = SPRITE_GREEN_BULLET_1,
-    [ENTITY_TYPE_BLOCK] = SPRITE_BLOCK_1,
-    [ENTITY_TYPE_BOAR] = SPRITE_BOAR_IDLE_0,
-    [ENTITY_TYPE_BOAR_MEAT] = SPRITE_BOAR_MEAT_RAW,
-    [ENTITY_TYPE_IRON_DEPOSIT] = SPRITE_ORE_IRON_0,
-    [ENTITY_TYPE_IRON] = SPRITE_IRON_1,
-};
+SpriteID entity_default_sprites[ENTITY_TYPE_COUNT] = {[ENTITY_TYPE_PLAYER] = SPRITE_HERO_IDLE_0,
+                                                      [ENTITY_TYPE_GUN] = SPRITE_GUN_GREEN,
+                                                      [ENTITY_TYPE_WARRIOR] = SPRITE_WARRIOR_IDLE_0,
+                                                      [ENTITY_TYPE_PROJECTILE] = SPRITE_GREEN_BULLET_1,
+                                                      [ENTITY_TYPE_BLOCK] = SPRITE_BLOCK_1,
+                                                      [ENTITY_TYPE_BOAR] = SPRITE_BOAR_IDLE_0,
+                                                      [ENTITY_TYPE_BOAR_MEAT] = SPRITE_BOAR_MEAT_RAW,
+                                                      [ENTITY_TYPE_IRON_DEPOSIT] = SPRITE_ORE_IRON_0,
+                                                      [ENTITY_TYPE_IRON] = SPRITE_IRON_1,
+                                                      [ENTITY_TYPE_PLANT_CORN] = SPRITE_PLANT_CORN_3,
+                                                      [ENTITY_TYPE_ITEM_CORN] = SPRITE_ITEM_CORN};
 
 Sprite entity_get_default_sprite(EntityType type) {
     return sprite_table[entity_default_sprites[type]];
@@ -140,6 +140,21 @@ EntityHandle entity_create_blocker(EntityData* entity_data, EntityType type, Vec
                         .height = collider_size.y};
 
     set(entity->flags, ENTITY_F_BLOCKER);
+
+    return entity_to_handle(entity, entity_data);
+}
+
+EntityHandle entity_create_resource(EntityData* entity_data, EntityType entity_type, Vec2 position, SpriteID sprite_id,
+                                    uint32 hp, flags opts) {
+    Entity* entity = entity_new(entity_data);
+
+    entity->type = entity_type;
+    entity->position = position;
+    entity->sprite_id = sprite_id;
+    entity->collider = entity_rect_collider_from_sprite(sprite_id);
+    set(entity->flags, opts);
+    set(entity->flags, ENTITY_F_KILLABLE);
+    entity->hp = hp;
 
     return entity_to_handle(entity, entity_data);
 }
@@ -485,6 +500,10 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
         break;
     case ENTITY_TYPE_IRON_DEPOSIT:
         entity_create_ore_deposit(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
+        break;
+    case ENTITY_TYPE_PLANT_CORN:
+        entity_create_resource(entity_data, ENTITY_TYPE_PLANT_CORN, position, SPRITE_PLANT_CORN_3, MAX_HP_PLANT_CORN,
+                               ENTITY_F_BLOCKER);
         break;
     case ENTITY_TYPE_IRON:
         entity_create_item(entity_data, ENTITY_TYPE_IRON, position);
