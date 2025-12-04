@@ -6,8 +6,6 @@
 
 #define MAX_DECORATIONS 1000
 
-#define GAME_STATE_F_INITIALIZED (1 << 0)
-
 #define BASE_RESOLUTION_WIDTH 640
 #define BASE_RESOLUTION_HEIGHT 360
 #define BASE_PIXELS_PER_UNIT 16.0f
@@ -145,6 +143,7 @@ enum EntityType {
     ENTITY_TYPE_IRON,
     ENTITY_TYPE_PLANT_CORN,
     ENTITY_TYPE_ITEM_CORN,
+    ENTITY_TYPE_CHEST_IRON,
     ENTITY_TYPE_COUNT
 };
 
@@ -254,6 +253,9 @@ struct WorldInit {
     WorldInitEntity entity_inits[MAX_WORLD_ENTITY_INITS];
     uint32 entity_init_count;
 };
+
+#define GAME_STATE_F_INITIALIZED (1 << 0)
+#define GAME_STATE_F_INVENTORY_OPEN (1 << 1)
 
 struct GameState {
     flags flags;

@@ -32,7 +32,8 @@ SpriteID entity_default_sprites[ENTITY_TYPE_COUNT] = {[ENTITY_TYPE_PLAYER] = SPR
                                                       [ENTITY_TYPE_IRON_DEPOSIT] = SPRITE_ORE_IRON_0,
                                                       [ENTITY_TYPE_IRON] = SPRITE_IRON_1,
                                                       [ENTITY_TYPE_PLANT_CORN] = SPRITE_PLANT_CORN_3,
-                                                      [ENTITY_TYPE_ITEM_CORN] = SPRITE_ITEM_CORN};
+                                                      [ENTITY_TYPE_ITEM_CORN] = SPRITE_ITEM_CORN,
+                                                      [ENTITY_TYPE_CHEST_IRON] = SPRITE_CHESTS_IRON_0};
 
 Sprite entity_get_default_sprite(EntityType type) {
     return sprite_table[entity_default_sprites[type]];

@@ -99,12 +99,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
             }
 
             UIElement* sprite_element = ui_create_sprite(sprite, &game_state->frame_arena);
-            ui_push(slot_container, sprite_element);
-
-            // TODO: this is a hack since our ui system doesn't support centering items yet
-            Vec2 sprite_center_rel_pos = {slot_size.x / 2, -slot_size.y / 2};
-            sprite_element->rel_position = {sprite_center_rel_pos.x - (pixels_to_units(sprite.w) / 2),
-                                            sprite_center_rel_pos.y + (pixels_to_units(sprite.h) / 2)};
+            ui_push_centered(slot_container, sprite_element);
 
             if (slot->stack_size > 1) {
                 char stack_size_str[3] = {};

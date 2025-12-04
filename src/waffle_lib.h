@@ -112,6 +112,7 @@ struct Animation {
 
 #define COLOR_WHITE ((Vec4){255, 255, 255, 1})
 #define COLOR_BLACK ((Vec4){0, 0, 0, 1})
+#define COLOR_GRAY ((Vec4){96, 96, 96, 1})
 
 //~~~~~~~~~~~~~~~~~~~~~~~~ FILE UTILITY TYPES ~~~~~~~~~~~~~~~~~~~~~~~//
 

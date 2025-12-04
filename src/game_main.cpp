@@ -240,6 +240,10 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
             input->drop_item = true;
         }
 
+        if (key_input_states[KEY_I].is_pressed) {
+            toggle(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
+        }
+
         input->movement_vec = w_vec_norm(movement_vec);
 
         Vec2 mouse_screen_position = {
@@ -550,6 +554,67 @@ void debug_render_entity_colliders(Entity* entity, bool has_collided) {
         quad->z_index = entity->z_index + 1;
     }
 #endif
+}
+
+#define CRAFTING_MAX_INGREDIENTS 8
+
+struct CraftingIngredient {
+    EntityType entity_type;
+    uint32 quantity;
+};
+
+struct CraftingRecipe {
+    EntityType entity_type;
+    CraftingIngredient ingredients[CRAFTING_MAX_INGREDIENTS];
+};
+
+CraftingRecipe crafting_recipes[ENTITY_TYPE_COUNT] = {
+    {.entity_type = ENTITY_TYPE_CHEST_IRON, .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 4}}}};
+
+void player_inventory_render(Camera* camera, RenderGroup* render_group, Arena* frame_arena) {
+    Vec2 crafting_menu_size = {7, 5};
+    Vec2 crafting_menu_position = camera->position;
+    crafting_menu_position.x -= (camera->size.x / 4) + (crafting_menu_size.x / 2);
+    crafting_menu_position.y += (crafting_menu_size.y / 2);
+
+    UIElement* container = ui_create_container({.padding = pixels_to_units(8),
+                                                .child_gap = pixels_to_units(8),
+                                                .min_size = crafting_menu_size,
+                                                .max_size = crafting_menu_size,
+                                                .background_rgba = COLOR_BLACK,
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND},
+                                               frame_arena);
+
+    UIElement* title = ui_create_text("Crafting", COLOR_WHITE, 1.0f, frame_arena);
+    ui_push(container, title);
+
+    for (int row = 0; row < 2; row++) {
+        UIElement* crafting_item_container = ui_create_container(
+            {.padding = 0, .child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW}, frame_arena);
+
+        for (int col = 0; col < 4; col++) {
+            CraftingRecipe* recipe = &crafting_recipes[row * 4 + col];
+
+            UIElement* crafting_item_slot =
+                ui_create_container({.min_size = {1, 1},
+                                     .max_size = {1, 1},
+                                     .background_rgba = COLOR_GRAY,
+                                     .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
+                                    frame_arena);
+
+            if (recipe->entity_type != ENTITY_TYPE_UNKNOWN) {
+                Sprite sprite = entity_get_default_sprite(recipe->entity_type);
+                UIElement* item_sprite = ui_create_sprite(sprite, frame_arena);
+                ui_push_centered(crafting_item_slot, item_sprite);
+            }
+
+            ui_push(crafting_item_container, crafting_item_slot);
+        }
+
+        ui_push(container, crafting_item_container);
+    }
+
+    ui_draw_element(container, crafting_menu_position, render_group);
 }
 
 void debug_render_rect(Vec2 position, Vec2 size, Vec4 color) {
@@ -1137,6 +1202,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     hotbar_render_item(game_state, &player_world_input, &main_render_group);
     hotbar_render(game_state, &render_group_ui);
     render_player_hp_ui(game_state->player->hp, game_state->camera, &render_group_ui);
+    if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
+        player_inventory_render(&game_state->camera, &render_group_ui, &game_state->frame_arena);
+    }
 
     game_memory->push_audio_samples(&game_state->audio_player);
 

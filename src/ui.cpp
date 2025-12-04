@@ -329,6 +329,13 @@ void ui_push(UIElement* parent, UIElement* child) {
     }
 }
 
+// Note: should only be worked with single item containers
+void ui_push_centered(UIElement* parent, UIElement* child) {
+    ui_push(parent, child);
+    Vec2 center_rel_pos = {parent->size.x / 2, -parent->size.y / 2};
+    child->rel_position = {center_rel_pos.x - (child->size.x / 2), center_rel_pos.y + (child->size.y / 2)};
+}
+
 // TODO: without a z-index specified on the child elements, the absolutely positioned elements
 // will render first and therefore behind the relatively positioned elements
 void ui_push_abs_position(UIElement* parent, UIElement* child, Vec2 rel_position) {
