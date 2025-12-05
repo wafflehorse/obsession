@@ -188,9 +188,11 @@
 [x] Introduce clang-format
 [x] Fix entity placing so that mouse doesn't trigger player action
 [x] Add selected entity clear button to tools
+[x] Add utility for getting absolute UIElement position
 [] Add crafting UI (player crafting)
 	[x] Add basic crafting UI that toggles on 'i'
-	[] Add recipe info on mouse hover
+	[x] Add recipe info on mouse hover
+	[] Add container border on hover
 	[] Craft item on click
 [] Automate food supply
 	[x] Add some sort of foragable food entity

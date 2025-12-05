@@ -227,6 +227,10 @@ struct WorldGenContext {
     FBMContext plant_fbm_context;
 };
 
+struct WorldInput {
+    Vec2 mouse_position_world;
+};
+
 #define TOOLS_F_CAPTURING_KEYBOARD_INPUT (1 << 0)
 #define TOOLS_F_CAPTURING_MOUSE_INPUT (1 << 1)
 
@@ -261,6 +265,7 @@ struct GameState {
     flags flags;
     GameInit game_init_config;
     WorldInit world_init;
+    WorldInput world_input;
 
     Camera camera;
     AudioPlayer audio_player;

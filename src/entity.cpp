@@ -35,6 +35,20 @@ SpriteID entity_default_sprites[ENTITY_TYPE_COUNT] = {[ENTITY_TYPE_PLAYER] = SPR
                                                       [ENTITY_TYPE_ITEM_CORN] = SPRITE_ITEM_CORN,
                                                       [ENTITY_TYPE_CHEST_IRON] = SPRITE_CHESTS_IRON_0};
 
+const char entity_type_name_strings[ENTITY_TYPE_COUNT][256] = {[ENTITY_TYPE_UNKNOWN] = "Unknown",
+                                                               [ENTITY_TYPE_PLAYER] = "Player",
+                                                               [ENTITY_TYPE_GUN] = "Gun",
+                                                               [ENTITY_TYPE_WARRIOR] = "Warrior",
+                                                               [ENTITY_TYPE_PROJECTILE] = "Projectile",
+                                                               [ENTITY_TYPE_BLOCK] = "Block",
+                                                               [ENTITY_TYPE_BOAR] = "Boar",
+                                                               [ENTITY_TYPE_BOAR_MEAT] = "Boar Meat",
+                                                               [ENTITY_TYPE_IRON_DEPOSIT] = "Iron Deposit",
+                                                               [ENTITY_TYPE_IRON] = "Iron",
+                                                               [ENTITY_TYPE_PLANT_CORN] = "Corn Plant",
+                                                               [ENTITY_TYPE_ITEM_CORN] = "Corn",
+                                                               [ENTITY_TYPE_CHEST_IRON] = "Iron Chest"};
+
 Sprite entity_get_default_sprite(EntityType type) {
     return sprite_table[entity_default_sprites[type]];
 }
@@ -504,7 +518,7 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
         break;
     case ENTITY_TYPE_PLANT_CORN:
         entity_create_resource(entity_data, ENTITY_TYPE_PLANT_CORN, position, SPRITE_PLANT_CORN_3, MAX_HP_PLANT_CORN,
-                               ENTITY_F_BLOCKER);
+                               0);
         break;
     case ENTITY_TYPE_IRON:
         entity_create_item(entity_data, ENTITY_TYPE_IRON, position);

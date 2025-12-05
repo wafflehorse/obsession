@@ -297,6 +297,16 @@ UIElement* ui_create_spacer(Vec2 size, Arena* arena) {
     return spacer_element;
 }
 
+void ui_container_size_update(UIElement* container) {
+    Vec2 content_size = ui_container_content_size(container);
+    container->size.x = w_max(container->size.x, content_size.x + (container->padding * 2));
+    container->size.y = w_max(container->size.y, content_size.y + (container->padding * 2));
+    if (container->max_size.x > 0 && container->max_size.y > 0) {
+        container->size.x = w_min(container->size.x, container->max_size.x);
+        container->size.y = w_min(container->size.y, container->max_size.y);
+    }
+}
+
 // TODO: add support for max width handling
 void ui_push(UIElement* parent, UIElement* child) {
     child->parent = parent;
@@ -320,13 +330,7 @@ void ui_push(UIElement* parent, UIElement* child) {
         parent->last_child = child;
     }
 
-    Vec2 content_size = ui_container_content_size(parent);
-    parent->size.x = w_max(parent->size.x, content_size.x + (parent->padding * 2));
-    parent->size.y = w_max(parent->size.y, content_size.y + (parent->padding * 2));
-    if (parent->max_size.x > 0 && parent->max_size.y > 0) {
-        parent->size.x = w_min(parent->size.x, parent->max_size.x);
-        parent->size.y = w_min(parent->size.y, parent->max_size.y);
-    }
+    ui_container_size_update(parent);
 }
 
 // Note: should only be worked with single item containers
@@ -347,6 +351,21 @@ void ui_push_abs_position(UIElement* parent, UIElement* child, Vec2 rel_position
 
     parent->child = child;
     child->rel_position = rel_position;
+}
+
+// Note: draw_position is the top left position of initial node of ui tree
+Vec2 ui_abs_position_get(Vec2 draw_position, UIElement* element) {
+    Vec2 result = element->rel_position;
+
+    UIElement* parent = element->parent;
+    while (parent) {
+        result = w_vec_add(result, parent->rel_position);
+        parent = parent->parent;
+    }
+
+    result = w_vec_add(draw_position, result);
+
+    return result;
 }
 
 void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_group) {

@@ -49,8 +49,7 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
             return;
         }
 
-        Vec2 mouse_world_position =
-            get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
+        Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
 
         ImGui::Text("Mouse coord: %.3f, %.3f", mouse_world_position.x, mouse_world_position.y);
 
@@ -191,7 +190,7 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 
     tools_update_input(game_input, game_state);
 
-    Vec2 mouse_world_position = get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
+    Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
     WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
     int hovered_over_entity_init = -1;
 

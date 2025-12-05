@@ -277,6 +277,15 @@ Rect w_rect_mult(Rect rect, float scalar) {
     return (Rect){rect.x * scalar, rect.y * scalar, rect.w * scalar, rect.h * scalar};
 }
 
+Vec2 w_rect_top_left_to_center(Vec2 top_left, Vec2 size) {
+    Vec2 result = top_left;
+
+    result.x += size.x / 2;
+    result.y -= size.y / 2;
+
+    return result;
+}
+
 int w_str_len(const char* str) {
     int result = 0;
     while (str[result] != '\0') {
