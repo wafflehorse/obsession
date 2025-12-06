@@ -637,6 +637,8 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group) {
 
             if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world)) {
                 hovered_over_entity_type = recipe->entity_type;
+                crafting_item_slot->border_width = pixels_to_units(1);
+                crafting_item_slot->border_color = COLOR_WHITE;
             }
         }
     }

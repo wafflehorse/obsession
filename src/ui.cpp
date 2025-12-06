@@ -211,6 +211,9 @@ struct UIElement {
 
     float padding;
     float child_gap;
+
+    float border_width;
+    Vec4 border_color;
 };
 
 struct UIContainerCreateParams {
@@ -219,6 +222,8 @@ struct UIContainerCreateParams {
     Vec2 min_size;
     Vec2 max_size;
     Vec4 background_rgba;
+    float border_width;
+    Vec4 border_color;
     flags opts;
 };
 
@@ -238,6 +243,8 @@ UIElement* ui_create_container(UIContainerCreateParams params, Arena* arena) {
                        (float)w_max(params.min_size.y, params.padding * 2)};
     container->max_size = params.max_size;
     container->background_rgba = params.background_rgba;
+    container->border_width = params.border_width;
+    container->border_color = params.border_color;
 
     return container;
 }
@@ -370,6 +377,7 @@ Vec2 ui_abs_position_get(Vec2 draw_position, UIElement* element) {
 
 void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_group) {
     element->position = position; // position is top_left
+    Vec2 element_center_position = w_rect_top_left_to_center(position, element->size);
 
     if (is_set(element->flags, UI_ELEMENT_F_DRAW_BACKGROUND)) {
         RenderQuad* quad = get_next_quad(render_group);
@@ -398,6 +406,46 @@ void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_grou
         quad->sprite_position = {element->sprite.x, element->sprite.y};
         quad->sprite_size = {element->sprite.w, element->sprite.h};
         quad->texture_unit = TEXTURE_ID_SPRITE;
+    }
+
+    if (element->border_width > 0) {
+        RenderQuad* top_border_quad = get_next_quad(render_group);
+        top_border_quad->world_size.x = element->size.x;
+        top_border_quad->world_size.y = element->border_width;
+        top_border_quad->world_position.x = element_center_position.x;
+        top_border_quad->world_position.y = element->position.y - (top_border_quad->world_size.y / 2);
+        top_border_quad->draw_colored_rect = 1;
+        top_border_quad->rgba = element->border_color;
+        // top_border_quad->z_index = 1;
+        //
+        RenderQuad* bottom_border_quad = get_next_quad(render_group);
+        bottom_border_quad->world_size.x = element->size.x;
+        bottom_border_quad->world_size.y = element->border_width;
+        bottom_border_quad->world_position.x = element_center_position.x;
+        bottom_border_quad->world_position.y =
+            element->position.y - element->size.y + (bottom_border_quad->world_size.y / 2);
+        bottom_border_quad->draw_colored_rect = 1;
+        bottom_border_quad->rgba = element->border_color;
+        // bottom_border_quad->z_index = 1;
+
+        RenderQuad* left_border_quad = get_next_quad(render_group);
+        left_border_quad->world_size.x = element->border_width;
+        left_border_quad->world_size.y = element->size.y;
+        left_border_quad->world_position.x = element->position.x + (left_border_quad->world_size.x / 2);
+        left_border_quad->world_position.y = element_center_position.y;
+        left_border_quad->draw_colored_rect = 1;
+        left_border_quad->rgba = element->border_color;
+        // left_border_quad->z_index = 1;
+
+        RenderQuad* right_border_quad = get_next_quad(render_group);
+        right_border_quad->world_size.x = element->border_width;
+        right_border_quad->world_size.y = element->size.y;
+        right_border_quad->world_position.x =
+            element->position.x + element->size.x - (right_border_quad->world_size.x / 2);
+        right_border_quad->world_position.y = element_center_position.y;
+        right_border_quad->draw_colored_rect = 1;
+        right_border_quad->rgba = element->border_color;
+        // right_border_quad->z_index = 1;
     }
 
     UIElement* child = element->child;
