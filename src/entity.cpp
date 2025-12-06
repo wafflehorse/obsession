@@ -221,7 +221,6 @@ EntityHandle entity_create_gun(EntityData* entity_data, Vec2 position) {
     entity->type = ENTITY_TYPE_GUN;
     entity->position = position;
     set(entity->flags, ENTITY_F_NONSPACIAL);
-    set(entity->flags, ENTITY_F_ITEM_PERSIST_ENTITY);
     set(entity->flags, ENTITY_F_ITEM);
     entity->sprite_id = SPRITE_GUN_GREEN;
 

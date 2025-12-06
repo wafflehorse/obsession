@@ -1,32 +1,89 @@
 #include "game.h"
 
-void hotbar_init(HotBar* hot_bar) {
-    for (int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-        hot_bar->slots[i].entity_handle.generation = -1;
+void hotbar_init(HotBar* hotbar) {
+    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
+        hotbar->slots[i].entity_handle.generation = -1;
     }
 }
 
-bool hotbar_slot_can_take_item(Entity* item, HotBarSlot* slot) {
-    return slot->stack_size == 0 ||
-           (slot->entity_type == item->type && !is_set(item->flags, ENTITY_F_ITEM_PERSIST_ENTITY) &&
-            slot->stack_size < MAX_ITEM_STACK_SIZE);
+bool hotbar_should_persist_entity(EntityType entity_type) {
+    bool result = false;
+
+    if (entity_type == ENTITY_TYPE_GUN) {
+        result = true;
+    }
+
+    return result;
 }
 
-void hotbar_add_item(Entity* item, HotBar* hot_bar, EntityData* entity_data) {
+bool hotbar_contains_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
+    uint32 quantity_found = 0;
+    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
+        if (hotbar->slots[i].entity_type == entity_type) {
+            quantity_found += hotbar->slots[i].stack_size;
+        }
+    }
+
+    return quantity_found >= quantity;
+}
+
+void hotbar_remove_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
+    uint32 quantity_remaining = quantity;
+
+    while (quantity_remaining > 0) {
+        HotBarSlot* min_stack_size_slot = NULL;
+        for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
+            HotBarSlot* slot = &hotbar->slots[i];
+            if (slot->entity_type == entity_type) {
+                if (!min_stack_size_slot || min_stack_size_slot->stack_size > slot->stack_size) {
+                    min_stack_size_slot = slot;
+                }
+            }
+        }
+
+        ASSERT(min_stack_size_slot, "Trying to remove hot bar items that don't exist");
+
+        uint32 tmp_stack_size = min_stack_size_slot->stack_size;
+        min_stack_size_slot->stack_size = w_clamp_min(min_stack_size_slot->stack_size - quantity_remaining, 0.0f);
+        quantity_remaining -= w_min(tmp_stack_size, quantity_remaining);
+    }
+}
+
+bool hotbar_slot_can_take_item(EntityType entity_type, uint32 quantity, HotBarSlot* slot) {
+    return slot->stack_size == 0 || (slot->entity_type == entity_type && !hotbar_should_persist_entity(entity_type) &&
+                                     (slot->stack_size + quantity) < MAX_ITEM_STACK_SIZE);
+}
+
+HotBarSlot* hotbar_available_slot(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
     HotBarSlot* open_slot = NULL;
-    for (int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-        HotBarSlot* slot = &hot_bar->slots[i];
-        if (hotbar_slot_can_take_item(item, slot)) {
+    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
+        HotBarSlot* slot = &hotbar->slots[i];
+        if (hotbar_slot_can_take_item(entity_type, quantity, slot)) {
             open_slot = slot;
             break;
         }
     }
 
+    return open_slot;
+}
+
+void hotbar_add_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
+    HotBarSlot* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
+
+    ASSERT(open_slot, "Trying to add item to hotbar, but there's not space");
+
+    open_slot->entity_type = entity_type;
+    open_slot->stack_size += quantity;
+}
+
+void hotbar_add_item(Entity* item, HotBar* hotbar, EntityData* entity_data) {
+    HotBarSlot* open_slot = hotbar_available_slot(hotbar, item->type, 1);
+
     if (open_slot) {
-        if (!is_set(item->flags, ENTITY_F_ITEM_PERSIST_ENTITY)) {
-            set(item->flags, ENTITY_F_MARK_FOR_DELETION);
-        } else {
+        if (hotbar_should_persist_entity(item->type)) {
             open_slot->entity_handle = entity_to_handle(item, entity_data);
+        } else {
+            set(item->flags, ENTITY_F_MARK_FOR_DELETION);
         }
 
         open_slot->entity_type = item->type;
@@ -34,28 +91,25 @@ void hotbar_add_item(Entity* item, HotBar* hot_bar, EntityData* entity_data) {
     }
 }
 
-HotBarSlot* hotbar_active_slot(HotBar* hot_bar) {
-    return &hot_bar->slots[hot_bar->active_item_idx];
+HotBarSlot* hotbar_active_slot(HotBar* hotbar) {
+    return &hotbar->slots[hotbar->active_item_idx];
 }
 
-bool hotbar_space_for_item(Entity* item, HotBar* hot_bar) {
-    bool can_pick_up_item = false;
+bool hotbar_space_for_item(EntityType entity_type, uint32 quantity, HotBar* hotbar) {
+    HotBarSlot* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
 
-    for (int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
-        HotBarSlot* slot = &hot_bar->slots[i];
-        if (hotbar_slot_can_take_item(item, slot)) {
-            can_pick_up_item = true;
-        }
+    if (open_slot) {
+        return true;
     }
 
-    return can_pick_up_item;
+    return false;
 }
 
 void hotbar_render_item(GameState* game_state, PlayerWorldInput* player_world_input, RenderGroup* render_group) {
     Entity* player = game_state->player;
-    HotBar* hot_bar = &game_state->hot_bar;
+    HotBar* hotbar = &game_state->hotbar;
 
-    HotBarSlot* slot = &hot_bar->slots[hot_bar->active_item_idx];
+    HotBarSlot* slot = &hotbar->slots[hotbar->active_item_idx];
 
     Entity* slot_entity = entity_find(slot->entity_handle, &game_state->entity_data);
     if (!slot_entity && slot->stack_size > 0) {
@@ -73,7 +127,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
     UIElement* container = ui_create_container({.padding = 0.5, .child_gap = 0.2, .opts = UI_ELEMENT_F_CONTAINER_ROW},
                                                &game_state->frame_arena);
 
-    for (int i = 0; i < MAX_HOT_BAR_SLOTS; i++) {
+    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
         float slot_padding = 0.5f;
         Vec2 slot_size = {pixels_to_units(8) + (2 * slot_padding), pixels_to_units(8) + (2 * slot_padding)};
         UIElement* slot_container =
@@ -84,7 +138,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
                                  .background_rgba = COLOR_BLACK},
                                 &game_state->frame_arena);
 
-        HotBarSlot* slot = &game_state->hot_bar.slots[i];
+        HotBarSlot* slot = &game_state->hotbar.slots[i];
 
         if (slot->stack_size > 0) {
             EntityHandle entity_handle = slot->entity_handle;

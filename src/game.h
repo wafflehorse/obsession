@@ -13,7 +13,7 @@
 #define MAX_PROJECTILE_DISTANCE 80
 #define ENTITY_MAX_Z 100
 
-#define MAX_HOT_BAR_SLOTS 8
+#define HOTBAR_MAX_SLOTS 8
 #define MAX_ITEM_STACK_SIZE 99
 
 #define ITEM_PICKUP_RANGE 1.5
@@ -156,7 +156,6 @@ enum EntityType {
 #define ENTITY_F_DELETE_AFTER_ANIMATION (1 << 6)
 #define ENTITY_F_ITEM (1 << 7)
 #define ENTITY_F_ITEM_SPAWNING (1 << 8)
-#define ENTITY_F_ITEM_PERSIST_ENTITY (1 << 9)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
@@ -212,7 +211,7 @@ struct HotBarSlot {
 };
 
 struct HotBar {
-    HotBarSlot slots[MAX_HOT_BAR_SLOTS];
+    HotBarSlot slots[HOTBAR_MAX_SLOTS];
     uint32 active_item_idx;
 };
 
@@ -278,7 +277,7 @@ struct GameState {
     CollisionRule* collision_rule_hash[MAX_COLLISION_RULES];
     CollisionRule* collision_rule_free_list;
     Entity* player;
-    HotBar hot_bar;
+    HotBar hotbar;
     EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
     uint32 attack_id_next;
     WorldGenContext world_gen_context;

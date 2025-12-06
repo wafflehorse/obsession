@@ -231,8 +231,8 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
 
         for (int i = KEY_1; i < KEY_9; i++) {
             if (key_input_states[i].is_pressed) {
-                int hot_bar_idx = i - KEY_1;
-                game_state->hot_bar.active_item_idx = hot_bar_idx;
+                int hotbar_idx = i - KEY_1;
+                game_state->hotbar.active_item_idx = hotbar_idx;
             }
         }
 
@@ -583,7 +583,41 @@ CraftingRecipe* crafting_recipe_find(EntityType entity_type) {
     return recipe;
 }
 
-void player_inventory_render(GameState* game_state, RenderGroup* render_group) {
+bool crafting_can_craft_item(EntityType entity_type, HotBar* hotbar) {
+    CraftingRecipe* recipe = crafting_recipe_find(entity_type);
+
+    if (!recipe) {
+        return false;
+    }
+
+    for (int i = 0; i < CRAFTING_MAX_INGREDIENTS; i++) {
+        CraftingIngredient* ingredient = &recipe->ingredients[i];
+        if (ingredient->entity_type != ENTITY_TYPE_UNKNOWN &&
+            !hotbar_contains_item(hotbar, ingredient->entity_type, ingredient->quantity)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void crafting_craft_item(EntityData* entity_data, EntityType entity_type, HotBar* hotbar) {
+    CraftingRecipe* recipe = crafting_recipe_find(entity_type);
+
+    ASSERT(recipe, "Attempting to craft an item without a recipe");
+
+    if (hotbar_space_for_item(entity_type, 1, hotbar) && crafting_can_craft_item(entity_type, hotbar)) {
+        for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe->ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN;
+             i++) {
+            CraftingIngredient ingredient = recipe->ingredients[i];
+            hotbar_remove_item(hotbar, ingredient.entity_type, ingredient.quantity);
+        }
+
+        hotbar_add_item(hotbar, entity_type, 1);
+    }
+}
+
+void player_inventory_render(GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
     Vec2 crafting_menu_size = {13, 10};
     Vec2 crafting_menu_position = game_state->camera.position;
     crafting_menu_position.x -= (game_state->camera.size.x / 4) + (crafting_menu_size.x / 2);
@@ -639,6 +673,10 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group) {
                 hovered_over_entity_type = recipe->entity_type;
                 crafting_item_slot->border_width = pixels_to_units(1);
                 crafting_item_slot->border_color = COLOR_WHITE;
+
+                if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+                    crafting_craft_item(&game_state->entity_data, recipe->entity_type, &game_state->hotbar);
+                }
             }
         }
     }
@@ -828,7 +866,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         init_entity_data(&game_state->entity_data);
-        hotbar_init(&game_state->hot_bar);
+        hotbar_init(&game_state->hotbar);
 
         game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
             .spawned_entity_type = ENTITY_TYPE_IRON, .damage_required_to_spawn = 3.0f, .spawn_chance = 0.5f};
@@ -1021,14 +1059,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         if (is_set(entity->flags, ENTITY_F_ITEM) && !is_set(entity->flags, ENTITY_F_OWNED) &&
             !is_set(entity->flags, ENTITY_F_ITEM_SPAWNING)) {
             float distance_from_player = w_euclid_dist(game_state->player->position, entity->position);
-            if (distance_from_player < 0.1 && hotbar_space_for_item(entity, &game_state->hot_bar)) {
+            if (distance_from_player < 0.1 &&
+                hotbar_space_for_item(entity->type, entity->stack_size, &game_state->hotbar)) {
                 set(entity->flags, ENTITY_F_OWNED);
                 entity->owner_handle = entity_to_handle(game_state->player, &game_state->entity_data);
                 entity->velocity = {};
                 entity->acceleration = {};
-                hotbar_add_item(entity, &game_state->hot_bar, &game_state->entity_data);
+                hotbar_add_item(entity, &game_state->hotbar, &game_state->entity_data);
             } else if (distance_from_player < ITEM_PICKUP_RANGE &&
-                       hotbar_space_for_item(entity, &game_state->hot_bar)) {
+                       hotbar_space_for_item(entity->type, entity->stack_size, &game_state->hotbar)) {
                 Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
                 Vec2 player_direction_norm = w_vec_norm(player_offset);
                 float current_velocity_mag = w_vec_length(entity->velocity);
@@ -1065,19 +1104,19 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         EntityHandle entity_handle = entity_to_handle(entity, &game_state->entity_data);
-        HotBarSlot* hot_bar_active_slot = hotbar_active_slot(&game_state->hot_bar);
+        HotBarSlot* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
 
-        if (entity->type == ENTITY_TYPE_PLAYER && player_world_input.drop_item && hot_bar_active_slot->stack_size > 0) {
-            Entity* item_entity = entity_find(hot_bar_active_slot->entity_handle, &game_state->entity_data);
+        if (entity->type == ENTITY_TYPE_PLAYER && player_world_input.drop_item && active_hotbar_slot->stack_size > 0) {
+            Entity* item_entity = entity_find(active_hotbar_slot->entity_handle, &game_state->entity_data);
             if (!item_entity) {
                 float z_pos, z_index;
                 Vec2 item_position = entity_held_item_position(entity, &z_pos, &z_index);
                 EntityHandle item_entity_handle =
-                    entity_create_item(&game_state->entity_data, hot_bar_active_slot->entity_type, item_position);
+                    entity_create_item(&game_state->entity_data, active_hotbar_slot->entity_type, item_position);
                 item_entity = entity_find(item_entity_handle, &game_state->entity_data);
                 item_entity->z_pos = z_pos;
                 item_entity->z_index = z_index;
-                item_entity->stack_size = hot_bar_active_slot->stack_size;
+                item_entity->stack_size = active_hotbar_slot->stack_size;
             } else {
                 unset(item_entity->flags, ENTITY_F_OWNED);
                 item_entity->owner_handle.generation = -1;
@@ -1102,14 +1141,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
             set(item_entity->flags, ENTITY_F_ITEM_SPAWNING);
 
-            hot_bar_active_slot->entity_handle.generation = -1;
-            hot_bar_active_slot->stack_size = 0;
-            hot_bar_active_slot->entity_type = ENTITY_TYPE_UNKNOWN;
+            active_hotbar_slot->entity_handle.generation = -1;
+            active_hotbar_slot->stack_size = 0;
+            active_hotbar_slot->entity_type = ENTITY_TYPE_UNKNOWN;
         }
 
         // TODO: hot bar logic will have to be pulled out if we want this to allow for non-player owners
-        bool is_active_hot_bar_item = entity_same(entity_handle, hot_bar_active_slot->entity_handle);
-        if (is_active_hot_bar_item) {
+        bool is_active_hotbar_item = entity_same(entity_handle, active_hotbar_slot->entity_handle);
+        if (is_active_hotbar_item) {
             if (owner) {
                 Vec2 aim_vec_rel_owner = player_world_input.aim_vec;
                 entity->z_pos = 0.5f;
@@ -1223,7 +1262,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         bool should_render = true;
-        if (is_set(entity->flags, ENTITY_F_OWNED) && !is_active_hot_bar_item) {
+        if (is_set(entity->flags, ENTITY_F_OWNED) && !is_active_hotbar_item) {
             should_render = false;
         } else if (is_set(entity->flags, ENTITY_F_MARK_FOR_DELETION)) {
             should_render = false;
@@ -1265,7 +1304,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     hotbar_render(game_state, &render_group_ui);
     render_player_hp_ui(game_state->player->hp, game_state->camera, &render_group_ui);
     if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
-        player_inventory_render(game_state, &render_group_ui);
+        player_inventory_render(game_state, &render_group_ui, game_input);
     }
 
     game_memory->push_audio_samples(&game_state->audio_player);

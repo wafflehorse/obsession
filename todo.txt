@@ -189,11 +189,21 @@
 [x] Fix entity placing so that mouse doesn't trigger player action
 [x] Add selected entity clear button to tools
 [x] Add utility for getting absolute UIElement position
-[] Add crafting UI (player crafting)
+[x] Add crafting UI (player crafting)
 	[x] Add basic crafting UI that toggles on 'i'
 	[x] Add recipe info on mouse hover
-	[] Add container border on hover
-	[] Craft item on click
+	[x] Add container border on hover
+	[x] Craft item on click
+[] Implement chest logic and UI
+	[] Place chest in the world
+		[] Placement UI
+		[] Placement input
+	[] Open chest when in proximity with input key
+		- Note: chest should close if player walks out of proximity or hits the input key again
+	[] Display chest UI showing contents
+		- Note: I think we need a somewhat generic way of handling inventory that can be shared
+		between hotbar, player_inventory, chests, etc.
+	[] Move items from chest to hotbar and vice versa
 [] Automate food supply
 	[x] Add some sort of foragable food entity
 	[x] Add ability to pick up food items
@@ -209,6 +219,7 @@
 [] Add warrior aggro when shot
 [] Add workbench
 
+[] Add toggles in engine tools for debug rendering (entity position, colliders, etc.)
 [] Add mouse_world_position to game state
 [] Add centering to container elements (centering children)
 [] Add support for sprite scaling

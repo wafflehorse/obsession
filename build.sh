@@ -23,8 +23,6 @@ if [[ "$1" == "-h" ]]; then
 	exit 1
 fi
 
-clang-format -i ./src/*
-
 GAME_CLANG_CMD="clang++ -std=c++14 $FLAGS $DEBUG_GAME_DEPENDENCIES ./src/game_main.cpp -dynamiclib -o $BUILD_DIR/game_main.dylib -I./lib -I./lib/imgui"
 
 # Hot reloading causes the vscode lldb instance to lose debug symbols.
@@ -67,6 +65,8 @@ cp ./assets/asset_tables.h src
 cp ./assets/sprite_atlas.png ./resources/assets
 
 cp -r ./resources/* $BUILD_DIR/resources
+
+clang-format -i ./src/*
 
 # Capture the start time in nanoseconds using gdate
 start_time=$(gdate +%s%N)
