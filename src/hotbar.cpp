@@ -7,13 +7,7 @@ void hotbar_init(HotBar* hotbar) {
 }
 
 bool hotbar_should_persist_entity(EntityType entity_type) {
-    bool result = false;
-
-    if (entity_type == ENTITY_TYPE_GUN) {
-        result = true;
-    }
-
-    return result;
+    return is_set(entity_info[entity_type].flags, ENTITY_INFO_F_PERSIST_IN_INVENTORY);
 }
 
 bool hotbar_contains_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
@@ -116,7 +110,7 @@ void hotbar_render_item(GameState* game_state, PlayerWorldInput* player_world_in
         float z_pos, z_index;
         Vec2 item_position = entity_held_item_position(player, &z_pos, &z_index);
 
-        SpriteID sprite_id = entity_default_sprites[slot->entity_type];
+        SpriteID sprite_id = entity_info[slot->entity_type].default_sprite;
         item_position.y += z_pos;
 
         render_sprite(item_position, sprite_id, render_group, {.z_index = z_index});
@@ -148,7 +142,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
                 ASSERT(entity->sprite_id != SPRITE_UNKNOWN, "The hot bar only supports rendering the entity sprite id");
                 sprite = sprite_table[entity->sprite_id];
             } else {
-                SpriteID sprite_id = entity_default_sprites[slot->entity_type];
+                SpriteID sprite_id = entity_info[slot->entity_type].default_sprite;
                 sprite = sprite_table[sprite_id];
             }
 

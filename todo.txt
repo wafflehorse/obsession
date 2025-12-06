@@ -204,6 +204,8 @@
 		- Note: I think we need a somewhat generic way of handling inventory that can be shared
 		between hotbar, player_inventory, chests, etc.
 	[] Move items from chest to hotbar and vice versa
+[] Allow for player to click inventory screen without shooting or taking another world action
+	- Probably want to disable world input when in the inventory screen? Maybe?
 [] Automate food supply
 	[x] Add some sort of foragable food entity
 	[x] Add ability to pick up food items

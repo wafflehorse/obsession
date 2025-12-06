@@ -413,7 +413,7 @@ void update_brain(Entity* entity, GameState* game_state, double dt_s) {
     Brain* brain = &entity->brain;
     brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
     float distance_to_player = w_euclid_dist(entity->position, player->position);
-    EntityAnimations animations = entity_animations[entity->type];
+    EntityAnimations animations = entity_info[entity->type].animations;
     if (brain->type == BRAIN_TYPE_WARRIOR) {
         if (distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK && brain->ai_state != AI_STATE_DEAD) {
             brain->ai_state = AI_STATE_CHASE;
@@ -699,7 +699,7 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
             UIElement* ingredient_sprite_element =
                 ui_create_sprite(entity_get_default_sprite(ingredient.entity_type), &game_state->frame_arena);
 
-            const char* entity_name_string = entity_type_name_strings[ingredient.entity_type];
+            const char* entity_name_string = entity_info[ingredient.entity_type].type_name_string;
             char ingredient_text[64] = {};
             snprintf(ingredient_text, 64, "%i %s", ingredient.quantity, entity_name_string);
             UIElement* ingredient_text_element =
@@ -773,6 +773,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         get_mouse_world_position(&game_state->camera, game_input, game_memory->window.size_px);
     w_init_waffle_lib(g_base_path);
     w_init_animation(animation_table);
+    entity_init();
 
     // TODO: should background just be merged with decorations?
     RenderGroup background_render_group = {};
@@ -973,7 +974,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
                 entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
             } else {
-                EntityAnimations animations = entity_animations[entity->type];
+                EntityAnimations animations = entity_info[entity->type].animations;
                 set(entity->flags, ENTITY_F_NONSPACIAL);
                 w_play_animation(animations.death, &entity->anim_state);
                 if (w_animation_complete(&entity->anim_state, g_sim_dt_s)) {

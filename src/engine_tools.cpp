@@ -73,7 +73,7 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
             for (int i = 1; i < ENTITY_TYPE_COUNT; i++) {
                 ImGui::PushID(i);
 
-                SpriteID sprite_id = entity_default_sprites[i];
+                SpriteID sprite_id = entity_info[i].default_sprite;
                 Sprite sprite = sprite_table[sprite_id];
 
                 Vec2 image_size = w_vec_mult((Vec2){sprite.w, sprite.h}, 2);
@@ -196,7 +196,7 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 
     if (!imgui_io->WantCaptureMouse) {
         for (int i = 0; i < game_state->world_init.entity_init_count; i++) {
-            SpriteID sprite_id = entity_default_sprites[entity_inits[i].type];
+            SpriteID sprite_id = entity_info[entity_inits[i].type].default_sprite;
             Vec2 target_position = entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
             Sprite sprite = entity_get_default_sprite(entity_inits[i].type);
             Rect target = {target_position.x, target_position.y, pixels_to_units(sprite.w), pixels_to_units(sprite.h)};
@@ -225,7 +225,7 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 
     if (game_state->tools.entity_palette_should_add_to_init) {
         for (int i = 0; i < game_state->world_init.entity_init_count; i++) {
-            SpriteID sprite_id = entity_default_sprites[entity_inits[i].type];
+            SpriteID sprite_id = entity_info[entity_inits[i].type].default_sprite;
             Vec4 tint = {1, 1, 1, 0.3};
             if (hovered_over_entity_init == i) {
                 tint.x = 4;

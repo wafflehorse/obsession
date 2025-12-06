@@ -10,47 +10,107 @@ struct EntityAnimations {
     AnimationID attack;
 };
 
-EntityAnimations entity_animations[ENTITY_TYPE_COUNT] = {
-    [ENTITY_TYPE_PLAYER] = {.idle = ANIM_HERO_IDLE,
-                            .move = ANIM_HERO_MOVE_LEFT,
-                            .move_down = ANIM_HERO_MOVE_DOWN,
-                            .move_up = ANIM_HERO_MOVE_UP,
-                            .death = ANIM_HERO_DEAD},
-    [ENTITY_TYPE_WARRIOR] = {.idle = ANIM_WARRIOR_IDLE,
-                             .move = ANIM_WARRIOR_MOVE_LEFT,
-                             .death = ANIM_WARRIOR_DEAD,
-                             .attack = ANIM_WARRIOR_ATTACK},
-    [ENTITY_TYPE_BOAR] = {.idle = ANIM_BOAR_IDLE, .move = ANIM_BOAR_WALK, .death = ANIM_BOAR_2_DEATH}};
+#define ENTITY_INFO_F_PERSIST_IN_INVENTORY (1 << 0)
+#define ENTITY_INFO_F_PLACEABLE (1 << 1)
 
-SpriteID entity_default_sprites[ENTITY_TYPE_COUNT] = {[ENTITY_TYPE_PLAYER] = SPRITE_HERO_IDLE_0,
-                                                      [ENTITY_TYPE_GUN] = SPRITE_GUN_GREEN,
-                                                      [ENTITY_TYPE_WARRIOR] = SPRITE_WARRIOR_IDLE_0,
-                                                      [ENTITY_TYPE_PROJECTILE] = SPRITE_GREEN_BULLET_1,
-                                                      [ENTITY_TYPE_BLOCK] = SPRITE_BLOCK_1,
-                                                      [ENTITY_TYPE_BOAR] = SPRITE_BOAR_IDLE_0,
-                                                      [ENTITY_TYPE_BOAR_MEAT] = SPRITE_BOAR_MEAT_RAW,
-                                                      [ENTITY_TYPE_IRON_DEPOSIT] = SPRITE_ORE_IRON_0,
-                                                      [ENTITY_TYPE_IRON] = SPRITE_IRON_1,
-                                                      [ENTITY_TYPE_PLANT_CORN] = SPRITE_PLANT_CORN_3,
-                                                      [ENTITY_TYPE_ITEM_CORN] = SPRITE_ITEM_CORN,
-                                                      [ENTITY_TYPE_CHEST_IRON] = SPRITE_CHESTS_IRON_0};
+struct EntityInfo {
+    flags flags;
+    EntityAnimations animations;
+    SpriteID default_sprite;
+    char type_name_string[256];
+};
 
-const char entity_type_name_strings[ENTITY_TYPE_COUNT][256] = {[ENTITY_TYPE_UNKNOWN] = "Unknown",
-                                                               [ENTITY_TYPE_PLAYER] = "Player",
-                                                               [ENTITY_TYPE_GUN] = "Gun",
-                                                               [ENTITY_TYPE_WARRIOR] = "Warrior",
-                                                               [ENTITY_TYPE_PROJECTILE] = "Projectile",
-                                                               [ENTITY_TYPE_BLOCK] = "Block",
-                                                               [ENTITY_TYPE_BOAR] = "Boar",
-                                                               [ENTITY_TYPE_BOAR_MEAT] = "Boar Meat",
-                                                               [ENTITY_TYPE_IRON_DEPOSIT] = "Iron Deposit",
-                                                               [ENTITY_TYPE_IRON] = "Iron",
-                                                               [ENTITY_TYPE_PLANT_CORN] = "Corn Plant",
-                                                               [ENTITY_TYPE_ITEM_CORN] = "Corn",
-                                                               [ENTITY_TYPE_CHEST_IRON] = "Iron Chest"};
+EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
+
+void entity_init() {
+    entity_info[ENTITY_TYPE_UNKNOWN] = {
+        .type_name_string = "Unknown",
+    };
+
+    entity_info[ENTITY_TYPE_PLAYER] = {
+        .type_name_string = "Player",
+        .animations =
+            {
+                .idle = ANIM_HERO_IDLE,
+                .move = ANIM_HERO_MOVE_LEFT,
+                .move_down = ANIM_HERO_MOVE_DOWN,
+                .move_up = ANIM_HERO_MOVE_UP,
+                .death = ANIM_HERO_DEAD,
+            },
+        .default_sprite = SPRITE_HERO_IDLE_0,
+    };
+
+    entity_info[ENTITY_TYPE_GUN] = {
+        .flags = ENTITY_INFO_F_PERSIST_IN_INVENTORY,
+        .type_name_string = "Gun",
+        .default_sprite = SPRITE_GUN_GREEN,
+    };
+
+    entity_info[ENTITY_TYPE_WARRIOR] = {
+        .type_name_string = "Warrior",
+        .animations =
+            {
+                .idle = ANIM_WARRIOR_IDLE,
+                .move = ANIM_WARRIOR_MOVE_LEFT,
+                .death = ANIM_WARRIOR_DEAD,
+                .attack = ANIM_WARRIOR_ATTACK,
+            },
+        .default_sprite = SPRITE_WARRIOR_IDLE_0,
+    };
+
+    entity_info[ENTITY_TYPE_PROJECTILE] = {
+        .type_name_string = "Projectile",
+        .default_sprite = SPRITE_GREEN_BULLET_1,
+    };
+
+    entity_info[ENTITY_TYPE_BLOCK] = {
+        .type_name_string = "Block",
+        .default_sprite = SPRITE_BLOCK_1,
+    };
+
+    entity_info[ENTITY_TYPE_BOAR] = {.type_name_string = "Boar",
+                                     .animations =
+                                         {
+                                             .idle = ANIM_BOAR_IDLE,
+                                             .move = ANIM_BOAR_WALK,
+                                             .death = ANIM_BOAR_2_DEATH,
+                                         },
+                                     .default_sprite = SPRITE_BOAR_IDLE_0};
+
+    entity_info[ENTITY_TYPE_BOAR_MEAT] = {
+        .type_name_string = "Boar Meat",
+        .default_sprite = SPRITE_BOAR_MEAT_RAW,
+    };
+
+    entity_info[ENTITY_TYPE_IRON_DEPOSIT] = {
+        .type_name_string = "Iron Deposit",
+        .default_sprite = SPRITE_ORE_IRON_0,
+    };
+
+    entity_info[ENTITY_TYPE_IRON] = {
+        .type_name_string = "Iron",
+        .default_sprite = SPRITE_IRON_1,
+    };
+
+    entity_info[ENTITY_TYPE_PLANT_CORN] = {
+        .type_name_string = "Corn Plant",
+        .default_sprite = SPRITE_PLANT_CORN_3,
+    };
+
+    entity_info[ENTITY_TYPE_ITEM_CORN] = {
+        .type_name_string = "Corn",
+        .default_sprite = SPRITE_ITEM_CORN,
+    };
+
+    entity_info[ENTITY_TYPE_CHEST_IRON] = {
+        .flags = ENTITY_INFO_F_PLACEABLE,
+        .type_name_string = "Iron Chest",
+        .default_sprite = SPRITE_CHESTS_IRON_0,
+    };
+}
 
 Sprite entity_get_default_sprite(EntityType type) {
-    return sprite_table[entity_default_sprites[type]];
+    return sprite_table[entity_info[type].default_sprite];
 }
 
 Entity* entity_new(EntityData* entity_data) {
@@ -303,7 +363,7 @@ EntityHandle entity_create_boar_meat(EntityData* entity_data, Vec2 position) {
 EntityHandle entity_create_item(EntityData* entity_data, EntityType type, Vec2 position) {
     Entity* entity = entity_new(entity_data);
 
-    SpriteID sprite_id = entity_default_sprites[type];
+    SpriteID sprite_id = entity_info[type].default_sprite;
 
     ASSERT(sprite_id != SPRITE_UNKNOWN, "Item entities must have sprite specified in entity_sprites\n");
 
@@ -478,7 +538,7 @@ RenderQuad* entity_render(Entity* entity, RenderGroup* render_group) {
 }
 
 void entity_player_movement_animation_update(Entity* entity, PlayerWorldInput* player_world_input) {
-    EntityAnimations animations = entity_animations[entity->type];
+    EntityAnimations animations = entity_info[entity->type].animations;
     Vec2 disc_facing_direction = entity_discrete_facing_direction_4_directions(entity->facing_direction);
 
     if (w_vec_length(player_world_input->movement_vec) > 0) {
