@@ -21,6 +21,15 @@ bool hotbar_contains_item(HotBar* hotbar, EntityType entity_type, uint32 quantit
     return quantity_found >= quantity;
 }
 
+void hotbar_slot_remove_item(HotBarSlot* hotbar_slot, uint32 quantity) {
+    hotbar_slot->stack_size = w_clamp_min(hotbar_slot->stack_size - quantity, 0);
+
+    if (hotbar_slot->stack_size == 0) {
+        hotbar_slot->entity_type = ENTITY_TYPE_UNKNOWN;
+        hotbar_slot->entity_handle.generation = -1;
+    }
+}
+
 void hotbar_remove_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
     uint32 quantity_remaining = quantity;
 
@@ -38,7 +47,7 @@ void hotbar_remove_item(HotBar* hotbar, EntityType entity_type, uint32 quantity)
         ASSERT(min_stack_size_slot, "Trying to remove hot bar items that don't exist");
 
         uint32 tmp_stack_size = min_stack_size_slot->stack_size;
-        min_stack_size_slot->stack_size = w_clamp_min(min_stack_size_slot->stack_size - quantity_remaining, 0.0f);
+        hotbar_slot_remove_item(min_stack_size_slot, quantity_remaining);
         quantity_remaining -= w_min(tmp_stack_size, quantity_remaining);
     }
 }
@@ -99,6 +108,29 @@ bool hotbar_space_for_item(EntityType entity_type, uint32 quantity, HotBar* hotb
     return false;
 }
 
+Vec2 hotbar_placeable_position(Vec2 player_position, Vec2 aim_vec) {
+    Vec2 placement_position = player_position;
+    float placement_offset = 1.0f;
+
+    if (aim_vec.y >= aim_vec.x && aim_vec.y >= -aim_vec.x) {
+        placement_position.y += placement_offset;
+    } else if (aim_vec.y <= aim_vec.x && aim_vec.y <= -aim_vec.x) {
+        placement_position.y -= placement_offset;
+    } else if (aim_vec.y <= aim_vec.x && aim_vec.y >= -aim_vec.x) {
+        placement_position.x += placement_offset;
+    } else {
+        placement_position.x -= placement_offset;
+    }
+
+    return placement_position;
+}
+
+void hotbar_render_placement_indicator(Vec2 player_position, Vec2 aim_vec, RenderGroup* render_group) {
+    Vec2 placement_position = hotbar_placeable_position(player_position, aim_vec);
+    Vec2 placement_indicator_size = {1, 1};
+    render_borders(pixels_to_units(1), COLOR_WHITE, placement_position, placement_indicator_size, render_group);
+}
+
 void hotbar_render_item(GameState* game_state, PlayerWorldInput* player_world_input, RenderGroup* render_group) {
     Entity* player = game_state->player;
     HotBar* hotbar = &game_state->hotbar;
@@ -114,6 +146,10 @@ void hotbar_render_item(GameState* game_state, PlayerWorldInput* player_world_in
         item_position.y += z_pos;
 
         render_sprite(item_position, sprite_id, render_group, {.z_index = z_index});
+
+        if (is_set(entity_info[slot->entity_type].flags, ENTITY_INFO_F_PLACEABLE)) {
+            hotbar_render_placement_indicator(game_state->player->position, player_world_input->aim_vec, render_group);
+        }
     }
 }
 
@@ -170,4 +206,19 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
                                game_state->camera.position.y - (game_state->camera.size.y / 2) + container->size.y};
 
     ui_draw_element(container, container_top_left, render_group);
+}
+
+void hotbar_validate(HotBar* hotbar) {
+    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
+        HotBarSlot slot = hotbar->slots[i];
+
+        ASSERT(slot.stack_size >= 0, "hotbar slot stacksize must be >= 0");
+
+        if (slot.stack_size > 0) {
+            ASSERT(slot.entity_type != ENTITY_TYPE_UNKNOWN, "hotbar slot has a stacksize but no entity type");
+        } else {
+            ASSERT(slot.entity_type == ENTITY_TYPE_UNKNOWN,
+                   "hotbar slot has non-zero stack size and no entity type assigned");
+        }
+    }
 }

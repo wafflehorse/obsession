@@ -409,43 +409,8 @@ void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_grou
     }
 
     if (element->border_width > 0) {
-        RenderQuad* top_border_quad = get_next_quad(render_group);
-        top_border_quad->world_size.x = element->size.x;
-        top_border_quad->world_size.y = element->border_width;
-        top_border_quad->world_position.x = element_center_position.x;
-        top_border_quad->world_position.y = element->position.y - (top_border_quad->world_size.y / 2);
-        top_border_quad->draw_colored_rect = 1;
-        top_border_quad->rgba = element->border_color;
-        // top_border_quad->z_index = 1;
-        //
-        RenderQuad* bottom_border_quad = get_next_quad(render_group);
-        bottom_border_quad->world_size.x = element->size.x;
-        bottom_border_quad->world_size.y = element->border_width;
-        bottom_border_quad->world_position.x = element_center_position.x;
-        bottom_border_quad->world_position.y =
-            element->position.y - element->size.y + (bottom_border_quad->world_size.y / 2);
-        bottom_border_quad->draw_colored_rect = 1;
-        bottom_border_quad->rgba = element->border_color;
-        // bottom_border_quad->z_index = 1;
-
-        RenderQuad* left_border_quad = get_next_quad(render_group);
-        left_border_quad->world_size.x = element->border_width;
-        left_border_quad->world_size.y = element->size.y;
-        left_border_quad->world_position.x = element->position.x + (left_border_quad->world_size.x / 2);
-        left_border_quad->world_position.y = element_center_position.y;
-        left_border_quad->draw_colored_rect = 1;
-        left_border_quad->rgba = element->border_color;
-        // left_border_quad->z_index = 1;
-
-        RenderQuad* right_border_quad = get_next_quad(render_group);
-        right_border_quad->world_size.x = element->border_width;
-        right_border_quad->world_size.y = element->size.y;
-        right_border_quad->world_position.x =
-            element->position.x + element->size.x - (right_border_quad->world_size.x / 2);
-        right_border_quad->world_position.y = element_center_position.y;
-        right_border_quad->draw_colored_rect = 1;
-        right_border_quad->rgba = element->border_color;
-        // right_border_quad->z_index = 1;
+        render_borders(element->border_width, element->border_color, element_center_position, element->size,
+                       render_group);
     }
 
     UIElement* child = element->child;

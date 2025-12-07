@@ -38,7 +38,7 @@ Vec2 get_world_top_left_tile_position() {
 struct PlayerWorldInput {
     Vec2 movement_vec;
     Vec2 aim_vec;
-    bool shoot;
+    bool use_item;
     bool drop_item;
 };
 
@@ -251,14 +251,14 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
             -(game_input->mouse_state.position.y / g_pixels_per_unit) + (screen_size.y / g_pixels_per_unit / 2)};
         Vec2 mouse_world_position = w_vec_add(mouse_screen_position, game_state->camera.position);
         Vec2 player_position = game_state->player->position;
-        input->aim_vec = {mouse_world_position.x - player_position.x,
-                          mouse_world_position.y - (player_position.y + 0.5f)};
+        input->aim_vec = w_vec_norm(
+            {mouse_world_position.x - player_position.x, mouse_world_position.y - (player_position.y + 0.5f)});
 #ifdef DEBUG
         if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
-            input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+            input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
         }
 #else
-        input->shoot = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+        input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
 #endif
     } else if (game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
         GamepadState* gamepad_state = &game_input->gamepad_state;
@@ -1176,7 +1176,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
                     entity->position = w_rotate_around_pivot(entity->position, pivot, entity->rotation_rads);
 
-                    if (player_world_input.shoot) {
+                    if (player_world_input.use_item) {
                         Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
                         Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
                         Vec2 projectile_position = {entity->position.x, entity->position.y + entity->z_pos};
@@ -1282,6 +1282,22 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             }
         }
     }
+
+    {
+        HotBarSlot* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
+        EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
+        if (player_world_input.use_item &&
+            is_set(entity_info[active_hotbar_entity_type].flags, ENTITY_INFO_F_PLACEABLE)) {
+            Vec2 placement_position =
+                hotbar_placeable_position(game_state->player->position, player_world_input.aim_vec);
+            entity_create(&game_state->entity_data, active_hotbar_entity_type, placement_position);
+            hotbar_slot_remove_item(active_hotbar_slot, 1);
+        }
+    }
+
+#ifdef DEBUG
+    hotbar_validate(&game_state->hotbar);
+#endif
 
     for (int i = 0; i < game_state->entity_data.entity_count; i++) {
         Entity* entity = &game_state->entity_data.entities[i];

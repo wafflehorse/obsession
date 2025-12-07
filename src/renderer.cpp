@@ -28,6 +28,37 @@ void sort_render_group(RenderGroup* render_group) {
     qsort(render_group->quads, render_group->count, sizeof(RenderQuad), render_group_cmp);
 }
 
+void render_borders(float border_width, Vec4 border_color, Vec2 world_subject_position, Vec2 world_subject_size,
+                    RenderGroup* render_group) {
+    RenderQuad* top = get_next_quad(render_group);
+    top->world_size = {world_subject_size.x, border_width};
+    top->world_position = {world_subject_position.x,
+                           world_subject_position.y + (world_subject_size.y * 0.5f) - (border_width * 0.5f)};
+    top->draw_colored_rect = 1;
+    top->rgba = border_color;
+
+    RenderQuad* bottom = get_next_quad(render_group);
+    bottom->world_size = {world_subject_size.x, border_width};
+    bottom->world_position = {world_subject_position.x,
+                              world_subject_position.y - (world_subject_size.y * 0.5f) + (border_width * 0.5f)};
+    bottom->draw_colored_rect = 1;
+    bottom->rgba = border_color;
+
+    RenderQuad* left = get_next_quad(render_group);
+    left->world_size = {border_width, world_subject_size.y};
+    left->world_position = {world_subject_position.x - (world_subject_size.x * 0.5f) + (border_width * 0.5f),
+                            world_subject_position.y};
+    left->draw_colored_rect = 1;
+    left->rgba = border_color;
+
+    RenderQuad* right = get_next_quad(render_group);
+    right->world_size = {border_width, world_subject_size.y};
+    right->world_position = {world_subject_position.x + (world_subject_size.x * 0.5f) - (border_width * 0.5f),
+                             world_subject_position.y};
+    right->draw_colored_rect = 1;
+    right->rgba = border_color;
+}
+
 // TODO: are we going to use this?
 RenderQuad* render_sprite(Vec2 sprite_position, Vec2 sprite_size, Vec2 position, Vec2 size, RenderGroup* render_group) {
     RenderQuad* quad = get_next_quad(render_group);

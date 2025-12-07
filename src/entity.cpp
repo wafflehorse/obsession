@@ -275,6 +275,22 @@ EntityHandle entity_create_player(EntityData* entity_data, Vec2 position) {
     return entity_to_handle(entity, entity_data);
 }
 
+EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position) {
+    Entity* entity = entity_new(entity_data);
+
+    SpriteID sprite_id = entity_info[ENTITY_TYPE_CHEST_IRON].default_sprite;
+
+    entity->type = ENTITY_TYPE_CHEST_IRON;
+    entity->position = position;
+    entity->sprite_id = sprite_id;
+
+    set(entity->flags, ENTITY_F_BLOCKER);
+
+    entity->collider = entity_rect_collider_from_sprite(sprite_id);
+
+    return entity_to_handle(entity, entity_data);
+}
+
 EntityHandle entity_create_gun(EntityData* entity_data, Vec2 position) {
     Entity* entity = entity_new(entity_data);
 
@@ -581,6 +597,9 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
         break;
     case ENTITY_TYPE_IRON:
         entity_create_item(entity_data, ENTITY_TYPE_IRON, position);
+        break;
+    case ENTITY_TYPE_CHEST_IRON:
+        entity_create_chest(entity_data, position);
         break;
     case ENTITY_TYPE_PLAYER: {
         bool player_exists = false;
