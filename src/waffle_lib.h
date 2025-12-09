@@ -573,8 +573,12 @@ void w_arena_restore(Arena* arena, char* marker) {
 }
 
 // Note: t should be between 0 and 1
-float w_animate_ease_out_quad(float t) {
+float w_anim_ease_out_quad(float t) {
     return 1.0f - (1.0f - t) * (1.0f - t);
+}
+
+float w_anim_sine(float t, float speed, float amp) {
+    return sinf(t * speed) * amp;
 }
 
 void w_init_waffle_lib(char* base_path) {

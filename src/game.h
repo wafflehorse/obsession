@@ -189,6 +189,8 @@ struct Entity {
     float damage_taken_tint_cooldown_s;
     uint32 attack_id;
 
+    float item_floating_anim_timer_s;
+
     // item spawning
     float damage_since_spawn;
 
@@ -238,6 +240,9 @@ struct Tools {
     bool is_panel_open;
     EntityType selected_entity;
     bool entity_palette_should_add_to_init;
+    bool draw_colliders;
+    bool draw_entity_positions;
+    bool draw_hitboxes;
 };
 
 struct GameInit {

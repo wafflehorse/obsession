@@ -275,7 +275,7 @@ EntityHandle entity_create_player(EntityData* entity_data, Vec2 position) {
     return entity_to_handle(entity, entity_data);
 }
 
-EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position) {
+EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags opts) {
     Entity* entity = entity_new(entity_data);
 
     SpriteID sprite_id = entity_info[ENTITY_TYPE_CHEST_IRON].default_sprite;
@@ -284,6 +284,7 @@ EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position) {
     entity->position = position;
     entity->sprite_id = sprite_id;
 
+    set(entity->flags, opts);
     set(entity->flags, ENTITY_F_BLOCKER);
 
     entity->collider = entity_rect_collider_from_sprite(sprite_id);
@@ -546,7 +547,7 @@ RenderQuad* entity_render(Entity* entity, RenderGroup* render_group) {
         float normalized_elapsed =
             1 - w_clamp_01(entity->damage_taken_tint_cooldown_s / ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S);
 
-        float tint_factor = (1 - w_animate_ease_out_quad(normalized_elapsed)) * 5;
+        float tint_factor = (1 - w_anim_ease_out_quad(normalized_elapsed)) * 5;
         quad->tint = {1 + tint_factor, 1 + tint_factor, 1 + tint_factor, 1};
     }
 
@@ -570,7 +571,9 @@ void entity_player_movement_animation_update(Entity* entity, PlayerWorldInput* p
     }
 }
 
-EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 position) {
+#define ENTITY_CREATE_F_ITEM (1 << 0)
+
+EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 position, flags opts) {
     EntityHandle entity_handle;
     switch (type) {
     case ENTITY_TYPE_GUN:
@@ -599,7 +602,11 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
         entity_create_item(entity_data, ENTITY_TYPE_IRON, position);
         break;
     case ENTITY_TYPE_CHEST_IRON:
-        entity_create_chest(entity_data, position);
+        if (is_set(opts, ENTITY_CREATE_F_ITEM)) {
+            entity_create_item(entity_data, type, position);
+        } else {
+            entity_create_chest(entity_data, position, opts);
+        }
         break;
     case ENTITY_TYPE_PLAYER: {
         bool player_exists = false;
@@ -623,4 +630,8 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
     }
 
     return entity_handle;
+}
+
+EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 position) {
+    return entity_create(entity_data, type, position, 0);
 }

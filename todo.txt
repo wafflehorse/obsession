@@ -194,10 +194,13 @@
 	[x] Add recipe info on mouse hover
 	[x] Add container border on hover
 	[x] Craft item on click
+[x] Add toggles in engine tools for debug rendering (entity position, colliders, etc.)
 [] Differentiate between placed items and non-placed items
 	- If a chest isn't placed like after you destroy it and it becomes an item, it should be clear
 	and player should be able to pick it up
 	- I think we want a floating animation for this
+[] Allow for player to click inventory screen without shooting or taking another world action
+	- Probably want to disable world input when in the inventory screen? Maybe?
 [] Implement chest logic and UI
 	[x] Place chest in the world
 		[x] Placement UI
@@ -209,8 +212,6 @@
 		between hotbar, player_inventory, chests, etc.
 	[] Move items from chest to hotbar and vice versa
 	[] Add ability to pick up a chest that has been placed
-[] Allow for player to click inventory screen without shooting or taking another world action
-	- Probably want to disable world input when in the inventory screen? Maybe?
 [] Automate food supply
 	[x] Add some sort of foragable food entity
 	[x] Add ability to pick up food items
@@ -219,6 +220,7 @@
 	[] Add hunger to player
 
 [] Fix collision tunneling 
+[] Projectile collider seems off
 [] Add items to pre-existing entity stack if exists in hotbar
 	- Right now the hotbar just looks for the first available slot and fills it
 [] Randomly spawn enemies around the map
@@ -229,7 +231,6 @@
 [] Add warrior aggro when shot
 [] Add workbench
 
-[] Add toggles in engine tools for debug rendering (entity position, colliders, etc.)
 [] Add mouse_world_position to game state
 [] Add centering to container elements (centering children)
 [] Add support for sprite scaling

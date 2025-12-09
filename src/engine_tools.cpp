@@ -53,6 +53,10 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
 
         ImGui::Text("Mouse coord: %.3f, %.3f", mouse_world_position.x, mouse_world_position.y);
 
+        ImGui::Checkbox("Draw colliders", &game_state->tools.draw_colliders);
+        ImGui::Checkbox("Draw entity positions", &game_state->tools.draw_entity_positions);
+        ImGui::Checkbox("Draw hitboxes", &game_state->tools.draw_hitboxes);
+
         if (ImGui::CollapsingHeader("Entity")) {
             ImGui::Text("Entity count: %i", game_state->entity_data.entity_count);
             ImGui::Text("Max entity count: %i", MAX_ENTITIES);
@@ -218,7 +222,10 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
                         .type = game_state->tools.selected_entity, .position = mouse_world_position};
                 }
             } else {
-                entity_create(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position);
+                // NOTE: for now I want this to create the item version of entities as the default. I don't know if this
+                // is a long term solution to this problem. We might want a toggle for item vs. placed entities?
+                entity_create(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position,
+                              ENTITY_CREATE_F_ITEM);
             }
         }
     }

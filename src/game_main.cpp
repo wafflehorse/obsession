@@ -754,9 +754,6 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
 
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     // ~~~~~~~~~~~~~~~~~~ Debug Flags ~~~~~~~~~~~~~~~~~~~~ //
-    bool debug_should_render_hitboxes = false;
-    bool debug_should_render_entity_locations = true;
-    bool debug_should_render_entity_colliders = false;
     GameState* game_state = (GameState*)game_memory->memory;
     g_base_path = game_memory->base_path;
 
@@ -1078,6 +1075,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 entity->velocity = w_vec_mult(player_direction_norm, current_velocity_mag);
                 entity->acceleration = w_vec_mult(player_direction_norm, 15.0f);
             }
+
+            entity->item_floating_anim_timer_s += g_sim_dt_s;
+            entity->z_pos = w_anim_sine(entity->item_floating_anim_timer_s, 4.0f, 0.10f);
         }
 
         if (is_set(entity->flags, ENTITY_F_ITEM_SPAWNING) && entity->z_pos == 0) {
@@ -1229,7 +1229,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 anim_hitbox.h,
             };
 
-            if (debug_should_render_hitboxes) {
+            if (game_state->tools.draw_hitboxes) {
                 debug_render_rect((Vec2){subject_hitbox.x, subject_hitbox.y},
                                   (Vec2){subject_hitbox.w, subject_hitbox.h}, {255, 0, 0, 0.5});
             }
@@ -1274,10 +1274,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 entity_render(entity, &main_render_group);
             }
 
-            if (debug_should_render_entity_locations) {
+            if (game_state->tools.draw_entity_positions) {
                 debug_render_rect(entity->position, pixels_to_units({1, 1}), {0, 255, 0, 1});
             }
-            if (debug_should_render_entity_colliders) {
+            if (game_state->tools.draw_colliders) {
                 debug_render_entity_colliders(entity, false);
             }
         }
