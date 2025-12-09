@@ -253,13 +253,16 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
         Vec2 player_position = game_state->player->position;
         input->aim_vec = w_vec_norm(
             {mouse_world_position.x - player_position.x, mouse_world_position.y - (player_position.y + 0.5f)});
+
+        if (!is_set(game_state->frame_flags, GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS)) {
 #ifdef DEBUG
-        if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
-            input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
-        }
+            if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
+                input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+            }
 #else
-        input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+            input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
 #endif
+        }
     } else if (game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
         GamepadState* gamepad_state = &game_input->gamepad_state;
         input->movement_vec = w_vec_norm(
@@ -670,11 +673,13 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
                               crafting_item_slot_size.y};
 
             if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world)) {
+                set(game_state->frame_flags, GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS);
                 hovered_over_entity_type = recipe->entity_type;
                 crafting_item_slot->border_width = pixels_to_units(1);
                 crafting_item_slot->border_color = COLOR_WHITE;
 
-                if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+                if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed &&
+                    hovered_over_entity_type != ENTITY_TYPE_UNKNOWN) {
                     crafting_craft_item(&game_state->entity_data, recipe->entity_type, &game_state->hotbar);
                 }
             }
@@ -904,6 +909,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
     init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
     game_state->frame_arena.next = game_state->frame_arena.data;
+    game_state->frame_flags = 0;
 
     background_render_group.size = DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT;
     background_render_group.quads =
@@ -950,7 +956,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    // ~~~~~~~~~~~~~~~~~~ Render tilemap ~~~~~~~~~~~~~~~~~~~~~~ //
+    if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
+        player_inventory_render(game_state, &render_group_ui, game_input);
+    }
 
     PlayerWorldInput player_world_input = {};
 
@@ -1320,10 +1328,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     hotbar_render_item(game_state, &player_world_input, &main_render_group);
     hotbar_render(game_state, &render_group_ui);
     render_player_hp_ui(game_state->player->hp, game_state->camera, &render_group_ui);
-    if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
-        player_inventory_render(game_state, &render_group_ui, game_input);
-    }
-
     game_memory->push_audio_samples(&game_state->audio_player);
 
     sort_render_group(&main_render_group);

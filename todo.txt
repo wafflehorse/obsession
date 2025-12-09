@@ -195,11 +195,11 @@
 	[x] Add container border on hover
 	[x] Craft item on click
 [x] Add toggles in engine tools for debug rendering (entity position, colliders, etc.)
-[] Differentiate between placed items and non-placed items
+[x] Differentiate between placed items and non-placed items
 	- If a chest isn't placed like after you destroy it and it becomes an item, it should be clear
 	and player should be able to pick it up
 	- I think we want a floating animation for this
-[] Allow for player to click inventory screen without shooting or taking another world action
+[x] Allow for player to click inventory screen without shooting or taking another world action
 	- Probably want to disable world input when in the inventory screen? Maybe?
 [] Implement chest logic and UI
 	[x] Place chest in the world
