@@ -22,6 +22,8 @@ struct EntityInfo {
 
 EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
 
+EntityHandle entity_null_handle = {.generation = -1};
+
 void entity_init() {
     entity_info[ENTITY_TYPE_UNKNOWN] = {
         .type_name_string = "Unknown",
@@ -174,10 +176,14 @@ Entity* entity_find(EntityHandle handle, EntityData* entity_data) {
 }
 
 EntityHandle entity_to_handle(Entity* entity, EntityData* entity_data) {
-    EntityHandle handle = {
-        .id = entity->id,
-        .generation = entity_data->entity_lookups[entity->id].generation,
-    };
+    EntityHandle handle;
+
+    if (entity) {
+        handle.id = entity->id;
+        handle.generation = entity_data->entity_lookups[entity->id].generation;
+    } else {
+        handle.generation = -1;
+    }
 
     return handle;
 }
@@ -283,9 +289,12 @@ EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags o
     entity->type = ENTITY_TYPE_CHEST_IRON;
     entity->position = position;
     entity->sprite_id = sprite_id;
+    entity->inventory_rows = 4;
+    entity->inventory_cols = 5;
 
     set(entity->flags, opts);
     set(entity->flags, ENTITY_F_BLOCKER);
+    set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
 
     entity->collider = entity_rect_collider_from_sprite(sprite_id);
 
@@ -634,4 +643,21 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
 
 EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 position) {
     return entity_create(entity_data, type, position, 0);
+}
+
+Entity* entity_closest_player_interactable(EntityData* entity_data, Entity* player) {
+    Entity* closest_interactable_entity = NULL;
+    float closest_distance = 1.1;
+    for (int i = 0; i < entity_data->entity_count; i++) {
+        Entity* entity = &entity_data->entities[i];
+        if (is_set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE)) {
+            float distance = w_euclid_dist(player->position, entity->position);
+            if (distance <= closest_distance) {
+                closest_interactable_entity = entity;
+                closest_distance = distance;
+            }
+        }
+    }
+
+    return closest_interactable_entity;
 }

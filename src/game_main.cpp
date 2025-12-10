@@ -38,8 +38,9 @@ Vec2 get_world_top_left_tile_position() {
 struct PlayerWorldInput {
     Vec2 movement_vec;
     Vec2 aim_vec;
-    bool use_item;
+    bool use_held_item;
     bool drop_item;
+    bool interact;
 };
 
 Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
@@ -240,6 +241,10 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
             input->drop_item = true;
         }
 
+        if (key_input_states[KEY_E].is_pressed) {
+            input->interact = true;
+        }
+
         if (key_input_states[KEY_I].is_pressed) {
             toggle(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
         }
@@ -257,10 +262,10 @@ void update_player_world_input(GameInput* game_input, GameState* game_state, Pla
         if (!is_set(game_state->frame_flags, GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS)) {
 #ifdef DEBUG
             if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
-                input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+                input->use_held_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
             }
 #else
-            input->use_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+            input->use_held_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
 #endif
         }
     } else if (game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
@@ -620,6 +625,102 @@ void crafting_craft_item(EntityData* entity_data, EntityType entity_type, HotBar
     }
 }
 
+struct InventoryInput {
+    int idx_hovered;
+    int idx_clicked;
+};
+
+InventoryInput inventory_render(UIElement* container, Vec2 container_position, InventoryItem* inventory_items,
+                                uint32 item_count, uint32 num_rows, uint32 num_cols, GameState* game_state,
+                                GameInput* game_input) {
+    InventoryInput input = {-1, -1};
+
+    ASSERT(num_rows * num_cols >= item_count, "Too many items provided based on inventory size");
+
+    for (int row = 0; row < num_rows; row++) {
+        UIElement* item_row_container =
+            ui_create_container({.padding = 0, .child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW},
+                                &game_state->frame_arena);
+
+        ui_push(container, item_row_container);
+
+        for (int col = 0; col < num_cols; col++) {
+            uint32 item_idx = row * num_cols + col;
+            InventoryItem* item = NULL;
+            if (item_idx < item_count) {
+                item = &inventory_items[item_idx];
+            }
+
+            Vec2 slot_size = {1, 1};
+
+            UIElement* item_slot =
+                ui_create_container({.min_size = slot_size,
+                                     .max_size = slot_size,
+                                     .background_rgba = COLOR_GRAY,
+                                     .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
+                                    &game_state->frame_arena);
+
+            if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
+                Sprite sprite = entity_get_default_sprite(item->entity_type);
+                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
+                ui_push_centered(item_slot, item_sprite);
+            }
+
+            ui_push(item_row_container, item_slot);
+
+            Vec2 slot_world_position_top_left = ui_abs_position_get(container_position, item_slot);
+            Vec2 slot_world_position_center = w_rect_top_left_to_center(slot_world_position_top_left, slot_size);
+
+            Rect slot_rect = {slot_world_position_center.x, slot_world_position_center.y, slot_size.x, slot_size.y};
+
+            if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world)) {
+                set(game_state->frame_flags, GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS);
+                item_slot->border_width = pixels_to_units(1);
+                item_slot->border_color = COLOR_WHITE;
+
+                if (item) {
+                    input.idx_hovered = item_idx;
+
+                    if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+                        input.idx_clicked = item_idx;
+                    }
+                }
+            }
+        }
+
+        ui_container_size_update(container);
+    }
+
+    return input;
+}
+
+void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
+    float padding = pixels_to_units(16);
+    float child_gap = pixels_to_units(8);
+
+    // NOTE: this is assuming the slot size is 1 which is hard coded in the inventory_render. It
+    // will break if that changes
+    Vec2 inventory_ui_size = {
+        .x = entity->inventory_cols * 1 + (child_gap * (entity->inventory_cols - 1)) + (padding * 2),
+        .y = entity->inventory_rows * 1 + (child_gap * (entity->inventory_rows - 1)) + (padding * 2)};
+
+    Vec2 inventory_ui_position = game_state->camera.position;
+    inventory_ui_position.x -= (inventory_ui_size.x / 2);
+    inventory_ui_position.y += (inventory_ui_size.y / 2) + 5;
+
+    UIElement* container = ui_create_container({.padding = padding,
+                                                .child_gap = child_gap,
+                                                .background_rgba = COLOR_BLACK,
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND},
+                                               &game_state->frame_arena);
+
+    InventoryInput inventory_input =
+        inventory_render(container, inventory_ui_position, entity->inventory, entity->inventory_count,
+                         entity->inventory_rows, entity->inventory_cols, game_state, game_input);
+
+    ui_draw_element(container, inventory_ui_position, render_group);
+}
+
 void player_inventory_render(GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
     Vec2 crafting_menu_size = {13, 10};
     Vec2 crafting_menu_position = game_state->camera.position;
@@ -637,67 +738,29 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
     UIElement* title = ui_create_text("Crafting", COLOR_WHITE, 1.0f, &game_state->frame_arena);
     ui_push(container, title);
 
-    EntityType hovered_over_entity_type = ENTITY_TYPE_UNKNOWN;
+    InventoryItem items[ENTITY_TYPE_COUNT] = {};
+    uint32 item_count = 0;
 
-    for (int row = 0; row < 2; row++) {
-        UIElement* crafting_item_row_container =
-            ui_create_container({.padding = 0, .child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW},
-                                &game_state->frame_arena);
+    for (int i = 0; i < ENTITY_TYPE_COUNT; i++) {
+        CraftingRecipe recipe = crafting_recipes[i];
 
-        ui_push(container, crafting_item_row_container);
-
-        for (int col = 0; col < 8; col++) {
-            CraftingRecipe* recipe = &crafting_recipes[row * 4 + col];
-            Vec2 crafting_item_slot_size = {1, 1};
-
-            UIElement* crafting_item_slot =
-                ui_create_container({.min_size = crafting_item_slot_size,
-                                     .max_size = crafting_item_slot_size,
-                                     .background_rgba = COLOR_GRAY,
-                                     .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
-                                    &game_state->frame_arena);
-
-            if (recipe->entity_type != ENTITY_TYPE_UNKNOWN) {
-                Sprite sprite = entity_get_default_sprite(recipe->entity_type);
-                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
-                ui_push_centered(crafting_item_slot, item_sprite);
-            }
-
-            ui_push(crafting_item_row_container, crafting_item_slot);
-
-            Vec2 slot_world_position_top_left = ui_abs_position_get(crafting_menu_position, crafting_item_slot);
-            Vec2 slot_world_position_center =
-                w_rect_top_left_to_center(slot_world_position_top_left, crafting_item_slot_size);
-
-            Rect slot_rect = {slot_world_position_center.x, slot_world_position_center.y, crafting_item_slot_size.x,
-                              crafting_item_slot_size.y};
-
-            if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world)) {
-                set(game_state->frame_flags, GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS);
-                hovered_over_entity_type = recipe->entity_type;
-                crafting_item_slot->border_width = pixels_to_units(1);
-                crafting_item_slot->border_color = COLOR_WHITE;
-
-                if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed &&
-                    hovered_over_entity_type != ENTITY_TYPE_UNKNOWN) {
-                    crafting_craft_item(&game_state->entity_data, recipe->entity_type, &game_state->hotbar);
-                }
-            }
+        if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
+            items[i].entity_type = recipe.entity_type;
+            items[i].stack_size = 1;
+            item_count++;
         }
     }
 
+    InventoryInput inventory_input =
+        inventory_render(container, crafting_menu_position, items, item_count, 2, 8, game_state, game_input);
+
     ui_container_size_update(container);
 
-    if (hovered_over_entity_type != ENTITY_TYPE_UNKNOWN) {
-        // printf("hovering over entity type %i\n", hovered_over_entity_type);
+    if (inventory_input.idx_hovered > -1) {
+        CraftingRecipe recipe = crafting_recipes[inventory_input.idx_hovered];
 
-        CraftingRecipe* recipe = crafting_recipe_find(hovered_over_entity_type);
-
-        ASSERT(recipe, "Recipe not found for entity type hovered over entity");
-
-        for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe->ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN;
-             i++) {
-            CraftingIngredient ingredient = recipe->ingredients[i];
+        for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe.ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN; i++) {
+            CraftingIngredient ingredient = recipe.ingredients[i];
 
             UIElement* ingredient_container = ui_create_container(
                 {.child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW}, &game_state->frame_arena);
@@ -715,6 +778,11 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
 
             ui_push(container, ingredient_container);
         }
+    }
+
+    if (inventory_input.idx_clicked > -1) {
+        CraftingRecipe recipe = crafting_recipes[inventory_input.idx_hovered];
+        crafting_craft_item(&game_state->entity_data, recipe.entity_type, &game_state->hotbar);
     }
 
     ui_draw_element(container, crafting_menu_position, render_group);
@@ -869,6 +937,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         init_entity_data(&game_state->entity_data);
+        game_state->open_entity_inventory = entity_null_handle;
         hotbar_init(&game_state->hotbar);
 
         game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
@@ -936,6 +1005,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     tools_update_and_render(game_memory, game_state, game_input, &render_group_tools);
 #endif
 
+    Entity* closest_interactable_entity =
+        entity_closest_player_interactable(&game_state->entity_data, game_state->player);
+
     // ~~~~~~~~~~~~~~~~~~ Render decorations ~~~~~~~~~~~~~~~~~~~~~~ //
     {
         RenderQuad* ground = get_next_quad(&background_render_group);
@@ -954,10 +1026,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 render_sprite(decoration->position, decoration->sprite_id, &render_group_decorations, 0);
             }
         }
-    }
-
-    if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
-        player_inventory_render(game_state, &render_group_ui, game_input);
     }
 
     PlayerWorldInput player_world_input = {};
@@ -1184,7 +1252,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
                     entity->position = w_rotate_around_pivot(entity->position, pivot, entity->rotation_rads);
 
-                    if (player_world_input.use_item) {
+                    if (player_world_input.use_held_item) {
                         Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
                         Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
                         Vec2 projectile_position = {entity->position.x, entity->position.y + entity->z_pos};
@@ -1285,16 +1353,36 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             if (game_state->tools.draw_entity_positions) {
                 debug_render_rect(entity->position, pixels_to_units({1, 1}), {0, 255, 0, 1});
             }
+
             if (game_state->tools.draw_colliders) {
                 debug_render_entity_colliders(entity, false);
             }
         }
     }
 
+    if (closest_interactable_entity && player_world_input.interact) {
+        Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
+        if (!entity_with_open_inventory) {
+            game_state->open_entity_inventory = entity_to_handle(closest_interactable_entity, &game_state->entity_data);
+        } else {
+            game_state->open_entity_inventory = entity_null_handle;
+        }
+    }
+
+    Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
+    if (entity_with_open_inventory) {
+        unset(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
+        entity_inventory_render(entity_with_open_inventory, game_state, &render_group_ui, game_input);
+    }
+
+    if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
+        player_inventory_render(game_state, &render_group_ui, game_input);
+    }
+
     {
         HotBarSlot* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
         EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
-        if (player_world_input.use_item &&
+        if (player_world_input.use_held_item &&
             is_set(entity_info[active_hotbar_entity_type].flags, ENTITY_INFO_F_PLACEABLE)) {
             Vec2 placement_position =
                 hotbar_placeable_position(game_state->player->position, player_world_input.aim_vec);

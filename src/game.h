@@ -13,6 +13,8 @@
 #define MAX_PROJECTILE_DISTANCE 80
 #define ENTITY_MAX_Z 100
 
+#define ENTITY_MAX_INVENTORY_SIZE 36
+
 #define HOTBAR_MAX_SLOTS 8
 #define MAX_ITEM_STACK_SIZE 99
 
@@ -147,6 +149,12 @@ enum EntityType {
     ENTITY_TYPE_COUNT
 };
 
+struct InventoryItem {
+    EntityType entity_type;
+    EntityHandle entity_handle;
+    uint32 stack_size;
+};
+
 #define ENTITY_F_MARK_FOR_DELETION (1 << 0)
 #define ENTITY_F_OWNED (1 << 1)
 #define ENTITY_F_SPRITE_FLIP_X (1 << 2)
@@ -156,6 +164,7 @@ enum EntityType {
 #define ENTITY_F_DELETE_AFTER_ANIMATION (1 << 6)
 #define ENTITY_F_ITEM (1 << 7)
 #define ENTITY_F_ITEM_SPAWNING (1 << 8)
+#define ENTITY_F_PLAYER_INTERACTABLE (1 << 9)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
@@ -193,6 +202,11 @@ struct Entity {
 
     // item spawning
     float damage_since_spawn;
+
+    InventoryItem inventory[ENTITY_MAX_INVENTORY_SIZE];
+    uint32 inventory_count;
+    uint32 inventory_rows;
+    uint32 inventory_cols;
 
     uint32 stack_size;
 
@@ -285,6 +299,7 @@ struct GameState {
     CollisionRule* collision_rule_free_list;
     Entity* player;
     HotBar hotbar;
+    EntityHandle open_entity_inventory;
     EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
     uint32 attack_id_next;
     WorldGenContext world_gen_context;

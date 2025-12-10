@@ -340,7 +340,7 @@ void ui_push(UIElement* parent, UIElement* child) {
     ui_container_size_update(parent);
 }
 
-// Note: should only be worked with single item containers
+// Note: should only be used with single item containers
 void ui_push_centered(UIElement* parent, UIElement* child) {
     ui_push(parent, child);
     Vec2 center_rel_pos = {parent->size.x / 2, -parent->size.y / 2};
