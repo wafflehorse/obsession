@@ -563,11 +563,11 @@ RenderQuad* entity_render(Entity* entity, RenderGroup* render_group) {
     return quad;
 }
 
-void entity_player_movement_animation_update(Entity* entity, PlayerWorldInput* player_world_input) {
+void entity_player_movement_animation_update(Entity* entity, Vec2 player_movement_vec) {
     EntityAnimations animations = entity_info[entity->type].animations;
     Vec2 disc_facing_direction = entity_discrete_facing_direction_4_directions(entity->facing_direction);
 
-    if (w_vec_length(player_world_input->movement_vec) > 0) {
+    if (w_vec_length(player_movement_vec) > 0) {
         if (disc_facing_direction.x != 0) {
             entity_play_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
         } else if (disc_facing_direction.y > 0) {

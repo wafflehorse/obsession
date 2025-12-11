@@ -278,7 +278,6 @@ struct WorldInit {
 
 #define GAME_STATE_F_INITIALIZED (1 << 0)
 #define GAME_STATE_F_INVENTORY_OPEN (1 << 1)
-#define GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS (1 << 2)
 
 struct GameState {
     flags flags;

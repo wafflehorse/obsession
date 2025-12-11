@@ -131,7 +131,7 @@ void hotbar_render_placement_indicator(Vec2 player_position, Vec2 aim_vec, Rende
     render_borders(pixels_to_units(1), COLOR_WHITE, placement_position, placement_indicator_size, render_group);
 }
 
-void hotbar_render_item(GameState* game_state, PlayerWorldInput* player_world_input, RenderGroup* render_group) {
+void hotbar_render_item(GameState* game_state, Vec2 player_aim_vec, RenderGroup* render_group) {
     Entity* player = game_state->player;
     HotBar* hotbar = &game_state->hotbar;
 
@@ -148,7 +148,7 @@ void hotbar_render_item(GameState* game_state, PlayerWorldInput* player_world_in
         render_sprite(item_position, sprite_id, render_group, {.z_index = z_index});
 
         if (is_set(entity_info[slot->entity_type].flags, ENTITY_INFO_F_PLACEABLE)) {
-            hotbar_render_placement_indicator(game_state->player->position, player_world_input->aim_vec, render_group);
+            hotbar_render_placement_indicator(game_state->player->position, player_aim_vec, render_group);
         }
     }
 }

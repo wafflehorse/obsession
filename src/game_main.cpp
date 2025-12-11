@@ -35,12 +35,21 @@ Vec2 get_world_top_left_tile_position() {
 #define ABS_GAME_INIT_PATH "/Users/parkerpestana/dev/obsession/resources/game.init"
 #endif
 
-struct PlayerWorldInput {
+struct PlayerInputWorld {
     Vec2 movement_vec;
     Vec2 aim_vec;
     bool use_held_item;
     bool drop_item;
     bool interact;
+};
+
+struct PlayerInputInventory {
+    bool select;
+};
+
+struct PlayerInput {
+    PlayerInputWorld world;
+    PlayerInputInventory inventory;
 };
 
 Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
@@ -212,67 +221,74 @@ void init_entity_data(EntityData* entity_data) {
     }
 }
 
-void update_player_world_input(GameInput* game_input, GameState* game_state, PlayerWorldInput* input,
-                               Vec2 screen_size) {
+bool inventory_ui_open(GameState* game_state) {
+    return is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN) ||
+           entity_find(game_state->open_entity_inventory, &game_state->entity_data);
+}
+
+PlayerInput player_input_get(GameInput* game_input, GameState* game_state) {
+    PlayerInput input = {};
+    bool inventory_ui_is_open = inventory_ui_open(game_state);
     if (game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
         KeyInputState* key_input_states = game_input->key_input_states;
-        Vec2 movement_vec = {};
-        if (key_input_states[KEY_W].is_held) {
-            movement_vec.y = 1;
-        }
-        if (key_input_states[KEY_A].is_held) {
-            movement_vec.x = -1;
-        }
-        if (key_input_states[KEY_S].is_held) {
-            movement_vec.y = -1;
-        }
-        if (key_input_states[KEY_D].is_held) {
-            movement_vec.x = 1;
-        }
-
-        for (int i = KEY_1; i < KEY_9; i++) {
-            if (key_input_states[i].is_pressed) {
-                int hotbar_idx = i - KEY_1;
-                game_state->hotbar.active_item_idx = hotbar_idx;
+        if (!inventory_ui_is_open) {
+            Vec2 movement_vec = {};
+            if (key_input_states[KEY_W].is_held) {
+                movement_vec.y = 1;
             }
-        }
+            if (key_input_states[KEY_A].is_held) {
+                movement_vec.x = -1;
+            }
+            if (key_input_states[KEY_S].is_held) {
+                movement_vec.y = -1;
+            }
 
-        if (key_input_states[KEY_G].is_pressed) {
-            input->drop_item = true;
+            if (key_input_states[KEY_D].is_held) {
+                movement_vec.x = 1;
+            }
+
+            for (int i = KEY_1; i < KEY_9; i++) {
+                if (key_input_states[i].is_pressed) {
+                    int hotbar_idx = i - KEY_1;
+                    game_state->hotbar.active_item_idx = hotbar_idx;
+                }
+            }
+
+            if (key_input_states[KEY_G].is_pressed) {
+                input.world.drop_item = true;
+            }
+
+            input.world.movement_vec = w_vec_norm(movement_vec);
+
+#ifdef DEBUG
+            if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
+                input.world.use_held_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+            }
+#else
+            input.world.use_held_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
+#endif
+
+            Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
+            Vec2 player_position = game_state->player->position;
+            input.world.aim_vec = w_vec_norm(
+                {mouse_world_position.x - player_position.x, mouse_world_position.y - (player_position.y + 0.5f)});
         }
 
         if (key_input_states[KEY_E].is_pressed) {
-            input->interact = true;
+            input.world.interact = true;
         }
 
         if (key_input_states[KEY_I].is_pressed) {
             toggle(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
         }
 
-        input->movement_vec = w_vec_norm(movement_vec);
-
-        Vec2 mouse_screen_position = {
-            (game_input->mouse_state.position.x / g_pixels_per_unit) - (screen_size.x / g_pixels_per_unit / 2),
-            -(game_input->mouse_state.position.y / g_pixels_per_unit) + (screen_size.y / g_pixels_per_unit / 2)};
-        Vec2 mouse_world_position = w_vec_add(mouse_screen_position, game_state->camera.position);
-        Vec2 player_position = game_state->player->position;
-        input->aim_vec = w_vec_norm(
-            {mouse_world_position.x - player_position.x, mouse_world_position.y - (player_position.y + 0.5f)});
-
-        if (!is_set(game_state->frame_flags, GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS)) {
-#ifdef DEBUG
-            if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
-                input->use_held_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
-            }
-#else
-            input->use_held_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
-#endif
-        }
     } else if (game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
         GamepadState* gamepad_state = &game_input->gamepad_state;
-        input->movement_vec = w_vec_norm(
+        input.world.movement_vec = w_vec_norm(
             {gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_X], -gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_Y]});
     }
+
+    return input;
 }
 
 uint32 get_next_attack_id(uint32* attack_id_next) {
@@ -674,7 +690,6 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
             Rect slot_rect = {slot_world_position_center.x, slot_world_position_center.y, slot_size.x, slot_size.y};
 
             if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world)) {
-                set(game_state->frame_flags, GAME_STATE_FRAME_F_INVENTORY_HAS_MOUSE_FOCUS);
                 item_slot->border_width = pixels_to_units(1);
                 item_slot->border_color = COLOR_WHITE;
 
@@ -1028,7 +1043,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    PlayerWorldInput player_world_input = {};
+    PlayerInput player_input = player_input_get(game_input, game_state);
 
     for (int i = 0; i < game_state->entity_data.entity_count; i++) {
         Entity* entity = &game_state->entity_data.entities[i];
@@ -1039,12 +1054,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
         if (entity->type == ENTITY_TYPE_PLAYER) {
             if (entity->hp > 0) {
-                update_player_world_input(game_input, game_state, &player_world_input, game_memory->window.size);
-                entity->facing_direction = w_vec_norm(player_world_input.aim_vec);
-                entity_player_movement_animation_update(entity, &player_world_input);
+                entity->facing_direction = w_vec_norm(player_input.world.aim_vec);
+                entity_player_movement_animation_update(entity, player_input.world.movement_vec);
 
                 float acceleration_mag = 30;
-                Vec2 acceleration = w_vec_mult(w_vec_norm(player_world_input.movement_vec), acceleration_mag);
+                Vec2 acceleration = w_vec_mult(w_vec_norm(player_input.world.movement_vec), acceleration_mag);
                 entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
             } else {
                 EntityAnimations animations = entity_info[entity->type].animations;
@@ -1183,7 +1197,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         EntityHandle entity_handle = entity_to_handle(entity, &game_state->entity_data);
         HotBarSlot* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
 
-        if (entity->type == ENTITY_TYPE_PLAYER && player_world_input.drop_item && active_hotbar_slot->stack_size > 0) {
+        if (entity->type == ENTITY_TYPE_PLAYER && player_input.world.drop_item && active_hotbar_slot->stack_size > 0) {
             Entity* item_entity = entity_find(active_hotbar_slot->entity_handle, &game_state->entity_data);
             if (!item_entity) {
                 float z_pos, z_index;
@@ -1227,7 +1241,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         bool is_active_hotbar_item = entity_same(entity_handle, active_hotbar_slot->entity_handle);
         if (is_active_hotbar_item) {
             if (owner) {
-                Vec2 aim_vec_rel_owner = player_world_input.aim_vec;
+                Vec2 aim_vec_rel_owner = player_input.world.aim_vec;
                 entity->z_pos = 0.5f;
                 if (aim_vec_rel_owner.x < 0) {
                     entity->position = {owner->position.x - 0.3f, owner->position.y};
@@ -1252,7 +1266,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
                     entity->position = w_rotate_around_pivot(entity->position, pivot, entity->rotation_rads);
 
-                    if (player_world_input.use_held_item) {
+                    if (player_input.world.use_held_item) {
                         Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
                         Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
                         Vec2 projectile_position = {entity->position.x, entity->position.y + entity->z_pos};
@@ -1360,7 +1374,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    if (closest_interactable_entity && player_world_input.interact) {
+    if (closest_interactable_entity && player_input.world.interact) {
         Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
         if (!entity_with_open_inventory) {
             game_state->open_entity_inventory = entity_to_handle(closest_interactable_entity, &game_state->entity_data);
@@ -1382,10 +1396,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     {
         HotBarSlot* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
         EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
-        if (player_world_input.use_held_item &&
+        if (player_input.world.use_held_item &&
             is_set(entity_info[active_hotbar_entity_type].flags, ENTITY_INFO_F_PLACEABLE)) {
             Vec2 placement_position =
-                hotbar_placeable_position(game_state->player->position, player_world_input.aim_vec);
+                hotbar_placeable_position(game_state->player->position, player_input.world.aim_vec);
             entity_create(&game_state->entity_data, active_hotbar_entity_type, placement_position);
             hotbar_slot_remove_item(active_hotbar_slot, 1);
         }
@@ -1413,7 +1427,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     camera_delta = w_vec_mult(camera_delta, g_sim_dt_s);
     game_state->camera.position = w_vec_add(game_state->camera.position, camera_delta);
 
-    hotbar_render_item(game_state, &player_world_input, &main_render_group);
+    hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
     hotbar_render(game_state, &render_group_ui);
     render_player_hp_ui(game_state->player->hp, game_state->camera, &render_group_ui);
     game_memory->push_audio_samples(&game_state->audio_player);
