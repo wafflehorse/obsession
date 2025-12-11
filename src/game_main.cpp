@@ -1195,7 +1195,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         EntityHandle entity_handle = entity_to_handle(entity, &game_state->entity_data);
-        HotBarSlot* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
+        InventoryItem* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
 
         if (entity->type == ENTITY_TYPE_PLAYER && player_input.world.drop_item && active_hotbar_slot->stack_size > 0) {
             Entity* item_entity = entity_find(active_hotbar_slot->entity_handle, &game_state->entity_data);
@@ -1394,7 +1394,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     }
 
     {
-        HotBarSlot* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
+        InventoryItem* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
         EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
         if (player_input.world.use_held_item &&
             is_set(entity_info[active_hotbar_entity_type].flags, ENTITY_INFO_F_PLACEABLE)) {

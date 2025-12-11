@@ -2,7 +2,7 @@
 
 void hotbar_init(HotBar* hotbar) {
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        hotbar->slots[i].entity_handle.generation = -1;
+        hotbar->items[i].entity_handle.generation = -1;
     }
 }
 
@@ -13,15 +13,15 @@ bool hotbar_should_persist_entity(EntityType entity_type) {
 bool hotbar_contains_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
     uint32 quantity_found = 0;
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        if (hotbar->slots[i].entity_type == entity_type) {
-            quantity_found += hotbar->slots[i].stack_size;
+        if (hotbar->items[i].entity_type == entity_type) {
+            quantity_found += hotbar->items[i].stack_size;
         }
     }
 
     return quantity_found >= quantity;
 }
 
-void hotbar_slot_remove_item(HotBarSlot* hotbar_slot, uint32 quantity) {
+void hotbar_slot_remove_item(InventoryItem* hotbar_slot, uint32 quantity) {
     hotbar_slot->stack_size = w_clamp_min(hotbar_slot->stack_size - quantity, 0);
 
     if (hotbar_slot->stack_size == 0) {
@@ -34,9 +34,9 @@ void hotbar_remove_item(HotBar* hotbar, EntityType entity_type, uint32 quantity)
     uint32 quantity_remaining = quantity;
 
     while (quantity_remaining > 0) {
-        HotBarSlot* min_stack_size_slot = NULL;
+        InventoryItem* min_stack_size_slot = NULL;
         for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-            HotBarSlot* slot = &hotbar->slots[i];
+            InventoryItem* slot = &hotbar->items[i];
             if (slot->entity_type == entity_type) {
                 if (!min_stack_size_slot || min_stack_size_slot->stack_size > slot->stack_size) {
                     min_stack_size_slot = slot;
@@ -52,15 +52,15 @@ void hotbar_remove_item(HotBar* hotbar, EntityType entity_type, uint32 quantity)
     }
 }
 
-bool hotbar_slot_can_take_item(EntityType entity_type, uint32 quantity, HotBarSlot* slot) {
+bool hotbar_slot_can_take_item(EntityType entity_type, uint32 quantity, InventoryItem* slot) {
     return slot->stack_size == 0 || (slot->entity_type == entity_type && !hotbar_should_persist_entity(entity_type) &&
                                      (slot->stack_size + quantity) < MAX_ITEM_STACK_SIZE);
 }
 
-HotBarSlot* hotbar_available_slot(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
-    HotBarSlot* open_slot = NULL;
+InventoryItem* hotbar_available_slot(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
+    InventoryItem* open_slot = NULL;
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        HotBarSlot* slot = &hotbar->slots[i];
+        InventoryItem* slot = &hotbar->items[i];
         if (hotbar_slot_can_take_item(entity_type, quantity, slot)) {
             open_slot = slot;
             break;
@@ -71,7 +71,7 @@ HotBarSlot* hotbar_available_slot(HotBar* hotbar, EntityType entity_type, uint32
 }
 
 void hotbar_add_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
-    HotBarSlot* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
+    InventoryItem* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
 
     ASSERT(open_slot, "Trying to add item to hotbar, but there's not space");
 
@@ -80,7 +80,7 @@ void hotbar_add_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
 }
 
 void hotbar_add_item(Entity* item, HotBar* hotbar, EntityData* entity_data) {
-    HotBarSlot* open_slot = hotbar_available_slot(hotbar, item->type, 1);
+    InventoryItem* open_slot = hotbar_available_slot(hotbar, item->type, 1);
 
     if (open_slot) {
         if (hotbar_should_persist_entity(item->type)) {
@@ -94,12 +94,12 @@ void hotbar_add_item(Entity* item, HotBar* hotbar, EntityData* entity_data) {
     }
 }
 
-HotBarSlot* hotbar_active_slot(HotBar* hotbar) {
-    return &hotbar->slots[hotbar->active_item_idx];
+InventoryItem* hotbar_active_slot(HotBar* hotbar) {
+    return &hotbar->items[hotbar->active_item_idx];
 }
 
 bool hotbar_space_for_item(EntityType entity_type, uint32 quantity, HotBar* hotbar) {
-    HotBarSlot* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
+    InventoryItem* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
 
     if (open_slot) {
         return true;
@@ -135,7 +135,7 @@ void hotbar_render_item(GameState* game_state, Vec2 player_aim_vec, RenderGroup*
     Entity* player = game_state->player;
     HotBar* hotbar = &game_state->hotbar;
 
-    HotBarSlot* slot = &hotbar->slots[hotbar->active_item_idx];
+    InventoryItem* slot = &hotbar->items[hotbar->active_item_idx];
 
     Entity* slot_entity = entity_find(slot->entity_handle, &game_state->entity_data);
     if (!slot_entity && slot->stack_size > 0) {
@@ -168,7 +168,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
                                  .background_rgba = COLOR_BLACK},
                                 &game_state->frame_arena);
 
-        HotBarSlot* slot = &game_state->hotbar.slots[i];
+        InventoryItem* slot = &game_state->hotbar.items[i];
 
         if (slot->stack_size > 0) {
             EntityHandle entity_handle = slot->entity_handle;
@@ -210,7 +210,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
 
 void hotbar_validate(HotBar* hotbar) {
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        HotBarSlot slot = hotbar->slots[i];
+        InventoryItem slot = hotbar->items[i];
 
         ASSERT(slot.stack_size >= 0, "hotbar slot stacksize must be >= 0");
 

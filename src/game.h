@@ -220,14 +220,8 @@ struct EntityData {
     EntityLookup entity_lookups[MAX_ENTITIES];
 };
 
-struct HotBarSlot {
-    EntityType entity_type;
-    EntityHandle entity_handle;
-    uint32 stack_size;
-};
-
 struct HotBar {
-    HotBarSlot slots[HOTBAR_MAX_SLOTS];
+    InventoryItem items[HOTBAR_MAX_SLOTS];
     uint32 active_item_idx;
 };
 
