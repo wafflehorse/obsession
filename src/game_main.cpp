@@ -646,25 +646,25 @@ struct InventoryInput {
     int idx_clicked;
 };
 
-InventoryInput inventory_render(UIElement* container, Vec2 container_position, InventoryItem* inventory_items,
-                                uint32 item_count, uint32 num_rows, uint32 num_cols, GameState* game_state,
-                                GameInput* game_input) {
+InventoryInput inventory_render(UIElement* container, Vec2 container_position, Inventory* inventory,
+                                GameState* game_state, GameInput* game_input) {
     InventoryInput input = {-1, -1};
 
-    ASSERT(num_rows * num_cols >= item_count, "Too many items provided based on inventory size");
+    ASSERT(inventory->row_count * inventory->col_count >= inventory->item_count,
+           "Too many items provided based on inventory size");
 
-    for (int row = 0; row < num_rows; row++) {
+    for (int row = 0; row < inventory->row_count; row++) {
         UIElement* item_row_container =
             ui_create_container({.padding = 0, .child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW},
                                 &game_state->frame_arena);
 
         ui_push(container, item_row_container);
 
-        for (int col = 0; col < num_cols; col++) {
-            uint32 item_idx = row * num_cols + col;
+        for (int col = 0; col < inventory->col_count; col++) {
+            uint32 item_idx = row * inventory->col_count + col;
             InventoryItem* item = NULL;
-            if (item_idx < item_count) {
-                item = &inventory_items[item_idx];
+            if (item_idx < inventory->item_count) {
+                item = &inventory->items[item_idx];
             }
 
             Vec2 slot_size = {1, 1};
@@ -709,6 +709,11 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
     return input;
 }
 
+bool inventory_move(uint32 index, uint32 quantity, Inventory* source_inventory, Inventory* dest_inventory) {
+
+    return true;
+}
+
 void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
     float padding = pixels_to_units(16);
     float child_gap = pixels_to_units(8);
@@ -716,8 +721,8 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
     // NOTE: this is assuming the slot size is 1 which is hard coded in the inventory_render. It
     // will break if that changes
     Vec2 inventory_ui_size = {
-        .x = entity->inventory_cols * 1 + (child_gap * (entity->inventory_cols - 1)) + (padding * 2),
-        .y = entity->inventory_rows * 1 + (child_gap * (entity->inventory_rows - 1)) + (padding * 2)};
+        .x = entity->inventory.col_count * 1 + (child_gap * (entity->inventory.col_count - 1)) + (padding * 2),
+        .y = entity->inventory.row_count * 1 + (child_gap * (entity->inventory.row_count - 1)) + (padding * 2)};
 
     Vec2 inventory_ui_position = game_state->camera.position;
     inventory_ui_position.x -= (inventory_ui_size.x / 2);
@@ -730,8 +735,7 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
                                                &game_state->frame_arena);
 
     InventoryInput inventory_input =
-        inventory_render(container, inventory_ui_position, entity->inventory, entity->inventory_count,
-                         entity->inventory_rows, entity->inventory_cols, game_state, game_input);
+        inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input);
 
     ui_draw_element(container, inventory_ui_position, render_group);
 }
@@ -753,21 +757,23 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
     UIElement* title = ui_create_text("Crafting", COLOR_WHITE, 1.0f, &game_state->frame_arena);
     ui_push(container, title);
 
-    InventoryItem items[ENTITY_TYPE_COUNT] = {};
-    uint32 item_count = 0;
+    Inventory inventory = {};
 
     for (int i = 0; i < ENTITY_TYPE_COUNT; i++) {
         CraftingRecipe recipe = crafting_recipes[i];
 
         if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
-            items[i].entity_type = recipe.entity_type;
-            items[i].stack_size = 1;
-            item_count++;
+            inventory.items[i].entity_type = recipe.entity_type;
+            inventory.items[i].stack_size = 1;
+            inventory.item_count++;
         }
     }
 
+    inventory.row_count = 2;
+    inventory.col_count = 8;
+
     InventoryInput inventory_input =
-        inventory_render(container, crafting_menu_position, items, item_count, 2, 8, game_state, game_input);
+        inventory_render(container, crafting_menu_position, &inventory, game_state, game_input);
 
     ui_container_size_update(container);
 

@@ -155,6 +155,13 @@ struct InventoryItem {
     uint32 stack_size;
 };
 
+struct Inventory {
+    InventoryItem items[ENTITY_MAX_INVENTORY_SIZE];
+    uint32 item_count;
+    uint32 row_count;
+    uint32 col_count;
+};
+
 #define ENTITY_F_MARK_FOR_DELETION (1 << 0)
 #define ENTITY_F_OWNED (1 << 1)
 #define ENTITY_F_SPRITE_FLIP_X (1 << 2)
@@ -203,10 +210,7 @@ struct Entity {
     // item spawning
     float damage_since_spawn;
 
-    InventoryItem inventory[ENTITY_MAX_INVENTORY_SIZE];
-    uint32 inventory_count;
-    uint32 inventory_rows;
-    uint32 inventory_cols;
+    Inventory inventory;
 
     uint32 stack_size;
 
@@ -221,7 +225,7 @@ struct EntityData {
 };
 
 struct HotBar {
-    InventoryItem items[HOTBAR_MAX_SLOTS];
+    Inventory inventory;
     uint32 active_item_idx;
 };
 

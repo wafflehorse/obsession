@@ -1,8 +1,11 @@
 #include "game.h"
 
 void hotbar_init(HotBar* hotbar) {
+    hotbar->inventory.row_count = 1;
+    hotbar->inventory.col_count = HOTBAR_MAX_SLOTS;
+
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        hotbar->items[i].entity_handle.generation = -1;
+        hotbar->inventory.items[i].entity_handle.generation = -1;
     }
 }
 
@@ -13,8 +16,8 @@ bool hotbar_should_persist_entity(EntityType entity_type) {
 bool hotbar_contains_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
     uint32 quantity_found = 0;
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        if (hotbar->items[i].entity_type == entity_type) {
-            quantity_found += hotbar->items[i].stack_size;
+        if (hotbar->inventory.items[i].entity_type == entity_type) {
+            quantity_found += hotbar->inventory.items[i].stack_size;
         }
     }
 
@@ -36,7 +39,7 @@ void hotbar_remove_item(HotBar* hotbar, EntityType entity_type, uint32 quantity)
     while (quantity_remaining > 0) {
         InventoryItem* min_stack_size_slot = NULL;
         for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-            InventoryItem* slot = &hotbar->items[i];
+            InventoryItem* slot = &hotbar->inventory.items[i];
             if (slot->entity_type == entity_type) {
                 if (!min_stack_size_slot || min_stack_size_slot->stack_size > slot->stack_size) {
                     min_stack_size_slot = slot;
@@ -60,7 +63,7 @@ bool hotbar_slot_can_take_item(EntityType entity_type, uint32 quantity, Inventor
 InventoryItem* hotbar_available_slot(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
     InventoryItem* open_slot = NULL;
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        InventoryItem* slot = &hotbar->items[i];
+        InventoryItem* slot = &hotbar->inventory.items[i];
         if (hotbar_slot_can_take_item(entity_type, quantity, slot)) {
             open_slot = slot;
             break;
@@ -95,7 +98,7 @@ void hotbar_add_item(Entity* item, HotBar* hotbar, EntityData* entity_data) {
 }
 
 InventoryItem* hotbar_active_slot(HotBar* hotbar) {
-    return &hotbar->items[hotbar->active_item_idx];
+    return &hotbar->inventory.items[hotbar->active_item_idx];
 }
 
 bool hotbar_space_for_item(EntityType entity_type, uint32 quantity, HotBar* hotbar) {
@@ -135,7 +138,7 @@ void hotbar_render_item(GameState* game_state, Vec2 player_aim_vec, RenderGroup*
     Entity* player = game_state->player;
     HotBar* hotbar = &game_state->hotbar;
 
-    InventoryItem* slot = &hotbar->items[hotbar->active_item_idx];
+    InventoryItem* slot = &hotbar->inventory.items[hotbar->active_item_idx];
 
     Entity* slot_entity = entity_find(slot->entity_handle, &game_state->entity_data);
     if (!slot_entity && slot->stack_size > 0) {
@@ -168,7 +171,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
                                  .background_rgba = COLOR_BLACK},
                                 &game_state->frame_arena);
 
-        InventoryItem* slot = &game_state->hotbar.items[i];
+        InventoryItem* slot = &game_state->hotbar.inventory.items[i];
 
         if (slot->stack_size > 0) {
             EntityHandle entity_handle = slot->entity_handle;
@@ -210,7 +213,7 @@ void hotbar_render(GameState* game_state, RenderGroup* render_group) {
 
 void hotbar_validate(HotBar* hotbar) {
     for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        InventoryItem slot = hotbar->items[i];
+        InventoryItem slot = hotbar->inventory.items[i];
 
         ASSERT(slot.stack_size >= 0, "hotbar slot stacksize must be >= 0");
 

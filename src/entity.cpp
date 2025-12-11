@@ -289,8 +289,8 @@ EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags o
     entity->type = ENTITY_TYPE_CHEST_IRON;
     entity->position = position;
     entity->sprite_id = sprite_id;
-    entity->inventory_rows = 4;
-    entity->inventory_cols = 5;
+    entity->inventory.row_count = 4;
+    entity->inventory.col_count = 5;
 
     set(entity->flags, opts);
     set(entity->flags, ENTITY_F_BLOCKER);
