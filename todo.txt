@@ -210,11 +210,12 @@
 	[x] Display chest UI showing contents
 		- [x] I think we need a somewhat generic way of handling inventory that can be shared
 		between hotbar, player_inventory, chests, etc.
-	[] Create some sort of input system that nullifies certain inputs depending on the UI present
+	[x] Create some sort of input system that nullifies certain inputs depending on the UI present
 		- Needs to solve the problem of player or taking actions while inventory ui is open
-	[] Replace hotbar HotBarSlot with InventoryItem
+	[x] Replace hotbar HotBarSlot with InventoryItem
 	[] Move items from chest to hotbar and vice versa
 	[] Add ability to pick up a chest that has been placed
+[] Update controls so player inventory can be open while player moves
 [] Automate food supply
 	[x] Add some sort of foragable food entity
 	[x] Add ability to pick up food items

@@ -4,111 +4,11 @@ void hotbar_init(HotBar* hotbar) {
     hotbar->inventory.row_count = 1;
     hotbar->inventory.col_count = HOTBAR_MAX_SLOTS;
 
-    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        hotbar->inventory.items[i].entity_handle.generation = -1;
-    }
-}
-
-bool hotbar_should_persist_entity(EntityType entity_type) {
-    return is_set(entity_info[entity_type].flags, ENTITY_INFO_F_PERSIST_IN_INVENTORY);
-}
-
-bool hotbar_contains_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
-    uint32 quantity_found = 0;
-    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        if (hotbar->inventory.items[i].entity_type == entity_type) {
-            quantity_found += hotbar->inventory.items[i].stack_size;
-        }
-    }
-
-    return quantity_found >= quantity;
-}
-
-void hotbar_slot_remove_item(InventoryItem* hotbar_slot, uint32 quantity) {
-    hotbar_slot->stack_size = w_clamp_min(hotbar_slot->stack_size - quantity, 0);
-
-    if (hotbar_slot->stack_size == 0) {
-        hotbar_slot->entity_type = ENTITY_TYPE_UNKNOWN;
-        hotbar_slot->entity_handle.generation = -1;
-    }
-}
-
-void hotbar_remove_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
-    uint32 quantity_remaining = quantity;
-
-    while (quantity_remaining > 0) {
-        InventoryItem* min_stack_size_slot = NULL;
-        for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-            InventoryItem* slot = &hotbar->inventory.items[i];
-            if (slot->entity_type == entity_type) {
-                if (!min_stack_size_slot || min_stack_size_slot->stack_size > slot->stack_size) {
-                    min_stack_size_slot = slot;
-                }
-            }
-        }
-
-        ASSERT(min_stack_size_slot, "Trying to remove hot bar items that don't exist");
-
-        uint32 tmp_stack_size = min_stack_size_slot->stack_size;
-        hotbar_slot_remove_item(min_stack_size_slot, quantity_remaining);
-        quantity_remaining -= w_min(tmp_stack_size, quantity_remaining);
-    }
-}
-
-bool hotbar_slot_can_take_item(EntityType entity_type, uint32 quantity, InventoryItem* slot) {
-    return slot->stack_size == 0 || (slot->entity_type == entity_type && !hotbar_should_persist_entity(entity_type) &&
-                                     (slot->stack_size + quantity) < MAX_ITEM_STACK_SIZE);
-}
-
-InventoryItem* hotbar_available_slot(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
-    InventoryItem* open_slot = NULL;
-    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        InventoryItem* slot = &hotbar->inventory.items[i];
-        if (hotbar_slot_can_take_item(entity_type, quantity, slot)) {
-            open_slot = slot;
-            break;
-        }
-    }
-
-    return open_slot;
-}
-
-void hotbar_add_item(HotBar* hotbar, EntityType entity_type, uint32 quantity) {
-    InventoryItem* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
-
-    ASSERT(open_slot, "Trying to add item to hotbar, but there's not space");
-
-    open_slot->entity_type = entity_type;
-    open_slot->stack_size += quantity;
-}
-
-void hotbar_add_item(Entity* item, HotBar* hotbar, EntityData* entity_data) {
-    InventoryItem* open_slot = hotbar_available_slot(hotbar, item->type, 1);
-
-    if (open_slot) {
-        if (hotbar_should_persist_entity(item->type)) {
-            open_slot->entity_handle = entity_to_handle(item, entity_data);
-        } else {
-            set(item->flags, ENTITY_F_MARK_FOR_DELETION);
-        }
-
-        open_slot->entity_type = item->type;
-        open_slot->stack_size += item->stack_size;
-    }
+    inventory_init(&hotbar->inventory, HOTBAR_MAX_SLOTS);
 }
 
 InventoryItem* hotbar_active_slot(HotBar* hotbar) {
     return &hotbar->inventory.items[hotbar->active_item_idx];
-}
-
-bool hotbar_space_for_item(EntityType entity_type, uint32 quantity, HotBar* hotbar) {
-    InventoryItem* open_slot = hotbar_available_slot(hotbar, entity_type, quantity);
-
-    if (open_slot) {
-        return true;
-    }
-
-    return false;
 }
 
 Vec2 hotbar_placeable_position(Vec2 player_position, Vec2 aim_vec) {

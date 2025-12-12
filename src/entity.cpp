@@ -128,6 +128,10 @@ Entity* entity_new(EntityData* entity_data) {
     entity->owner_handle.generation = -1;
     entity->stack_size = 1;
 
+    for (int i = 0; i < ENTITY_MAX_INVENTORY_SIZE; i++) {
+        entity->inventory.items[i].entity_handle.generation = -1;
+    }
+
     return entity;
 }
 

@@ -157,7 +157,6 @@ struct InventoryItem {
 
 struct Inventory {
     InventoryItem items[ENTITY_MAX_INVENTORY_SIZE];
-    uint32 item_count;
     uint32 row_count;
     uint32 col_count;
 };

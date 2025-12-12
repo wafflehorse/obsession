@@ -130,6 +130,7 @@ Vec2 sprite_get_world_size(SpriteID sprite_id) {
 }
 
 #include "entity.cpp"
+#include "inventory.cpp"
 #include "hotbar.cpp"
 
 void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
@@ -617,7 +618,7 @@ bool crafting_can_craft_item(EntityType entity_type, HotBar* hotbar) {
     for (int i = 0; i < CRAFTING_MAX_INGREDIENTS; i++) {
         CraftingIngredient* ingredient = &recipe->ingredients[i];
         if (ingredient->entity_type != ENTITY_TYPE_UNKNOWN &&
-            !hotbar_contains_item(hotbar, ingredient->entity_type, ingredient->quantity)) {
+            !inventory_contains_item(&hotbar->inventory, ingredient->entity_type, ingredient->quantity)) {
             return false;
         }
     }
@@ -630,14 +631,14 @@ void crafting_craft_item(EntityData* entity_data, EntityType entity_type, HotBar
 
     ASSERT(recipe, "Attempting to craft an item without a recipe");
 
-    if (hotbar_space_for_item(entity_type, 1, hotbar) && crafting_can_craft_item(entity_type, hotbar)) {
+    if (inventory_space_for_item(entity_type, 1, &hotbar->inventory) && crafting_can_craft_item(entity_type, hotbar)) {
         for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe->ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN;
              i++) {
             CraftingIngredient ingredient = recipe->ingredients[i];
-            hotbar_remove_item(hotbar, ingredient.entity_type, ingredient.quantity);
+            inventory_remove_items(&hotbar->inventory, ingredient.entity_type, ingredient.quantity);
         }
 
-        hotbar_add_item(hotbar, entity_type, 1);
+        inventory_add_item(&hotbar->inventory, entity_type, 1);
     }
 }
 
@@ -650,9 +651,6 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                                 GameState* game_state, GameInput* game_input) {
     InventoryInput input = {-1, -1};
 
-    ASSERT(inventory->row_count * inventory->col_count >= inventory->item_count,
-           "Too many items provided based on inventory size");
-
     for (int row = 0; row < inventory->row_count; row++) {
         UIElement* item_row_container =
             ui_create_container({.padding = 0, .child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW},
@@ -663,9 +661,7 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
         for (int col = 0; col < inventory->col_count; col++) {
             uint32 item_idx = row * inventory->col_count + col;
             InventoryItem* item = NULL;
-            if (item_idx < inventory->item_count) {
-                item = &inventory->items[item_idx];
-            }
+            item = &inventory->items[item_idx];
 
             Vec2 slot_size = {1, 1};
 
@@ -709,11 +705,6 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
     return input;
 }
 
-bool inventory_move(uint32 index, uint32 quantity, Inventory* source_inventory, Inventory* dest_inventory) {
-
-    return true;
-}
-
 void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
     float padding = pixels_to_units(16);
     float child_gap = pixels_to_units(8);
@@ -734,10 +725,18 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND},
                                                &game_state->frame_arena);
 
-    InventoryInput inventory_input =
+    InventoryInput input =
         inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input);
 
     ui_draw_element(container, inventory_ui_position, render_group);
+
+    if (input.idx_clicked > -1) {
+        InventoryItem slot = entity->inventory.items[input.idx_clicked];
+        if (slot.entity_type != ENTITY_TYPE_UNKNOWN) {
+            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->hotbar.inventory,
+                                 &game_state->entity_data);
+        }
+    }
 }
 
 void player_inventory_render(GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
@@ -765,12 +764,14 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
         if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
             inventory.items[i].entity_type = recipe.entity_type;
             inventory.items[i].stack_size = 1;
-            inventory.item_count++;
         }
     }
 
     inventory.row_count = 2;
-    inventory.col_count = 8;
+    inventory.col_count = 6;
+
+    ASSERT(inventory.row_count * inventory.col_count < ENTITY_TYPE_COUNT,
+           "crafting inventory size must be less than entity type count");
 
     InventoryInput inventory_input =
         inventory_render(container, crafting_menu_position, &inventory, game_state, game_input);
@@ -803,7 +804,9 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
 
     if (inventory_input.idx_clicked > -1) {
         CraftingRecipe recipe = crafting_recipes[inventory_input.idx_hovered];
-        crafting_craft_item(&game_state->entity_data, recipe.entity_type, &game_state->hotbar);
+        if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
+            crafting_craft_item(&game_state->entity_data, recipe.entity_type, &game_state->hotbar);
+        }
     }
 
     ui_draw_element(container, crafting_menu_position, render_group);
@@ -1154,14 +1157,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             !is_set(entity->flags, ENTITY_F_ITEM_SPAWNING)) {
             float distance_from_player = w_euclid_dist(game_state->player->position, entity->position);
             if (distance_from_player < 0.1 &&
-                hotbar_space_for_item(entity->type, entity->stack_size, &game_state->hotbar)) {
+                inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
                 set(entity->flags, ENTITY_F_OWNED);
                 entity->owner_handle = entity_to_handle(game_state->player, &game_state->entity_data);
                 entity->velocity = {};
                 entity->acceleration = {};
-                hotbar_add_item(entity, &game_state->hotbar, &game_state->entity_data);
+                inventory_add_entity_item(&game_state->hotbar.inventory, entity, &game_state->entity_data);
             } else if (distance_from_player < ITEM_PICKUP_RANGE &&
-                       hotbar_space_for_item(entity->type, entity->stack_size, &game_state->hotbar)) {
+                       inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
                 Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
                 Vec2 player_direction_norm = w_vec_norm(player_offset);
                 float current_velocity_mag = w_vec_length(entity->velocity);
@@ -1380,9 +1383,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    if (closest_interactable_entity && player_input.world.interact) {
+    if (player_input.world.interact) {
         Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
-        if (!entity_with_open_inventory) {
+        if (!entity_with_open_inventory && closest_interactable_entity) {
             game_state->open_entity_inventory = entity_to_handle(closest_interactable_entity, &game_state->entity_data);
         } else {
             game_state->open_entity_inventory = entity_null_handle;
@@ -1407,7 +1410,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             Vec2 placement_position =
                 hotbar_placeable_position(game_state->player->position, player_input.world.aim_vec);
             entity_create(&game_state->entity_data, active_hotbar_entity_type, placement_position);
-            hotbar_slot_remove_item(active_hotbar_slot, 1);
+            inventory_remove_items_by_index(&game_state->hotbar.inventory, game_state->hotbar.active_item_idx, 1);
         }
     }
 
