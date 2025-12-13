@@ -196,10 +196,6 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                                     &game_state->frame_arena);
 
             if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
-                Sprite sprite = entity_get_default_sprite(item->entity_type);
-                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
-                ui_push_centered(item_slot, item_sprite);
-
                 if (item->stack_size > 1) {
                     char stack_size_str[3] = {};
                     snprintf(stack_size_str, 3, "%i", item->stack_size);
@@ -211,6 +207,10 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
 
                     ui_push_abs_position(item_slot, stack_size_element, stack_size_rel_position);
                 }
+
+                Sprite sprite = entity_get_default_sprite(item->entity_type);
+                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
+                ui_push_centered(item_slot, item_sprite);
             }
 
             ui_push(item_row_container, item_slot);

@@ -64,10 +64,17 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
         ui_create_container({.padding = padding, .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
                             &game_state->frame_arena);
 
+    Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
+
+    flags inventory_render_option_flags = 0;
+    if (!entity_with_open_inventory) {
+        inventory_render_option_flags |= INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED;
+    }
+
     InventoryRenderOptions inventory_opts = {.scale = 1.5,
                                              .slot_gap = pixels_to_units(8),
                                              .background_rgba = COLOR_BLACK,
-                                             .flags = INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED};
+                                             .flags = inventory_render_option_flags};
 
     Vec2 hotbar_ui_size =
         inventory_ui_get_size(&game_state->hotbar.inventory, padding, inventory_opts.slot_gap, inventory_opts.scale);
@@ -75,8 +82,17 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
     Vec2 container_top_left = {game_state->camera.position.x - (hotbar_ui_size.x / 2),
                                game_state->camera.position.y - (game_state->camera.size.y / 2) + hotbar_ui_size.y};
 
-    inventory_render(container, container_top_left, &game_state->hotbar.inventory, game_state, game_input,
-                     inventory_opts);
+    InventoryInput inventory_input = inventory_render(container, container_top_left, &game_state->hotbar.inventory,
+                                                      game_state, game_input, inventory_opts);
+
+    if (entity_with_open_inventory && inventory_input.idx_clicked != -1) {
+        InventoryItem* item = &game_state->hotbar.inventory.items[inventory_input.idx_clicked];
+
+        if (item->entity_type != ENTITY_TYPE_UNKNOWN) {
+            inventory_move_items(inventory_input.idx_clicked, item->stack_size, &game_state->hotbar.inventory,
+                                 &entity_with_open_inventory->inventory, &game_state->entity_data);
+        }
+    }
 
     ui_draw_element(container, container_top_left, render_group);
 }

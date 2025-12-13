@@ -213,7 +213,7 @@
 	[x] Create some sort of input system that nullifies certain inputs depending on the UI present
 		- Needs to solve the problem of player or taking actions while inventory ui is open
 	[x] Replace hotbar HotBarSlot with InventoryItem
-	[] Move items from chest to hotbar and vice versa
+	[x] Move items from chest to hotbar and vice versa
 	[] Add ability to pick up a chest that has been placed
 [] Update controls so player inventory can be open while player moves
 [] Automate food supply
