@@ -56,57 +56,27 @@ void hotbar_render_item(GameState* game_state, Vec2 player_aim_vec, RenderGroup*
     }
 }
 
-void hotbar_render(GameState* game_state, RenderGroup* render_group) {
-    UIElement* container = ui_create_container({.padding = 0.5, .child_gap = 0.2, .opts = UI_ELEMENT_F_CONTAINER_ROW},
-                                               &game_state->frame_arena);
+void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* render_group) {
 
-    for (int i = 0; i < HOTBAR_MAX_SLOTS; i++) {
-        float slot_padding = 0.5f;
-        Vec2 slot_size = {pixels_to_units(8) + (2 * slot_padding), pixels_to_units(8) + (2 * slot_padding)};
-        UIElement* slot_container =
-            ui_create_container({.padding = slot_padding,
-                                 .min_size = slot_size,
-                                 .max_size = slot_size,
-                                 .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND,
-                                 .background_rgba = COLOR_BLACK},
-                                &game_state->frame_arena);
+    float padding = 0.5f;
 
-        InventoryItem* slot = &game_state->hotbar.inventory.items[i];
+    UIElement* container =
+        ui_create_container({.padding = padding, .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
+                            &game_state->frame_arena);
 
-        if (slot->stack_size > 0) {
-            EntityHandle entity_handle = slot->entity_handle;
-            Entity* entity = entity_find(entity_handle, &game_state->entity_data);
-            Sprite sprite;
-            if (entity) {
-                ASSERT(entity->sprite_id != SPRITE_UNKNOWN, "The hot bar only supports rendering the entity sprite id");
-                sprite = sprite_table[entity->sprite_id];
-            } else {
-                SpriteID sprite_id = entity_info[slot->entity_type].default_sprite;
-                sprite = sprite_table[sprite_id];
-            }
+    InventoryRenderOptions inventory_opts = {.scale = 1.5,
+                                             .slot_gap = pixels_to_units(8),
+                                             .background_rgba = COLOR_BLACK,
+                                             .flags = INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED};
 
-            UIElement* sprite_element = ui_create_sprite(sprite, &game_state->frame_arena);
-            ui_push_centered(slot_container, sprite_element);
+    Vec2 hotbar_ui_size =
+        inventory_ui_get_size(&game_state->hotbar.inventory, padding, inventory_opts.slot_gap, inventory_opts.scale);
 
-            if (slot->stack_size > 1) {
-                char stack_size_str[3] = {};
-                snprintf(stack_size_str, 3, "%i", slot->stack_size);
-                UIElement* stack_size_element =
-                    ui_create_text(stack_size_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
+    Vec2 container_top_left = {game_state->camera.position.x - (hotbar_ui_size.x / 2),
+                               game_state->camera.position.y - (game_state->camera.size.y / 2) + hotbar_ui_size.y};
 
-                Vec2 stack_size_rel_position = {slot_container->size.x - stack_size_element->size.x -
-                                                    pixels_to_units(2),
-                                                -stack_size_element->size.y / 2};
-
-                ui_push_abs_position(slot_container, stack_size_element, stack_size_rel_position);
-            }
-        }
-
-        ui_push(container, slot_container);
-    }
-
-    Vec2 container_top_left = {game_state->camera.position.x - (container->size.x / 2),
-                               game_state->camera.position.y - (game_state->camera.size.y / 2) + container->size.y};
+    inventory_render(container, container_top_left, &game_state->hotbar.inventory, game_state, game_input,
+                     inventory_opts);
 
     ui_draw_element(container, container_top_left, render_group);
 }

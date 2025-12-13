@@ -642,91 +642,25 @@ void crafting_craft_item(EntityData* entity_data, EntityType entity_type, HotBar
     }
 }
 
-struct InventoryInput {
-    int idx_hovered;
-    int idx_clicked;
-};
-
-InventoryInput inventory_render(UIElement* container, Vec2 container_position, Inventory* inventory,
-                                GameState* game_state, GameInput* game_input) {
-    InventoryInput input = {-1, -1};
-
-    for (int row = 0; row < inventory->row_count; row++) {
-        UIElement* item_row_container =
-            ui_create_container({.padding = 0, .child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW},
-                                &game_state->frame_arena);
-
-        ui_push(container, item_row_container);
-
-        for (int col = 0; col < inventory->col_count; col++) {
-            uint32 item_idx = row * inventory->col_count + col;
-            InventoryItem* item = NULL;
-            item = &inventory->items[item_idx];
-
-            Vec2 slot_size = {1, 1};
-
-            UIElement* item_slot =
-                ui_create_container({.min_size = slot_size,
-                                     .max_size = slot_size,
-                                     .background_rgba = COLOR_GRAY,
-                                     .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
-                                    &game_state->frame_arena);
-
-            if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
-                Sprite sprite = entity_get_default_sprite(item->entity_type);
-                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
-                ui_push_centered(item_slot, item_sprite);
-            }
-
-            ui_push(item_row_container, item_slot);
-
-            Vec2 slot_world_position_top_left = ui_abs_position_get(container_position, item_slot);
-            Vec2 slot_world_position_center = w_rect_top_left_to_center(slot_world_position_top_left, slot_size);
-
-            Rect slot_rect = {slot_world_position_center.x, slot_world_position_center.y, slot_size.x, slot_size.y};
-
-            if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world)) {
-                item_slot->border_width = pixels_to_units(1);
-                item_slot->border_color = COLOR_WHITE;
-
-                if (item) {
-                    input.idx_hovered = item_idx;
-
-                    if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
-                        input.idx_clicked = item_idx;
-                    }
-                }
-            }
-        }
-
-        ui_container_size_update(container);
-    }
-
-    return input;
-}
-
 void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
     float padding = pixels_to_units(16);
-    float child_gap = pixels_to_units(8);
+    float slot_gap = pixels_to_units(8);
 
-    // NOTE: this is assuming the slot size is 1 which is hard coded in the inventory_render. It
-    // will break if that changes
-    Vec2 inventory_ui_size = {
-        .x = entity->inventory.col_count * 1 + (child_gap * (entity->inventory.col_count - 1)) + (padding * 2),
-        .y = entity->inventory.row_count * 1 + (child_gap * (entity->inventory.row_count - 1)) + (padding * 2)};
+    Vec2 inventory_ui_size = inventory_ui_get_size(&entity->inventory, padding, slot_gap, 1);
 
     Vec2 inventory_ui_position = game_state->camera.position;
     inventory_ui_position.x -= (inventory_ui_size.x / 2);
     inventory_ui_position.y += (inventory_ui_size.y / 2) + 5;
 
     UIElement* container = ui_create_container({.padding = padding,
-                                                .child_gap = child_gap,
+                                                .child_gap = slot_gap,
                                                 .background_rgba = COLOR_BLACK,
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND},
                                                &game_state->frame_arena);
 
     InventoryInput input =
-        inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input);
+        inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input,
+                         {.scale = 1, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
 
     ui_draw_element(container, inventory_ui_position, render_group);
 
@@ -774,7 +708,8 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
            "crafting inventory size must be less than entity type count");
 
     InventoryInput inventory_input =
-        inventory_render(container, crafting_menu_position, &inventory, game_state, game_input);
+        inventory_render(container, crafting_menu_position, &inventory, game_state, game_input,
+                         {.scale = 1, .slot_gap = pixels_to_units(8), .background_rgba = COLOR_GRAY});
 
     ui_container_size_update(container);
 
@@ -1437,7 +1372,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     game_state->camera.position = w_vec_add(game_state->camera.position, camera_delta);
 
     hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
-    hotbar_render(game_state, &render_group_ui);
+    hotbar_render(game_state, game_input, &render_group_ui);
     render_player_hp_ui(game_state->player->hp, game_state->camera, &render_group_ui);
     game_memory->push_audio_samples(&game_state->audio_player);
 
