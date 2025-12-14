@@ -20,6 +20,7 @@ void init_ui(FontData* font_data, uint32 pixels_per_unit) {
     i_font_data = font_data;
     i_pixels_per_unit = pixels_per_unit;
 }
+
 // TODO: this doesn't work with wrapping
 Vec2 get_text_size(const char* text, float scale) {
     int i = 0;
@@ -321,7 +322,6 @@ void ui_push(UIElement* parent, UIElement* child) {
     if (!parent->child) {
         child->rel_position = {parent->padding, -parent->padding};
         parent->child = child;
-        parent->last_child = child;
     } else {
         UIElement* last_child = parent->last_child;
         if (is_set(parent->flags, UI_ELEMENT_F_CONTAINER_ROW)) {
@@ -334,8 +334,8 @@ void ui_push(UIElement* parent, UIElement* child) {
             child->rel_position.x = last_child->rel_position.x;
         }
         parent->last_child->next = child;
-        parent->last_child = child;
     }
+    parent->last_child = child;
 
     ui_container_size_update(parent);
 }
@@ -354,6 +354,8 @@ void ui_push_abs_position(UIElement* parent, UIElement* child, Vec2 rel_position
 
     if (parent->child) {
         child->next = parent->child;
+    } else {
+        parent->last_child = child;
     }
 
     parent->child = child;

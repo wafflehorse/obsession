@@ -295,10 +295,12 @@ EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags o
     entity->sprite_id = sprite_id;
     entity->inventory.row_count = 4;
     entity->inventory.col_count = 5;
+    entity->hp = 5;
 
     set(entity->flags, opts);
     set(entity->flags, ENTITY_F_BLOCKER);
     set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
+    set(entity->flags, ENTITY_F_KILLABLE);
 
     entity->collider = entity_rect_collider_from_sprite(sprite_id);
 
@@ -643,6 +645,71 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
     }
 
     return entity_handle;
+}
+
+// NOTE: this is an odd function for entity.cpp, but entity.cpp doesn't know about inventory.cpp
+void entity_inventory_spawn_world_item(InventoryItem* item, Vec3 source_position, float z_index,
+                                       float facing_direction_x, EntityData* entity_data) {
+    Entity* item_entity = entity_find(item->entity_handle, entity_data);
+    if (!item_entity) {
+        Vec2 source_position_2d = {source_position.x, source_position.y};
+        EntityHandle item_entity_handle = entity_create_item(entity_data, item->entity_type, source_position_2d);
+        item_entity = entity_find(item_entity_handle, entity_data);
+        item_entity->z_pos = source_position.z;
+        item_entity->z_index = z_index;
+        item_entity->stack_size = item->stack_size;
+    } else {
+        unset(item_entity->flags, ENTITY_F_OWNED);
+        item_entity->owner_handle = entity_null_handle;
+    }
+
+    Vec2 random_point = random_point_near_position(item_entity->position, 1, 1);
+    Vec2 random_point_rel = w_vec_sub(random_point, item_entity->position);
+
+    if ((facing_direction_x > 0 && random_point_rel.x < 0) || (facing_direction_x < 0 && random_point_rel.x > 0)) {
+        random_point_rel.x *= -1;
+    }
+
+    Vec2 velocity_direction = w_vec_norm(random_point_rel);
+    float velocity_mag = w_random_between(3, 4);
+
+    item_entity->velocity = w_vec_mult(velocity_direction, velocity_mag);
+
+    item_entity->z_pos = 0.0001;
+    item_entity->z_velocity = 10;
+    item_entity->z_acceleration = -40;
+
+    set(item_entity->flags, ENTITY_F_ITEM_SPAWNING);
+
+    item->entity_handle = entity_null_handle;
+    item->stack_size = 0;
+    item->entity_type = ENTITY_TYPE_UNKNOWN;
+}
+
+void entity_death(Entity* entity, EntityData* entity_data) {
+    if (is_set(entity->flags, ENTITY_F_KILLABLE) && entity->hp <= 0 && entity->type != ENTITY_TYPE_PLAYER) {
+        uint32 inventory_item_count = entity->inventory.col_count * entity->inventory.row_count;
+        for (int i = 0; i < inventory_item_count; i++) {
+            InventoryItem* item = &entity->inventory.items[i];
+            if (item->entity_type != ENTITY_TYPE_UNKNOWN) {
+                Vec3 position = {entity->position.x, entity->position.y, 0.25f};
+                entity_inventory_spawn_world_item(item, position, entity->z_index, 0, entity_data);
+            }
+        }
+
+        if (is_set(entity_info[entity->type].flags, ENTITY_INFO_F_PLACEABLE)) {
+            InventoryItem item = {
+                .entity_type = ENTITY_TYPE_CHEST_IRON, .stack_size = 1, .entity_handle = entity_null_handle};
+            Vec3 position = {entity->position.x, entity->position.y, 0.25f};
+            entity_inventory_spawn_world_item(&item, position, entity->z_index, 0, entity_data);
+        }
+
+        if (entity->brain.type != BRAIN_TYPE_NONE) {
+            entity->brain.ai_state = AI_STATE_DEAD;
+        } else {
+            set(entity->flags, ENTITY_F_MARK_FOR_DELETION);
+        }
+    }
 }
 
 EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 position) {

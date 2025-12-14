@@ -12,9 +12,13 @@ bool inventory_should_persist_entity(EntityType entity_type) {
     return is_set(entity_info[entity_type].flags, ENTITY_INFO_F_PERSIST_IN_INVENTORY);
 }
 
-void inventory_remove_items_by_index(Inventory* inventory, uint32 index, uint32 quantity) {
-    // ASSERT(index < inventory->item_count, "inventory_remove_items: index is greater than item count");
+void inventory_item_clear(InventoryItem* item) {
+    item->stack_size = 0;
+    item->entity_handle = entity_null_handle;
+    item->entity_type = ENTITY_TYPE_UNKNOWN;
+}
 
+void inventory_remove_items_by_index(Inventory* inventory, uint32 index, uint32 quantity) {
     InventoryItem* item = &inventory->items[index];
 
     ASSERT(item->stack_size >= quantity, "inventory_move: stack size is less than quantity being moved");
@@ -22,8 +26,7 @@ void inventory_remove_items_by_index(Inventory* inventory, uint32 index, uint32 
     item->stack_size -= quantity;
 
     if (item->stack_size <= 0) {
-        item->entity_type = ENTITY_TYPE_UNKNOWN;
-        item->entity_handle = entity_null_handle;
+        inventory_item_clear(item);
     }
 }
 

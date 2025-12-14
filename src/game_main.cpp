@@ -1142,43 +1142,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         InventoryItem* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
 
         if (entity->type == ENTITY_TYPE_PLAYER && player_input.world.drop_item && active_hotbar_slot->stack_size > 0) {
-            Entity* item_entity = entity_find(active_hotbar_slot->entity_handle, &game_state->entity_data);
-            if (!item_entity) {
-                float z_pos, z_index;
-                Vec2 item_position = entity_held_item_position(entity, &z_pos, &z_index);
-                EntityHandle item_entity_handle =
-                    entity_create_item(&game_state->entity_data, active_hotbar_slot->entity_type, item_position);
-                item_entity = entity_find(item_entity_handle, &game_state->entity_data);
-                item_entity->z_pos = z_pos;
-                item_entity->z_index = z_index;
-                item_entity->stack_size = active_hotbar_slot->stack_size;
-            } else {
-                unset(item_entity->flags, ENTITY_F_OWNED);
-                item_entity->owner_handle.generation = -1;
-            }
+            float z_index;
+            Vec3 item_position_3d = {};
+            Vec2 item_position = entity_held_item_position(entity, &item_position_3d.z, &z_index);
+            item_position_3d.x = item_position.x;
+            item_position_3d.y = item_position.y;
 
-            Vec2 random_point = random_point_near_position(item_entity->position, 1, 1);
-            Vec2 random_point_rel = w_vec_sub(random_point, item_entity->position);
-
-            if ((entity->facing_direction.x > 0 && random_point_rel.x < 0) ||
-                (entity->facing_direction.x < 0 && random_point_rel.x > 0)) {
-                random_point_rel.x *= -1;
-            }
-
-            Vec2 velocity_direction = w_vec_norm(random_point_rel);
-            float velocity_mag = w_random_between(3, 4);
-
-            item_entity->velocity = w_vec_mult(velocity_direction, velocity_mag);
-
-            item_entity->z_pos = 0.0001;
-            item_entity->z_velocity = 10;
-            item_entity->z_acceleration = -40;
-
-            set(item_entity->flags, ENTITY_F_ITEM_SPAWNING);
-
-            active_hotbar_slot->entity_handle.generation = -1;
-            active_hotbar_slot->stack_size = 0;
-            active_hotbar_slot->entity_type = ENTITY_TYPE_UNKNOWN;
+            entity_inventory_spawn_world_item(active_hotbar_slot, item_position_3d, z_index, entity->facing_direction.x,
+                                              &game_state->entity_data);
         }
 
         // TODO: hot bar logic will have to be pulled out if we want this to allow for non-player owners
@@ -1233,13 +1204,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             }
         }
 
-        if (is_set(entity->flags, ENTITY_F_KILLABLE) && entity->hp <= 0 && entity->type != ENTITY_TYPE_PLAYER) {
-            if (entity->brain.type != BRAIN_TYPE_NONE) {
-                entity->brain.ai_state = AI_STATE_DEAD;
-            } else {
-                set(entity->flags, ENTITY_F_MARK_FOR_DELETION);
-            }
-        }
+        entity_death(entity, &game_state->entity_data);
 
         entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
 
