@@ -173,13 +173,33 @@ struct InventoryRenderOptions {
     Vec4 background_rgba;
 };
 
+// NOTE: There is some ui hackiness going on here.
+// 1. in order to get mouse hover and click, we need to prepend the item_row_container to the container before
+// the item_row_container has been filled with children, so we have to precalculate the size of it before adding it to
+// the container so that the cursor position updates correctly
+// 2. Really, we shouldn't have the row container at all. We should just have a new line function that moves the cursor
+// to the right place for the next row of children. We could then more easily avoid having to precompute the size,
+// because we could then just have a second pass through the children to check for mouse interaction and we can more
+// easily attribute the ui element to an inventory item.
 InventoryInput inventory_render(UIElement* container, Vec2 container_position, Inventory* inventory,
                                 GameState* game_state, GameInput* game_input, InventoryRenderOptions opts) {
     InventoryInput input = {-1, -1};
+    Vec2 slot_size = {1, 1};
+    slot_size = w_vec_mult(slot_size, opts.scale);
+
+    Vec2 row_container_size = {.x = (slot_size.x * inventory->col_count) + ((inventory->col_count - 1) * opts.slot_gap),
+                               .y = slot_size.y};
 
     for (int row = 0; row < inventory->row_count; row++) {
         UIElement* item_row_container = ui_create_container(
-            {.padding = 0, .child_gap = opts.slot_gap, .opts = UI_ELEMENT_F_CONTAINER_ROW}, &game_state->frame_arena);
+            {
+                .padding = 0,
+                .min_size = row_container_size,
+                .max_size = row_container_size,
+                .child_gap = opts.slot_gap,
+                .opts = UI_ELEMENT_F_CONTAINER_ROW,
+            },
+            &game_state->frame_arena);
 
         ui_push(container, item_row_container);
 
@@ -187,9 +207,6 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
             uint32 item_idx = row * inventory->col_count + col;
             InventoryItem* item = NULL;
             item = &inventory->items[item_idx];
-
-            Vec2 slot_size = {1, 1};
-            slot_size = w_vec_mult(slot_size, opts.scale);
 
             UIElement* item_slot =
                 ui_create_container({.min_size = slot_size,
@@ -199,6 +216,10 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                                     &game_state->frame_arena);
 
             if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
+                Sprite sprite = entity_get_default_sprite(item->entity_type);
+                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
+                ui_push_centered(item_slot, item_sprite);
+
                 if (item->stack_size > 1) {
                     char stack_size_str[3] = {};
                     snprintf(stack_size_str, 3, "%i", item->stack_size);
@@ -210,10 +231,6 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
 
                     ui_push_abs_position(item_slot, stack_size_element, stack_size_rel_position);
                 }
-
-                Sprite sprite = entity_get_default_sprite(item->entity_type);
-                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
-                ui_push_centered(item_slot, item_sprite);
             }
 
             ui_push(item_row_container, item_slot);

@@ -196,6 +196,7 @@ struct UIElement {
 
     flags flags;
 
+    Vec2 child_cursor;
     Vec2 position;
     Vec2 rel_position; // top-left
     Vec2 size;
@@ -246,6 +247,7 @@ UIElement* ui_create_container(UIContainerCreateParams params, Arena* arena) {
     container->background_rgba = params.background_rgba;
     container->border_width = params.border_width;
     container->border_color = params.border_color;
+    container->child_cursor = {params.padding, -params.padding};
 
     return container;
 }
@@ -320,21 +322,19 @@ void ui_push(UIElement* parent, UIElement* child) {
     child->parent = parent;
 
     if (!parent->child) {
-        child->rel_position = {parent->padding, -parent->padding};
         parent->child = child;
     } else {
-        UIElement* last_child = parent->last_child;
-        if (is_set(parent->flags, UI_ELEMENT_F_CONTAINER_ROW)) {
-            parent->size.x += parent->child_gap;
-            child->rel_position.x = last_child->rel_position.x + last_child->size.x + parent->child_gap;
-            child->rel_position.y = last_child->rel_position.y;
-        } else {
-            parent->size.y += parent->child_gap;
-            child->rel_position.y = last_child->rel_position.y - last_child->size.y - parent->child_gap;
-            child->rel_position.x = last_child->rel_position.x;
-        }
         parent->last_child->next = child;
     }
+
+    child->rel_position = parent->child_cursor;
+
+    if (is_set(parent->flags, UI_ELEMENT_F_CONTAINER_ROW)) {
+        parent->child_cursor.x += child->size.x + parent->child_gap;
+    } else {
+        parent->child_cursor.y -= (child->size.y + parent->child_gap);
+    }
+
     parent->last_child = child;
 
     ui_container_size_update(parent);
@@ -351,15 +351,15 @@ void ui_push_centered(UIElement* parent, UIElement* child) {
 // will render first and therefore behind the relatively positioned elements
 void ui_push_abs_position(UIElement* parent, UIElement* child, Vec2 rel_position) {
     child->parent = parent;
+    child->rel_position = rel_position;
 
     if (parent->child) {
-        child->next = parent->child;
+        parent->last_child->next = child;
     } else {
-        parent->last_child = child;
+        parent->child = child;
     }
 
-    parent->child = child;
-    child->rel_position = rel_position;
+    parent->last_child = child;
 }
 
 // Note: draw_position is the top left position of initial node of ui tree

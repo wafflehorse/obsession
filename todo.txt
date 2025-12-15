@@ -216,7 +216,7 @@
 	[x] Move items from chest to hotbar and vice versa
 	[x] Add ability to pick up a chest that has been placed
 	[x] Add inventory item spawning when chest is "killed"
-[] Fix: Inventory item ui renders stack size under entity sprite
+[x] Fix: Inventory item ui renders stack size under entity sprite
 [] Update controls so player inventory can be open while player moves
 [] Automate food supply
 	[x] Add some sort of foragable food entity
