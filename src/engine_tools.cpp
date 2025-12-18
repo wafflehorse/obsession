@@ -115,19 +115,28 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
             if (ImGui::Button("Save world init")) {
                 char new_filename[256];
                 char timestamp[256];
-                char filepath[PATH_MAX];
 
                 w_timestamp_str(timestamp, 256);
                 snprintf(new_filename, 256, "../resources/world_init_%s", timestamp);
 
-                w_get_absolute_path(filepath, g_base_path, new_filename);
-                w_str_copy(game_state->game_init_config.default_world_init_path, filepath);
+                w_str_copy(game_state->game_init_config.default_world_init_path, new_filename);
 
-                w_file_write_bin(filepath, (char*)&game_state->world_init, sizeof(WorldInit));
+                char world_init_file_path[PATH_MAX] = {};
+                w_get_absolute_path(world_init_file_path, g_base_path,
+                                    game_state->game_init_config.default_world_init_path);
+                bool result = w_file_write_bin(world_init_file_path, (char*)&game_state->world_init, sizeof(WorldInit));
+
+                if (result != 0) {
+                    printf("Failed to write new world_init\n");
+                }
 
                 char game_init_file_path[PATH_MAX] = {};
                 w_get_absolute_path(game_init_file_path, g_base_path, "../resources/game.init");
-                w_file_write_bin(game_init_file_path, (char*)&game_state->game_init_config, sizeof(GameInit));
+                result = w_file_write_bin(game_init_file_path, (char*)&game_state->game_init_config, sizeof(GameInit));
+
+                if (result != 0) {
+                    printf("Failed to write to game.init\n");
+                }
             };
 
             ImGui::Text("Current World Init: %s", game_state->game_init_config.default_world_init_path);

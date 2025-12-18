@@ -864,8 +864,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             char game_init_file_path[PATH_MAX] = {};
             w_get_absolute_path(game_init_file_path, g_base_path, "../resources/game.init");
             if (w_read_file_abs(game_init_file_path, &game_init_file_contents, &game_state->main_arena) != 0) {
-                w_get_absolute_path(game_state->game_init_config.default_world_init_path, g_base_path,
-                                    "../resources/world_0.init");
+                w_str_copy(game_state->game_init_config.default_world_init_path, "../resources/world_0.init");
 
                 bool result =
                     w_file_write_bin(game_init_file_path, (char*)&game_state->game_init_config, sizeof(GameInit));
@@ -875,15 +874,16 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             }
 
             FileContents world_init_file_contents;
-            if (w_read_file_abs(game_state->game_init_config.default_world_init_path, &world_init_file_contents,
-                                &game_state->main_arena) != 0) {
+            char world_init_file_path[PATH_MAX] = {};
+            w_get_absolute_path(world_init_file_path, g_base_path,
+                                game_state->game_init_config.default_world_init_path);
+            if (w_read_file_abs(world_init_file_path, &world_init_file_contents, &game_state->main_arena) != 0) {
                 game_state->world_init.world_size = {DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT};
                 game_state->world_init.entity_inits[0].type = ENTITY_TYPE_PLAYER;
                 game_state->world_init.entity_inits[0].position = {0, 0};
                 game_state->world_init.entity_init_count = 1;
 
-                bool result = w_file_write_bin(game_state->game_init_config.default_world_init_path,
-                                               (char*)&game_state->world_init, sizeof(WorldInit));
+                bool result = w_file_write_bin(world_init_file_path, (char*)&game_state->world_init, sizeof(WorldInit));
                 ASSERT(result == 0, "failed to open file resources/world_0.init");
             } else {
                 memcpy(&game_state->world_init, world_init_file_contents.data, sizeof(WorldInit));

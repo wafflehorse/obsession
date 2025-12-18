@@ -160,7 +160,8 @@ cp ./assets/asset_ids.h src
 cp ./assets/asset_tables.h src
 cp ./assets/sprite_atlas.png ./resources/assets
 
-cp -r ./resources/* $BUILD_DIR/resources
+cp -r ./resources/assets $BUILD_DIR/resources
+cp -r ./resources/shaders $BUILD_DIR/resources
 
 clang-format -i ./src/*
 
