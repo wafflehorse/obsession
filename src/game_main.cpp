@@ -30,11 +30,6 @@ Vec2 get_world_top_left_tile_position() {
 
 #define DEFAULT_Z_INDEX 1.0f
 
-#ifdef DEBUG
-#define ABS_PROJECT_RESOURCE_PATH "/Users/parkerpestana/dev/obsession/resources/"
-#define ABS_GAME_INIT_PATH "/Users/parkerpestana/dev/obsession/resources/game.init"
-#endif
-
 struct PlayerInputWorld {
     Vec2 movement_vec;
     Vec2 aim_vec;
@@ -866,12 +861,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             char* main_marker = w_arena_marker(&game_state->main_arena);
 
             FileContents game_init_file_contents;
-            if (w_read_file_abs(ABS_GAME_INIT_PATH, &game_init_file_contents, &game_state->main_arena) != 0) {
-                w_get_absolute_path(game_state->game_init_config.default_world_init_path, ABS_PROJECT_RESOURCE_PATH,
-                                    "world_0.init");
+            char game_init_file_path[PATH_MAX] = {};
+            w_get_absolute_path(game_init_file_path, g_base_path, "resources/game.init");
+            if (w_read_file_abs(game_init_file_path, &game_init_file_contents, &game_state->main_arena) != 0) {
+                w_get_absolute_path(game_state->game_init_config.default_world_init_path, g_base_path,
+                                    "resources/world_0.init");
 
                 bool result =
-                    w_file_write_bin(ABS_GAME_INIT_PATH, (char*)&game_state->game_init_config, sizeof(GameInit));
+                    w_file_write_bin(game_init_file_path, (char*)&game_state->game_init_config, sizeof(GameInit));
                 ASSERT(result == 0, "failed to open file resources/game.init");
             } else {
                 memcpy(&game_state->game_init_config, game_init_file_contents.data, sizeof(GameInit));

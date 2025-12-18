@@ -225,6 +225,7 @@
 	[] Add food gathering robot
 	[] Add hunger to player
 
+[] Bug: items that persist as entities don't spew from chest when chest is destroyed
 [] Fix collision tunneling 
 [] Projectile collider seems off
 [] Add items to pre-existing entity stack if exists in hotbar

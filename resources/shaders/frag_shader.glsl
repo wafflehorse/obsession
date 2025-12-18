@@ -19,11 +19,26 @@ void main()
     else {
         //For text rendering
         if(texture_num_channels[texture_unit] == 1) {
-            float alpha = texture(texture_units[texture_unit], texel_coords).r;
+            float alpha;
+			// This is a hack for now cause non-constant indexing into sampler2D not allowed (but mac allowed it)
+			if (texture_unit == 0) {
+				alpha = texture(texture_units[0], texel_coords).r;
+			}
+			if (texture_unit == 1) {
+				alpha = texture(texture_units[1], texel_coords).r;
+			}
             FragColor = vec4(rgba.x / 255.0, rgba.y / 255.0, rgba.z / 255.0, alpha * rgba.w);
         }
         else {
-            FragColor = texture(texture_units[texture_unit], texel_coords) * tint;
+            vec4 texture_color;
+			// This is a hack for now cause non-constant indexing into sampler2D not allowed (but mac allowed it)
+			if (texture_unit == 0) {
+				texture_color = texture(texture_units[0], texel_coords);
+			}
+			if (texture_unit == 1) {
+				texture_color = texture(texture_units[1], texel_coords);
+			}
+            FragColor = texture_color * tint;
         }
 
     }

@@ -418,7 +418,7 @@ float w_deg_to_rads(float degrees) {
 }
 
 float w_randf() {
-    return (float)rand() / RAND_MAX;
+    return (float)rand() / (float)RAND_MAX;
 }
 
 float w_random_between(float a, float b) {

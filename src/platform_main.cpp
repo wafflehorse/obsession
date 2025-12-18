@@ -6,6 +6,9 @@
 #ifdef _WIN32
 #define GAME_CODE_LIB "game_main.dll"
 #define TEMP_GAME_CODE_LIB "temp_game_main.dll"
+#elif __linux__
+#define GAME_CODE_LIB "game_main.so"
+#define TEMP_GAME_CODE_LIB "temp_game_main.so"
 #else
 #define GAME_CODE_LIB "game_main.dylib"
 #define TEMP_GAME_CODE_LIB "temp_game_main.dylib"

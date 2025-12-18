@@ -118,13 +118,13 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
                 char filepath[PATH_MAX];
 
                 w_timestamp_str(timestamp, 256);
-                snprintf(new_filename, 256, "world_init_%s", timestamp);
+                snprintf(new_filename, 256, "../resources/world_init_%s", timestamp);
 
-                w_get_absolute_path(filepath, ABS_PROJECT_RESOURCE_PATH, new_filename);
+                w_get_absolute_path(filepath, g_base_path, new_filename);
                 w_str_copy(game_state->game_init_config.default_world_init_path, filepath);
 
                 w_file_write_bin(filepath, (char*)&game_state->world_init, sizeof(WorldInit));
-                w_file_write_bin(ABS_GAME_INIT_PATH, (char*)&game_state->game_init_config, sizeof(GameInit));
+                w_file_write_bin("resources/game.init", (char*)&game_state->game_init_config, sizeof(GameInit));
             };
 
             ImGui::Text("Current World Init: %s", game_state->game_init_config.default_world_init_path);
