@@ -76,10 +76,11 @@ if [[ "$OS" == $MAC ]]; then
 
 	GAME_CLANG_CMD="clang++ -std=c++14 $FLAGS $SILENCED_WARNINGS $DEBUG_GAME_DEPENDENCIES ./src/game_main.cpp -dynamiclib -o $BUILD_DIR/$CURR_GAME_EXECUTABLE_NAME -I./lib -I./lib/imgui"
 
-    GLAD_CLANG_CMD="clang++ -arch arm64 -mmacosx-version-min=10.7 -x c ./lib/glad/src/glad.c -o ./lib/mac_osx/glad.o -c -I./lib/glad/include"
+    GLAD_CLANG_CMD="clang++ -arch arm64 -mmacosx-version-min=10.7 -x c ./lib/glad/src/glad.c -o $LIB_DIR/glad.o -c -I./lib/glad/include"
 
-	PLATFORM_CLANG_CMD="clang++ -std=c++14 $SILENCED_WARNINGS $FLAGS $DEBUG_PLAT_DEPENDENCIES ./src/platform_main.cpp -o $BUILD_DIR/platform_main -L$BUILD_DIR -lSDL3 -Wl,-rpath,@loader_path -I./lib/glad/include -I./lib -I./lib/imgui -I./lib/imgui/backends ./lib/mac_osx/glad.o"
+	PLATFORM_CLANG_CMD="clang++ -std=c++14 $SILENCED_WARNINGS $FLAGS $DEBUG_PLAT_DEPENDENCIES ./src/platform_main.cpp -o $BUILD_DIR/platform_main -L$BUILD_DIR -lSDL3 -Wl,-rpath,@loader_path -I./lib/glad/include -I./lib -I./lib/imgui -I./lib/imgui/backends $LIB_DIR/glad.o"
 
+	mkdir -p $LIB_DIR
 	cp $LIB_DIR/*.dylib $BUILD_DIR
 
 	# Want to ensure that we have fresh debug, I found that on re-run the dSYMs were
