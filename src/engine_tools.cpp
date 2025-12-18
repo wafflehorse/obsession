@@ -124,7 +124,10 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
                 w_str_copy(game_state->game_init_config.default_world_init_path, filepath);
 
                 w_file_write_bin(filepath, (char*)&game_state->world_init, sizeof(WorldInit));
-                w_file_write_bin("resources/game.init", (char*)&game_state->game_init_config, sizeof(GameInit));
+
+                char game_init_file_path[PATH_MAX] = {};
+                w_get_absolute_path(game_init_file_path, g_base_path, "../resources/game.init");
+                w_file_write_bin(game_init_file_path, (char*)&game_state->game_init_config, sizeof(GameInit));
             };
 
             ImGui::Text("Current World Init: %s", game_state->game_init_config.default_world_init_path);

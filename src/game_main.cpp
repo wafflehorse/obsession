@@ -862,10 +862,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
             FileContents game_init_file_contents;
             char game_init_file_path[PATH_MAX] = {};
-            w_get_absolute_path(game_init_file_path, g_base_path, "resources/game.init");
+            w_get_absolute_path(game_init_file_path, g_base_path, "../resources/game.init");
             if (w_read_file_abs(game_init_file_path, &game_init_file_contents, &game_state->main_arena) != 0) {
                 w_get_absolute_path(game_state->game_init_config.default_world_init_path, g_base_path,
-                                    "resources/world_0.init");
+                                    "../resources/world_0.init");
 
                 bool result =
                     w_file_write_bin(game_init_file_path, (char*)&game_state->game_init_config, sizeof(GameInit));
