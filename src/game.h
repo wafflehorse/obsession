@@ -26,6 +26,9 @@
 #define MAX_HP_PLANT_CORN 2
 #define MAX_HP_ROBOT_GATHERER 10
 
+#define MAX_HUNGER_PLAYER 10
+#define HUNGER_TICK_COOLDOWN_S 30
+
 #define ATTACK_ID_MAX_IDS 512
 #define ATTACK_ID_START (MAX_ENTITIES - 1)
 #define ATTACK_ID_LAST (ATTACK_ID_START + ATTACK_ID_MAX_IDS - 1)
@@ -179,6 +182,7 @@ struct Inventory {
 #define ENTITY_F_ITEM (1 << 7)
 #define ENTITY_F_ITEM_SPAWNING (1 << 8)
 #define ENTITY_F_PLAYER_INTERACTABLE (1 << 9)
+#define ENTITY_F_GETS_HUNGERY (1 << 10)
 
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
 
@@ -209,6 +213,8 @@ struct Entity {
     float distance_traveled;
 
     uint32 hp;
+    uint32 hunger;
+    float hunger_cooldown_s;
     float damage_taken_tint_cooldown_s;
     uint32 attack_id;
 

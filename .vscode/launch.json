@@ -77,6 +77,27 @@
           "ignoreFailures": true
         }
       ],
-    }
+    },
+    {
+        "name": "Debug Ase Parser (Linux)",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/game_tools/asset_manager/pack",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerPath": "/usr/bin/gdb",
+        "preLaunchTask": "Build Ase Parser",
+        "setupCommands": [
+            {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+            }
+        ]
+    }    
   ]
 }

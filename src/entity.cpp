@@ -278,6 +278,9 @@ EntityHandle entity_create_player(EntityData* entity_data, Vec2 position) {
     entity->facing_direction.y = 0;
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = MAX_HP_PLAYER;
+    entity->hunger = MAX_HUNGER_PLAYER;
+    entity->hunger_cooldown_s = HUNGER_TICK_COOLDOWN_S;
+    set(entity->flags, ENTITY_F_GETS_HUNGERY);
 
     Vec2 collider_world_size = {11 / BASE_PIXELS_PER_UNIT, 17 / BASE_PIXELS_PER_UNIT};
 

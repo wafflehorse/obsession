@@ -201,7 +201,7 @@
 	- I think we want a floating animation for this
 [x] Allow for player to click inventory screen without shooting or taking another world action
 	- Probably want to disable world input when in the inventory screen? Maybe?
-[] Implement chest logic and UI
+[x] Implement chest logic and UI
 	[x] Place chest in the world
 		[x] Placement UI
 		[x] Placement input
@@ -217,18 +217,18 @@
 	[x] Add ability to pick up a chest that has been placed
 	[x] Add inventory item spawning when chest is "killed"
 [x] Fix: Inventory item ui renders stack size under entity sprite
-[] Update controls so player inventory can be open while player moves
 [x] Add some sort of foragable food entity
 [x] Add ability to pick up food items
 [x] Add food storage box
+[] Add hunger to player
 [] Add food gathering robot
-	[] Add food gathering robot animations and sprites
-	[] Add food gathering robot entity
+	[x] Add food gathering robot animations and sprites
+	[x] Add food gathering robot entity
 	[] Add gatherer brain
 		[]	
 	[] How does the player interact with it? And tell it where to go? 
-[] Add hunger to player
 
+[] Update controls so player inventory can be open while player moves
 [] Bug: items that persist as entities don't spew from chest when chest is destroyed
 [] Fix collision tunneling 
 [] Projectile collider seems off

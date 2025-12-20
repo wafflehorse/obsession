@@ -498,21 +498,35 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
     }
 }
 
+SpriteID player_hunger_to_ui_sprite[MAX_HUNGER_PLAYER + 1] = {
+    [0] = SPRITE_PLAYER_HUNGER_UI_10, [1] = SPRITE_PLAYER_HUNGER_UI_9, [2] = SPRITE_PLAYER_HUNGER_UI_8,
+    [3] = SPRITE_PLAYER_HUNGER_UI_7,  [4] = SPRITE_PLAYER_HUNGER_UI_6, [5] = SPRITE_PLAYER_HUNGER_UI_5,
+    [6] = SPRITE_PLAYER_HUNGER_UI_4,  [7] = SPRITE_PLAYER_HUNGER_UI_3, [8] = SPRITE_PLAYER_HUNGER_UI_2,
+    [9] = SPRITE_PLAYER_HUNGER_UI_1,  [10] = SPRITE_PLAYER_HUNGER_UI_0};
+
 SpriteID player_hp_to_ui_sprite[MAX_HP_PLAYER + 1] = {
     [0] = SPRITE_PLAYER_HP_UI_10, [1] = SPRITE_PLAYER_HP_UI_9, [2] = SPRITE_PLAYER_HP_UI_8, [3] = SPRITE_PLAYER_HP_UI_7,
     [4] = SPRITE_PLAYER_HP_UI_6,  [5] = SPRITE_PLAYER_HP_UI_5, [6] = SPRITE_PLAYER_HP_UI_4, [7] = SPRITE_PLAYER_HP_UI_3,
     [8] = SPRITE_PLAYER_HP_UI_2,  [9] = SPRITE_PLAYER_HP_UI_1, [10] = SPRITE_PLAYER_HP_UI_0};
 
-void render_player_hp_ui(int hp, Camera camera, RenderGroup* render_group) {
-    SpriteID ui_sprite = player_hp_to_ui_sprite[hp];
-    Sprite sprite = sprite_table[ui_sprite];
+void render_player_health_ui(Entity* player, Camera camera, RenderGroup* render_group, Arena* frame_arena) {
+    SpriteID hp_sprite_id = player_hp_to_ui_sprite[player->hp];
+    SpriteID hunger_sprite_id = player_hunger_to_ui_sprite[player->hunger];
+    Sprite hp_sprite = sprite_table[hp_sprite_id];
+    Sprite hunger_sprite = sprite_table[hunger_sprite_id];
 
     Vec2 camera_top_left = {camera.position.x - (camera.size.x / 2), camera.position.y + (camera.size.y / 2)};
 
-    Vec2 ui_position = {camera_top_left.x + (pixels_to_units(sprite.w) / 2) + 0.5f,
-                        camera_top_left.y - (pixels_to_units(sprite.h) / 2) - 0.5f};
+    UIElement* container =
+        ui_create_container({.padding = 0.5f, .child_gap = 0.5f, .opts = UI_ELEMENT_F_CONTAINER_COL}, frame_arena);
 
-    render_sprite(ui_position, ui_sprite, render_group, DEFAULT_Z_INDEX);
+    UIElement* hp_sprite_element = ui_create_sprite(hp_sprite, frame_arena);
+    UIElement* hunger_sprite_element = ui_create_sprite(hunger_sprite, frame_arena);
+
+    ui_push(container, hp_sprite_element);
+    ui_push(container, hunger_sprite_element);
+
+    ui_draw_element(container, camera_top_left, render_group);
 }
 
 void debug_render_entity_colliders(Entity* entity, bool has_collided) {
@@ -974,11 +988,13 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 Vec2 acceleration = w_vec_mult(w_vec_norm(player_input.world.movement_vec), acceleration_mag);
                 entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
             } else {
+                entity->velocity = {0, 0};
                 EntityAnimations animations = entity_info[entity->type].animations;
                 set(entity->flags, ENTITY_F_NONSPACIAL);
                 w_play_animation(animations.death, &entity->anim_state);
                 if (w_animation_complete(&entity->anim_state, g_sim_dt_s)) {
                     entity->hp = MAX_HP_PLAYER;
+                    entity->hunger = MAX_HUNGER_PLAYER;
                     entity->position = {0, 0};
                     unset(entity->flags, ENTITY_F_NONSPACIAL);
                 }
@@ -1173,9 +1189,21 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             }
         }
 
-        entity_death(entity, &game_state->entity_data);
-
         entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
+
+        if (is_set(entity->flags, ENTITY_F_GETS_HUNGERY)) {
+            entity->hunger_cooldown_s = w_clamp_min(entity->hunger_cooldown_s - g_sim_dt_s, 0);
+            if (entity->hunger_cooldown_s <= 0) {
+                entity->hunger = w_clamp_min(entity->hunger - 1, 0);
+                entity->hunger_cooldown_s = MAX_HUNGER_PLAYER;
+            }
+
+            if (entity->hunger <= 0) {
+                entity->hp = 0;
+            }
+        }
+
+        entity_death(entity, &game_state->entity_data);
 
         bool is_animation_complete = w_update_animation(&entity->anim_state, g_sim_dt_s);
 
@@ -1307,7 +1335,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
     hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
     hotbar_render(game_state, game_input, &render_group_ui);
-    render_player_hp_ui(game_state->player->hp, game_state->camera, &render_group_ui);
+    render_player_health_ui(game_state->player, game_state->camera, &render_group_ui, &game_state->frame_arena);
     game_memory->push_audio_samples(&game_state->audio_player);
 
     sort_render_group(&main_render_group);

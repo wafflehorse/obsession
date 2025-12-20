@@ -30,66 +30,66 @@
 #define SPRITE_MARGIN 1
 
 struct Slice {
-	int frame_idx;
-	float x;
-	float y;
-	float w;
-	float h;
+    int frame_idx;
+    float x;
+    float y;
+    float w;
+    float h;
 };
 
 struct FrameHitbox {
-	bool is_valid;
-	Rect rect;
+    bool is_valid;
+    Rect rect;
 };
 
 struct GroundAnchor {
-	Vec2 ground_anchor;
-	bool is_valid;
+    Vec2 ground_anchor;
+    bool is_valid;
 };
 
 struct AnimationExtraction {
     char animation_label[256];
     char sprite_labels[256][256];
     uint32 frame_durations[128];
-	FrameHitbox frame_hitboxes[128];
-	Vec2 ground_anchor;
-	uint32 ground_anchor_count;
+    FrameHitbox frame_hitboxes[128];
+    Vec2 ground_anchor;
+    uint32 ground_anchor_count;
     uint32 frame_count;
 };
 
 bool get_next_int_value(char** cursor, const char* key, int32* num) {
-	*cursor = strstr(*cursor, key);
-	if(*cursor == NULL) {
-		return false;
-	}
+    *cursor = strstr(*cursor, key);
+    if (*cursor == NULL) {
+        return false;
+    }
 
-	char num_str[64] = {};
-	uint32 num_str_length = 0;
+    char num_str[64] = {};
+    uint32 num_str_length = 0;
 
-	while (!isdigit(**cursor)) { (*cursor)++; }
-	while (isdigit(**cursor)) {
-		num_str[num_str_length++] = **cursor;
-		(*cursor)++;
-	}
+    while (!isdigit(**cursor)) { (*cursor)++; }
+    while (isdigit(**cursor)) {
+        num_str[num_str_length++] = **cursor;
+        (*cursor)++;
+    }
 
-	char* end = 0;
-	*num = (int)strtol(num_str, &end, 10);
+    char* end = 0;
+    *num = (int)strtol(num_str, &end, 10);
 
-	return true;
-} 
+    return true;
+}
 
 void parse_slice(char** cursor, Slice* slice) {
-	get_next_int_value(cursor, "frame", &slice->frame_idx);
+    get_next_int_value(cursor, "frame", &slice->frame_idx);
 
-	int num;
-	get_next_int_value(cursor, "x", &num);
-	slice->x = num;
-	get_next_int_value(cursor, "y", &num);
-	slice->y = num;
-	get_next_int_value(cursor, "w", &num);
-	slice->w = num;
-	get_next_int_value(cursor, "h", &num);
-	slice->h = num;
+    int num;
+    get_next_int_value(cursor, "x", &num);
+    slice->x = num;
+    get_next_int_value(cursor, "y", &num);
+    slice->y = num;
+    get_next_int_value(cursor, "w", &num);
+    slice->w = num;
+    get_next_int_value(cursor, "h", &num);
+    slice->h = num;
 }
 
 void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, AnimationExtraction* anim_extractions, uint32* anim_count) {
@@ -113,14 +113,14 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
         all_frame_durations[all_frames_count++] = strtoul(duration_str, &end, 10);
     }
 
-	char* slices_ptr = strstr(file_contents->data, "slices");
+    char* slices_ptr = strstr(file_contents->data, "slices");
 
-	FrameHitbox all_frame_hitboxes[512] = {};
-	Vec2 ground_anchor = {};
-	uint32 ground_anchor_count = 0;
+    FrameHitbox all_frame_hitboxes[512] = {};
+    Vec2 ground_anchor = {};
+    uint32 ground_anchor_count = 0;
 
-	cursor = slices_ptr;
-	while((cursor = strstr(cursor, "name")) != NULL) {
+    cursor = slices_ptr;
+    while ((cursor = strstr(cursor, "name")) != NULL) {
         char name[64] = {};
         uint32 name_length = 0;
         cursor = strstr(cursor, ":");
@@ -131,39 +131,39 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
             cursor++;
         }
 
-		if(w_str_match(name, "hitbox")) {
-			printf("processing hitbox\n");	
-			Slice slice;
-			parse_slice(&cursor, &slice);
+        if (w_str_match(name, "hitbox")) {
+            printf("processing hitbox\n");
+            Slice slice;
+            parse_slice(&cursor, &slice);
 
-			FrameHitbox* frame_hitbox = &all_frame_hitboxes[slice.frame_idx];
-			frame_hitbox->is_valid = true;
-			frame_hitbox->rect.x = slice.x;
-			frame_hitbox->rect.y = slice.y;
-			frame_hitbox->rect.w = slice.w;
-			frame_hitbox->rect.h = slice.h;
-		}
-		else if(w_str_match(name, "ground_anchor")) {
-			printf("processing ground_anchor\n");
-			ASSERT(ground_anchor_count < 2, "multiple ground anchors specified for the same animation!");
+            FrameHitbox* frame_hitbox = &all_frame_hitboxes[slice.frame_idx];
+            frame_hitbox->is_valid = true;
+            frame_hitbox->rect.x = slice.x;
+            frame_hitbox->rect.y = slice.y;
+            frame_hitbox->rect.w = slice.w;
+            frame_hitbox->rect.h = slice.h;
+        }
+        else if (w_str_match(name, "ground_anchor")) {
+            printf("processing ground_anchor\n");
+            ASSERT(ground_anchor_count < 2, "multiple ground anchors specified for the same animation!");
 
-			Slice slice;
-			parse_slice(&cursor, &slice);
+            Slice slice;
+            parse_slice(&cursor, &slice);
 
-			ground_anchor = {
-				slice.x,
-				slice.y
-			};
-				
-			ground_anchor_count++;
-		}
-	}
+            ground_anchor = {
+                slice.x,
+                slice.y
+            };
+
+            ground_anchor_count++;
+        }
+    }
 
     printf("Processing %i frames...\n", all_frames_count);
 
     cursor = file_contents->data;
-    while (((cursor = strstr(cursor, "name")) != NULL) 
-		&& (slices_ptr == NULL || cursor < slices_ptr)) {
+    while (((cursor = strstr(cursor, "name")) != NULL)
+        && (slices_ptr == NULL || cursor < slices_ptr)) {
         char name[64] = {};
         uint32 name_length = 0;
         cursor = strstr(cursor, ":");
@@ -204,14 +204,14 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
         snprintf(animation_label, sizeof(anim_extract->animation_label), "ANIM_%s_%s", entity_name, name);
         w_to_uppercase(animation_label);
 
-		if(ground_anchor_count > 0) {
-			anim_extract->ground_anchor = ground_anchor;
-			anim_extract->ground_anchor_count = 1;
-		}
+        if (ground_anchor_count > 0) {
+            anim_extract->ground_anchor = ground_anchor;
+            anim_extract->ground_anchor_count = 1;
+        }
 
         for (int i = start_idx; i < end_idx + 1; i++) {
             anim_extract->frame_durations[anim_extract->frame_count] = all_frame_durations[i];
-			anim_extract->frame_hitboxes[anim_extract->frame_count] = all_frame_hitboxes[i];
+            anim_extract->frame_hitboxes[anim_extract->frame_count] = all_frame_hitboxes[i];
             char* sprite_label = anim_extract->sprite_labels[anim_extract->frame_count];
             w_str_copy(sprite_label, "SPRITE_");
             w_str_concat(sprite_label, entity_name);
@@ -227,20 +227,20 @@ void aseprite_anim_parse(FileContents* file_contents, const char* entity_name, A
 
 }
 void enum_begin(const char* enum_name, FILE* file) {
-	char enum_declaration[64] = {}; 
-	snprintf(enum_declaration, 64, "enum %s {\n", enum_name);
+    char enum_declaration[64] = {};
+    snprintf(enum_declaration, 64, "enum %s {\n", enum_name);
     fwrite(enum_declaration, w_str_len(enum_declaration), sizeof(char), file);
 }
 
 void enum_add(const char* enum_value, FILE* file) {
-	char enum_label[256] = {};
-	snprintf(enum_label, 256, "\t%s,\n", enum_value);
-	fwrite(enum_label, w_str_len(enum_label), sizeof(char), file);
+    char enum_label[256] = {};
+    snprintf(enum_label, 256, "\t%s,\n", enum_value);
+    fwrite(enum_label, w_str_len(enum_label), sizeof(char), file);
 }
 
 void enum_close(FILE* file) {
-	const char* enum_close = "};\n\n";
-	fwrite(enum_close, w_str_len(enum_close), sizeof(char), file);
+    const char* enum_close = "};\n\n";
+    fwrite(enum_close, w_str_len(enum_close), sizeof(char), file);
 }
 
 
@@ -271,8 +271,8 @@ bool trim(unsigned char* bitmap, int num_channels, int bitmap_width, int bitmap_
     *trimmed_bitmap = bitmap + (min_y * num_channels * bitmap_width) + (min_x * num_channels);
     *trimmed_width = max_x - min_x + 1;
     *trimmed_height = max_y - min_y + 1;
-	trimmed_location->x = min_x;
-	trimmed_location->y = min_y;
+    trimmed_location->x = min_x;
+    trimmed_location->y = min_y;
 
     return is_occupied;
 }
@@ -282,15 +282,15 @@ int filepath_sort_cmp(const void* a, const void* b) {
 }
 
 int find_sprite_index_by_label(char (*sprite_labels)[256], uint32 label_count, char* label) {
-	for(int i = 0; i < label_count; i++) {
-		if(w_str_match(label, sprite_labels[i])) {
-			return i;
-		}
-	}
+    for (int i = 0; i < label_count; i++) {
+        if (w_str_match(label, sprite_labels[i])) {
+            return i;
+        }
+    }
 
-	ASSERT(false, "Sprite label not found in search!");
+    ASSERT(false, "Sprite label not found in search!");
 
-	return -1;
+    return -1;
 }
 
 int get_abs_file_paths_in_directory(const char* dir_path, const char* ext, char (*filepaths)[W_PATH_MAX], uint32* file_count) {
@@ -312,7 +312,7 @@ int get_abs_file_paths_in_directory(const char* dir_path, const char* ext, char 
         }
     }
 
-	return 1;
+    return 1;
 }
 
 int main(int argc, char* argv[]) {
@@ -326,8 +326,8 @@ int main(int argc, char* argv[]) {
     char (*bitmap_filepaths)[W_PATH_MAX] = (char(*)[W_PATH_MAX])w_arena_alloc(&arena, MAX_BITMAPS * W_PATH_MAX * sizeof(char));
     uint32 bitmap_file_count = 0;
 
-	get_abs_file_paths_in_directory("./assets/bitmaps/", ".png", bitmap_filepaths, &bitmap_file_count);
-	get_abs_file_paths_in_directory("./assets/bitmaps_gen/", ".png", bitmap_filepaths, &bitmap_file_count);
+    get_abs_file_paths_in_directory("./assets/bitmaps/", ".png", bitmap_filepaths, &bitmap_file_count);
+    get_abs_file_paths_in_directory("./assets/bitmaps_gen/", ".png", bitmap_filepaths, &bitmap_file_count);
 
     qsort(bitmap_filepaths, bitmap_file_count, W_PATH_MAX, filepath_sort_cmp);
 
@@ -340,8 +340,8 @@ int main(int argc, char* argv[]) {
     stbrp_node* nodes = (stbrp_node*)w_arena_alloc(&arena, num_nodes * sizeof(stbrp_node));
     stbrp_init_target(&pack_context, ATLAS_WIDTH, ATLAS_HEIGHT, nodes, num_nodes);
 
-	Vec2 raw_bitmap_sizes[MAX_BITMAPS] = {};
-	Vec2 trimmed_bitmap_locations[MAX_BITMAPS] = {};
+    Vec2 raw_bitmap_sizes[MAX_BITMAPS] = {};
+    Vec2 trimmed_bitmap_locations[MAX_BITMAPS] = {};
     int bitmap_count = 0;
 
     for (int i = 0; i < bitmap_file_count; i++) {
@@ -358,16 +358,16 @@ int main(int argc, char* argv[]) {
 
         unsigned char* trimmed_bitmap = NULL;
         int trimmed_width, trimmed_height;
-		Vec2 trimmed_location = {};
+        Vec2 trimmed_location = {};
         if (trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height, &trimmed_location)) {
             bitmap_rects[bitmap_count].w = trimmed_width + (SPRITE_MARGIN * 2);
             bitmap_rects[bitmap_count].h = trimmed_height + (SPRITE_MARGIN * 2);
             bitmap_rects[bitmap_count].id = i;
 
-			raw_bitmap_sizes[bitmap_count].x = bitmap_width;
-			raw_bitmap_sizes[bitmap_count].y = bitmap_height;
+            raw_bitmap_sizes[bitmap_count].x = bitmap_width;
+            raw_bitmap_sizes[bitmap_count].y = bitmap_height;
 
-			trimmed_bitmap_locations[bitmap_count] = trimmed_location;
+            trimmed_bitmap_locations[bitmap_count] = trimmed_location;
             bitmap_count++;
         }
         else {
@@ -404,7 +404,7 @@ int main(int argc, char* argv[]) {
         }
 
         unsigned char* trimmed_bitmap = NULL;
-		Vec2 trimmed_location = {};
+        Vec2 trimmed_location = {};
         int trimmed_width, trimmed_height;
         trim(bitmap_data, nrChannels, bitmap_width, bitmap_height, &trimmed_bitmap, &trimmed_width, &trimmed_height, &trimmed_location);
 
@@ -424,16 +424,16 @@ int main(int argc, char* argv[]) {
 
     //~~~~~~~~~~~~~~~~~~~~Construct sprite_assets.h file with sprite and animation data ~~~~~~~~~~~~~~~//
 
-		FILE* file = fopen("./assets/asset_ids.h", "wb");
-	{
-		const char* includes_section = "//This file was autogenerated via game_tools/asset_manager/pack\n#pragma once\n\n";
-		fwrite(includes_section, w_str_len(includes_section), sizeof(char), file);
-	}
+    FILE* file = fopen("./assets/asset_ids.h", "wb");
+    {
+        const char* includes_section = "//This file was autogenerated via game_tools/asset_manager/pack\n#pragma once\n\n";
+        fwrite(includes_section, w_str_len(includes_section), sizeof(char), file);
+    }
 
-	//~~~~~~~~~~~~~~~~~~~~~~ Sprite ID writing ~~~~~~~~~~~~~~~~~~~//
-	
-	enum_begin("SpriteID", file);
-	enum_add("SPRITE_UNKNOWN", file);
+    //~~~~~~~~~~~~~~~~~~~~~~ Sprite ID writing ~~~~~~~~~~~~~~~~~~~//
+
+    enum_begin("SpriteID", file);
+    enum_add("SPRITE_UNKNOWN", file);
 
     char (*enum_labels)[256] = (char(*)[256])w_arena_alloc(&arena, MAX_BITMAPS * 256 * sizeof(char));
 
@@ -462,13 +462,13 @@ int main(int argc, char* argv[]) {
         }
         enum_str[w_str_len(enum_str) - 1] = '\0';
 
-		enum_add(enum_labels[i], file);
+        enum_add(enum_labels[i], file);
     }
 
-	enum_add("SPRITE_COUNT", file);
-	enum_close(file);
+    enum_add("SPRITE_COUNT", file);
+    enum_close(file);
 
-	//~~~~~~~~~~~~~~~ Extract animation data ~~~~~~~~~~~~~~~~~~~//
+    //~~~~~~~~~~~~~~~ Extract animation data ~~~~~~~~~~~~~~~~~~~//
 
     char (*json_filepaths)[W_PATH_MAX] = (char(*)[W_PATH_MAX])w_arena_alloc(&arena, W_PATH_MAX * 256 * sizeof(char));
     int json_file_count = 0;
@@ -505,75 +505,75 @@ int main(int argc, char* argv[]) {
 
         char filename_no_ext[64] = {};
         w_filename_no_ext_from_path(json_filepaths[i], filename_no_ext);
-		char* cursor = filename_no_ext;
-		char* entity_name = w_next_token(&cursor, "_anim");
+        char* cursor = filename_no_ext;
+        char* entity_name = w_next_token(&cursor, "_anim");
 
         aseprite_anim_parse(&file_contents, entity_name, animation_extracts, &anim_count);
 
         w_arena_restore(&arena, marker);
     }
 
-	GroundAnchor sprite_ground_anchors[MAX_BITMAPS] = {};
+    GroundAnchor sprite_ground_anchors[MAX_BITMAPS] = {};
 
-	for (int i = 0; i < anim_count; i++) {
-		AnimationExtraction* anim_extraction = &animation_extracts[i];
-		if(anim_extraction->ground_anchor_count > 0) {
-			for (int j = 0; j < anim_extraction->frame_count; j++) {
-				int sprite_index = find_sprite_index_by_label(enum_labels, bitmap_count, anim_extraction->sprite_labels[j]);
+    for (int i = 0; i < anim_count; i++) {
+        AnimationExtraction* anim_extraction = &animation_extracts[i];
+        if (anim_extraction->ground_anchor_count > 0) {
+            for (int j = 0; j < anim_extraction->frame_count; j++) {
+                int sprite_index = find_sprite_index_by_label(enum_labels, bitmap_count, anim_extraction->sprite_labels[j]);
 
-				GroundAnchor* anchor = &sprite_ground_anchors[sprite_index];
-				anchor->is_valid = true;
-				anchor->ground_anchor = anim_extraction->ground_anchor;
-			}
-		}
-	}
+                GroundAnchor* anchor = &sprite_ground_anchors[sprite_index];
+                anchor->is_valid = true;
+                anchor->ground_anchor = anim_extraction->ground_anchor;
+            }
+        }
+    }
 
-	//~~~~~~~~~~~~~~~~~~~~ Write Animation IDs ~~~~~~~~~~~~~~~~~~~//
+    //~~~~~~~~~~~~~~~~~~~~ Write Animation IDs ~~~~~~~~~~~~~~~~~~~//
 
-	enum_begin("AnimationID", file);
-	enum_add("ANIM_UNKNOWN", file);
+    enum_begin("AnimationID", file);
+    enum_add("ANIM_UNKNOWN", file);
 
     for (int i = 0; i < anim_count; i++) {
         AnimationExtraction* anim_ext = &animation_extracts[i];
-		enum_add(anim_ext->animation_label, file);
+        enum_add(anim_ext->animation_label, file);
     }
 
-	enum_add("ANIM_COUNT", file);
-	enum_close(file);
+    enum_add("ANIM_COUNT", file);
+    enum_close(file);
 
-	fclose(file);
+    fclose(file);
 
     file = fopen("./assets/asset_tables.h", "wb");
 
-	{
-		const char* includes_section = "//This file was autogenerated via game_tools/asset_manager/pack\n#pragma once\n\n"
-			"#include \"waffle_lib.h\"\n\n";
-		fwrite(includes_section, w_str_len(includes_section), sizeof(char), file);
-	}
+    {
+        const char* includes_section = "//This file was autogenerated via game_tools/asset_manager/pack\n#pragma once\n\n"
+            "#include \"waffle_lib.h\"\n\n";
+        fwrite(includes_section, w_str_len(includes_section), sizeof(char), file);
+    }
 
-	//~~~~~~~~~~~~~~ Sprite Table ~~~~~~~~~~~~~~~~~~~~~~//
+    //~~~~~~~~~~~~~~ Sprite Table ~~~~~~~~~~~~~~~~~~~~~~//
     const char* sprite_table_declaration = "Sprite sprite_table[SPRITE_COUNT] = {\n";
     fwrite(sprite_table_declaration, w_str_len(sprite_table_declaration), sizeof(char), file);
 
     for (int i = 0; i < bitmap_count; i++) {
         char sprite_init[256] = {};
         stbrp_rect rect = bitmap_rects[i];
-		rect.x += SPRITE_MARGIN;
-		rect.y += SPRITE_MARGIN;
-		rect.w -= (SPRITE_MARGIN * 2);
-		rect.h -= (SPRITE_MARGIN * 2);
-		char has_anchor_string[8];
-		GroundAnchor anchor = sprite_ground_anchors[i];
-		Vec2 adjusted_anchor_position = {};
-		if(anchor.is_valid) {
-			w_str_copy(has_anchor_string, "true");	
-			Vec2 trimmed_bitmap_location = trimmed_bitmap_locations[i];
+        rect.x += SPRITE_MARGIN;
+        rect.y += SPRITE_MARGIN;
+        rect.w -= (SPRITE_MARGIN * 2);
+        rect.h -= (SPRITE_MARGIN * 2);
+        char has_anchor_string[8];
+        GroundAnchor anchor = sprite_ground_anchors[i];
+        Vec2 adjusted_anchor_position = {};
+        if (anchor.is_valid) {
+            w_str_copy(has_anchor_string, "true");
+            Vec2 trimmed_bitmap_location = trimmed_bitmap_locations[i];
 
-			adjusted_anchor_position = w_vec_sub(anchor.ground_anchor, trimmed_bitmap_location);
-		}
-		else {
-			w_str_copy(has_anchor_string, "false");
-		}
+            adjusted_anchor_position = w_vec_sub(anchor.ground_anchor, trimmed_bitmap_location);
+        }
+        else {
+            w_str_copy(has_anchor_string, "false");
+        }
 
         snprintf(sprite_init, 256, "\t[%s] = {\n\t\t%i, %i, %i, %i, %s, { %.2f, %.2f }\n\t},\n", enum_labels[i], rect.x, rect.y, rect.w, rect.h, has_anchor_string, adjusted_anchor_position.x, adjusted_anchor_position.y);
         fwrite(sprite_init, w_str_len(sprite_init), sizeof(char), file);
@@ -582,49 +582,49 @@ int main(int argc, char* argv[]) {
     const char* sprite_table_close = "};\n\n";
     fwrite(sprite_table_close, w_str_len(sprite_table_close), sizeof(char), file);
 
-	//~~~~~~~~~~~~~~ Hitbox Table ~~~~~~~~~~~~~~~~~~//
+    //~~~~~~~~~~~~~~ Hitbox Table ~~~~~~~~~~~~~~~~~~//
 
     const char* hitbox_table_declaration = "Rect hitbox_table[SPRITE_COUNT] = {\n";
     fwrite(hitbox_table_declaration, w_str_len(hitbox_table_declaration), sizeof(char), file);
 
     for (int i = 0; i < anim_count; i++) {
         AnimationExtraction* anim_ext = &animation_extracts[i];
-		for(int j = 0; j < anim_ext->frame_count; j++) {
-			FrameHitbox raw_frame_hitbox = anim_ext->frame_hitboxes[j];
-			if(raw_frame_hitbox.is_valid) {
-				int bitmap_idx = -1;
-				for(int a = 0; a < bitmap_count; a++) {
-					if(w_str_match(enum_labels[a], anim_ext->sprite_labels[j])) {
-						bitmap_idx = a;
-						break;
-					}			
-				}
+        for (int j = 0; j < anim_ext->frame_count; j++) {
+            FrameHitbox raw_frame_hitbox = anim_ext->frame_hitboxes[j];
+            if (raw_frame_hitbox.is_valid) {
+                int bitmap_idx = -1;
+                for (int a = 0; a < bitmap_count; a++) {
+                    if (w_str_match(enum_labels[a], anim_ext->sprite_labels[j])) {
+                        bitmap_idx = a;
+                        break;
+                    }
+                }
 
-				ASSERT(bitmap_idx != -1, "bitmap index not found for hitbox!");
+                ASSERT(bitmap_idx != -1, "bitmap index not found for hitbox!");
 
-				GroundAnchor anchor = sprite_ground_anchors[bitmap_idx];
-				ASSERT(anchor.is_valid, "Hitboxes must be also having a ground anchor associated with the frame");
+                GroundAnchor anchor = sprite_ground_anchors[bitmap_idx];
+                ASSERT(anchor.is_valid, "Hitboxes must be also having a ground anchor associated with the frame");
 
-				Vec2 hitbox_center = {
-					raw_frame_hitbox.rect.x + (raw_frame_hitbox.rect.w / 2),
-					raw_frame_hitbox.rect.y + (raw_frame_hitbox.rect.h / 2)
-				};
+                Vec2 hitbox_center = {
+                    raw_frame_hitbox.rect.x + (raw_frame_hitbox.rect.w / 2),
+                    raw_frame_hitbox.rect.y + (raw_frame_hitbox.rect.h / 2)
+                };
 
-				Vec2 hitbox_offset = w_vec_sub(hitbox_center, anchor.ground_anchor);
-				hitbox_offset.y *= -1;
+                Vec2 hitbox_offset = w_vec_sub(hitbox_center, anchor.ground_anchor);
+                hitbox_offset.y *= -1;
 
-        		char hitbox_init[256] = {};
-				snprintf(hitbox_init, 256, "\t[%s] = {\n\t\t%.0f, %.0f, %.0f, %.0f\n\t},\n", 
-		 		anim_ext->sprite_labels[j], hitbox_offset.x, hitbox_offset.y, raw_frame_hitbox.rect.w, raw_frame_hitbox.rect.h);
-				fwrite(hitbox_init, w_str_len(hitbox_init), sizeof(char), file);
-			}
-		}
+                char hitbox_init[256] = {};
+                snprintf(hitbox_init, 256, "\t[%s] = {\n\t\t%.0f, %.0f, %.0f, %.0f\n\t},\n",
+                    anim_ext->sprite_labels[j], hitbox_offset.x, hitbox_offset.y, raw_frame_hitbox.rect.w, raw_frame_hitbox.rect.h);
+                fwrite(hitbox_init, w_str_len(hitbox_init), sizeof(char), file);
+            }
+        }
     }
 
     const char* hitbox_table_close = "};\n\n";
     fwrite(hitbox_table_close, w_str_len(hitbox_table_close), sizeof(char), file);
 
-	//~~~~~~~~~~~~~~~~~~~ Write Animation Table ~~~~~~~~~~~~~~~~~~~~~//
+    //~~~~~~~~~~~~~~~~~~~ Write Animation Table ~~~~~~~~~~~~~~~~~~~~~//
 
     const char* anim_table_definition = "Animation animation_table[ANIM_COUNT] = {\n";
     fwrite(anim_table_definition, w_str_len(anim_table_definition), sizeof(char), file);
@@ -635,7 +635,7 @@ int main(int argc, char* argv[]) {
         snprintf(anim_index, 128, "\t[%s] = {\n", anim_ext->animation_label);
         fwrite(anim_index, w_str_len(anim_index), sizeof(char), file);
 
-        char frames_init[256] = {};
+        char frames_init[2056] = {};
         w_str_copy(frames_init, "\t\t.frames = {\n");
         for (int j = 0; j < anim_ext->frame_count; j++) {
             char frame_label[64] = {};

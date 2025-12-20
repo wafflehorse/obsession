@@ -5,28 +5,28 @@
 
 Sprite sprite_table[SPRITE_COUNT] = {
 	[SPRITE_BOAR_MEAT_RAW] = {
-		330, 109, 8, 8, false, { 0.00, 0.00 }
+		345, 119, 8, 8, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GUN_GREEN] = {
-		101, 121, 12, 3, false, { 0.00, 0.00 }
+		313, 129, 12, 3, false, { 0.00, 0.00 }
 	},
 	[SPRITE_BLOCK_1] = {
 		744, 32, 23, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_BLOCK_2] = {
-		574, 33, 23, 21, false, { 0.00, 0.00 }
+		769, 32, 23, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_BLOCK_3] = {
 		794, 32, 23, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_BLOCK_4] = {
-		769, 32, 23, 21, false, { 0.00, 0.00 }
-	},
-	[SPRITE_BLOCK_5] = {
 		819, 32, 23, 21, false, { 0.00, 0.00 }
 	},
-	[SPRITE_BLOCK_6] = {
+	[SPRITE_BLOCK_5] = {
 		844, 32, 23, 21, false, { 0.00, 0.00 }
+	},
+	[SPRITE_BLOCK_6] = {
+		574, 33, 23, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_0] = {
 		952, 53, 18, 18, true, { 13.00, 15.00 }
@@ -35,25 +35,25 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		207, 37, 22, 19, true, { 16.00, 16.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_10] = {
-		26, 110, 23, 6, true, { 24.00, 2.00 }
+		979, 121, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_11] = {
-		51, 110, 23, 6, true, { 24.00, 2.00 }
+		916, 122, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_12] = {
-		76, 110, 23, 6, true, { 24.00, 2.00 }
+		941, 122, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_13] = {
-		120, 110, 23, 6, true, { 24.00, 2.00 }
+		151, 123, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_14] = {
-		1, 118, 23, 6, true, { 24.00, 2.00 }
+		355, 123, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_15] = {
-		26, 118, 23, 6, true, { 24.00, 2.00 }
+		380, 123, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_16] = {
-		120, 118, 23, 6, true, { 24.00, 2.00 }
+		405, 123, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_2] = {
 		455, 57, 27, 16, true, { 21.00, 12.00 }
@@ -71,346 +71,346 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		366, 76, 32, 14, true, { 24.00, 10.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_7] = {
-		1, 110, 23, 6, true, { 24.00, 2.00 }
+		430, 123, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_8] = {
-		76, 118, 23, 6, true, { 24.00, 2.00 }
+		455, 123, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_2_DEATH_9] = {
-		51, 118, 23, 6, true, { 24.00, 2.00 }
+		480, 123, 23, 6, true, { 24.00, 2.00 }
 	},
 	[SPRITE_BOAR_IDLE_0] = {
-		239, 59, 20, 16, true, { 15.00, 12.00 }
+		484, 57, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_1] = {
-		217, 59, 20, 16, true, { 15.00, 12.00 }
+		506, 57, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_10] = {
-		131, 59, 20, 16, true, { 15.00, 12.00 }
+		528, 57, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_11] = {
-		109, 59, 20, 16, true, { 15.00, 12.00 }
+		550, 57, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_12] = {
 		941, 73, 19, 16, true, { 14.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_13] = {
-		630, 75, 19, 15, true, { 14.00, 11.00 }
+		546, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_14] = {
-		651, 75, 19, 15, true, { 14.00, 11.00 }
+		567, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_15] = {
-		672, 75, 19, 15, true, { 14.00, 11.00 }
+		588, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_16] = {
-		693, 75, 19, 15, true, { 14.00, 11.00 }
+		609, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_17] = {
-		714, 75, 19, 15, true, { 14.00, 11.00 }
+		630, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_18] = {
-		735, 75, 19, 15, true, { 14.00, 11.00 }
+		651, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_IDLE_19] = {
-		284, 58, 20, 16, true, { 15.00, 12.00 }
-	},
-	[SPRITE_BOAR_IDLE_2] = {
-		262, 58, 20, 16, true, { 15.00, 12.00 }
-	},
-	[SPRITE_BOAR_IDLE_3] = {
-		195, 58, 20, 16, true, { 15.00, 12.00 }
-	},
-	[SPRITE_BOAR_IDLE_4] = {
 		173, 58, 20, 16, true, { 15.00, 12.00 }
 	},
+	[SPRITE_BOAR_IDLE_2] = {
+		195, 58, 20, 16, true, { 15.00, 12.00 }
+	},
+	[SPRITE_BOAR_IDLE_3] = {
+		262, 58, 20, 16, true, { 15.00, 12.00 }
+	},
+	[SPRITE_BOAR_IDLE_4] = {
+		284, 58, 20, 16, true, { 15.00, 12.00 }
+	},
 	[SPRITE_BOAR_IDLE_5] = {
-		550, 57, 20, 16, true, { 15.00, 12.00 }
+		306, 58, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_6] = {
-		528, 57, 20, 16, true, { 15.00, 12.00 }
+		328, 58, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_7] = {
-		506, 57, 20, 16, true, { 15.00, 12.00 }
+		350, 58, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_8] = {
-		484, 57, 20, 16, true, { 15.00, 12.00 }
+		372, 58, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_IDLE_9] = {
-		328, 58, 20, 16, true, { 15.00, 12.00 }
+		109, 59, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_SLEEP_0] = {
 		943, 107, 19, 13, true, { 14.00, 9.00 }
 	},
 	[SPRITE_BOAR_SLEEP_1] = {
-		589, 108, 19, 13, true, { 14.00, 9.00 }
+		358, 108, 19, 13, true, { 14.00, 9.00 }
 	},
 	[SPRITE_BOAR_SLEEP_10] = {
-		814, 91, 19, 14, true, { 14.00, 10.00 }
+		995, 90, 19, 14, true, { 14.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_11] = {
-		450, 92, 19, 14, true, { 14.00, 10.00 }
+		793, 91, 19, 14, true, { 14.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_12] = {
-		756, 75, 19, 15, true, { 14.00, 11.00 }
+		672, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_13] = {
-		171, 76, 19, 15, true, { 14.00, 11.00 }
+		693, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_14] = {
-		192, 76, 19, 15, true, { 14.00, 11.00 }
+		714, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_15] = {
-		261, 76, 19, 15, true, { 14.00, 11.00 }
+		735, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_16] = {
-		282, 76, 19, 15, true, { 14.00, 11.00 }
+		756, 75, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_17] = {
-		303, 76, 19, 15, true, { 14.00, 11.00 }
+		171, 76, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_18] = {
-		324, 76, 19, 15, true, { 14.00, 11.00 }
+		192, 76, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_19] = {
-		345, 76, 19, 15, true, { 14.00, 11.00 }
+		261, 76, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_2] = {
-		568, 108, 19, 13, true, { 14.00, 9.00 }
+		379, 108, 19, 13, true, { 14.00, 9.00 }
 	},
 	[SPRITE_BOAR_SLEEP_20] = {
-		546, 75, 19, 15, true, { 14.00, 11.00 }
+		282, 76, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_21] = {
-		567, 75, 19, 15, true, { 14.00, 11.00 }
+		303, 76, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_SLEEP_22] = {
-		429, 92, 19, 14, true, { 14.00, 10.00 }
+		814, 91, 19, 14, true, { 14.00, 10.00 }
 	},
 	[SPRITE_BOAR_SLEEP_23] = {
-		408, 92, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_24] = {
-		387, 92, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_25] = {
-		366, 92, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_26] = {
-		961, 91, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_27] = {
-		940, 91, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_28] = {
-		547, 108, 19, 13, true, { 14.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_29] = {
-		526, 108, 19, 13, true, { 14.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_3] = {
-		505, 108, 19, 13, true, { 14.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_4] = {
-		484, 108, 19, 13, true, { 14.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_5] = {
-		463, 108, 19, 13, true, { 14.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_6] = {
-		442, 108, 19, 13, true, { 14.00, 9.00 }
-	},
-	[SPRITE_BOAR_SLEEP_7] = {
-		877, 91, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_8] = {
-		856, 91, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_SLEEP_9] = {
-		898, 91, 19, 14, true, { 14.00, 10.00 }
-	},
-	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_0] = {
-		350, 58, 20, 16, true, { 15.00, 12.00 }
-	},
-	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_1] = {
-		372, 58, 20, 16, true, { 15.00, 12.00 }
-	},
-	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_2] = {
-		609, 75, 19, 15, true, { 14.00, 11.00 }
-	},
-	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_3] = {
 		835, 91, 19, 14, true, { 14.00, 10.00 }
 	},
-	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_4] = {
-		421, 108, 19, 13, true, { 14.00, 9.00 }
+	[SPRITE_BOAR_SLEEP_24] = {
+		856, 91, 19, 14, true, { 14.00, 10.00 }
 	},
-	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_0] = {
+	[SPRITE_BOAR_SLEEP_25] = {
+		877, 91, 19, 14, true, { 14.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_26] = {
+		898, 91, 19, 14, true, { 14.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_27] = {
+		919, 91, 19, 14, true, { 14.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_28] = {
 		400, 108, 19, 13, true, { 14.00, 9.00 }
 	},
+	[SPRITE_BOAR_SLEEP_29] = {
+		421, 108, 19, 13, true, { 14.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_3] = {
+		442, 108, 19, 13, true, { 14.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_4] = {
+		463, 108, 19, 13, true, { 14.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_5] = {
+		484, 108, 19, 13, true, { 14.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_6] = {
+		505, 108, 19, 13, true, { 14.00, 9.00 }
+	},
+	[SPRITE_BOAR_SLEEP_7] = {
+		940, 91, 19, 14, true, { 14.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_8] = {
+		961, 91, 19, 14, true, { 14.00, 10.00 }
+	},
+	[SPRITE_BOAR_SLEEP_9] = {
+		366, 92, 19, 14, true, { 14.00, 10.00 }
+	},
+	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_0] = {
+		131, 59, 20, 16, true, { 15.00, 12.00 }
+	},
+	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_1] = {
+		217, 59, 20, 16, true, { 15.00, 12.00 }
+	},
+	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_2] = {
+		324, 76, 19, 15, true, { 14.00, 11.00 }
+	},
+	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_3] = {
+		387, 92, 19, 14, true, { 14.00, 10.00 }
+	},
+	[SPRITE_BOAR_TRANSITION_IDLE_TO_SLEEP_4] = {
+		526, 108, 19, 13, true, { 14.00, 9.00 }
+	},
+	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_0] = {
+		547, 108, 19, 13, true, { 14.00, 9.00 }
+	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_1] = {
-		471, 92, 19, 14, true, { 14.00, 10.00 }
+		408, 92, 19, 14, true, { 14.00, 10.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_2] = {
-		588, 75, 19, 15, true, { 14.00, 11.00 }
+		345, 76, 19, 15, true, { 14.00, 11.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_3] = {
-		17, 60, 20, 16, true, { 15.00, 12.00 }
+		239, 59, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_TRANSITION_SLEEP_TO_WALK_4] = {
-		39, 60, 20, 16, true, { 15.00, 12.00 }
+		17, 60, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_WALK_0] = {
-		61, 60, 20, 16, true, { 15.00, 12.00 }
+		39, 60, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_WALK_1] = {
-		502, 75, 20, 15, true, { 15.00, 11.00 }
+		480, 75, 20, 15, true, { 15.00, 11.00 }
 	},
 	[SPRITE_BOAR_WALK_2] = {
-		480, 75, 20, 15, true, { 15.00, 11.00 }
+		502, 75, 20, 15, true, { 15.00, 11.00 }
 	},
 	[SPRITE_BOAR_WALK_3] = {
 		524, 75, 20, 15, true, { 15.00, 11.00 }
 	},
 	[SPRITE_BOAR_WALK_4] = {
-		83, 60, 20, 16, true, { 15.00, 12.00 }
+		61, 60, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_WALK_5] = {
-		897, 73, 20, 16, true, { 15.00, 12.00 }
+		83, 60, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_WALK_6] = {
-		919, 73, 20, 16, true, { 15.00, 12.00 }
+		897, 73, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_BOAR_WALK_7] = {
-		306, 58, 20, 16, true, { 15.00, 12.00 }
+		919, 73, 20, 16, true, { 15.00, 12.00 }
 	},
 	[SPRITE_CABLE_1] = {
 		155, 109, 30, 12, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_BRONZE_0] = {
-		657, 92, 15, 14, false, { 0.00, 0.00 }
-	},
-	[SPRITE_CHESTS_BRONZE_1] = {
 		154, 78, 15, 14, false, { 0.00, 0.00 }
 	},
+	[SPRITE_CHESTS_BRONZE_1] = {
+		589, 92, 15, 14, false, { 0.00, 0.00 }
+	},
 	[SPRITE_CHESTS_BRONZE_10] = {
-		870, 74, 23, 15, false, { 0.00, 0.00 }
+		995, 73, 23, 15, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_BRONZE_11] = {
-		105, 77, 25, 14, false, { 0.00, 0.00 }
+		400, 76, 25, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_BRONZE_12] = {
-		995, 73, 23, 15, false, { 0.00, 0.00 }
+		795, 74, 23, 15, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_BRONZE_13] = {
 		85, 78, 18, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_BRONZE_14] = {
-		122, 94, 15, 14, false, { 0.00, 0.00 }
-	},
-	[SPRITE_CHESTS_BRONZE_15] = {
-		919, 91, 19, 14, false, { 0.00, 0.00 }
-	},
-	[SPRITE_CHESTS_BRONZE_16] = {
-		69, 94, 15, 14, false, { 0.00, 0.00 }
-	},
-	[SPRITE_CHESTS_BRONZE_17] = {
-		132, 78, 20, 14, false, { 0.00, 0.00 }
-	},
-	[SPRITE_CHESTS_BRONZE_18] = {
-		35, 94, 15, 14, false, { 0.00, 0.00 }
-	},
-	[SPRITE_CHESTS_BRONZE_2] = {
-		18, 94, 15, 14, false, { 0.00, 0.00 }
-	},
-	[SPRITE_CHESTS_BRONZE_3] = {
 		606, 92, 15, 14, false, { 0.00, 0.00 }
 	},
-	[SPRITE_CHESTS_BRONZE_4] = {
+	[SPRITE_CHESTS_BRONZE_15] = {
+		429, 92, 19, 14, false, { 0.00, 0.00 }
+	},
+	[SPRITE_CHESTS_BRONZE_16] = {
+		623, 92, 15, 14, false, { 0.00, 0.00 }
+	},
+	[SPRITE_CHESTS_BRONZE_17] = {
+		41, 78, 20, 14, false, { 0.00, 0.00 }
+	},
+	[SPRITE_CHESTS_BRONZE_18] = {
 		640, 92, 15, 14, false, { 0.00, 0.00 }
 	},
-	[SPRITE_CHESTS_BRONZE_5] = {
+	[SPRITE_CHESTS_BRONZE_2] = {
+		657, 92, 15, 14, false, { 0.00, 0.00 }
+	},
+	[SPRITE_CHESTS_BRONZE_3] = {
+		674, 92, 15, 14, false, { 0.00, 0.00 }
+	},
+	[SPRITE_CHESTS_BRONZE_4] = {
 		691, 92, 15, 14, false, { 0.00, 0.00 }
 	},
-	[SPRITE_CHESTS_BRONZE_6] = {
+	[SPRITE_CHESTS_BRONZE_5] = {
 		708, 92, 15, 14, false, { 0.00, 0.00 }
 	},
+	[SPRITE_CHESTS_BRONZE_6] = {
+		725, 92, 15, 14, false, { 0.00, 0.00 }
+	},
 	[SPRITE_CHESTS_BRONZE_7] = {
-		551, 92, 17, 14, false, { 0.00, 0.00 }
+		532, 92, 17, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_BRONZE_8] = {
-		379, 108, 19, 13, false, { 0.00, 0.00 }
+		568, 108, 19, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_BRONZE_9] = {
 		213, 77, 22, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_0] = {
-		86, 94, 15, 14, false, { 0.00, 0.00 }
+		742, 92, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_1] = {
-		341, 93, 15, 14, false, { 0.00, 0.00 }
+		759, 92, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_10] = {
-		845, 74, 23, 15, false, { 0.00, 0.00 }
+		820, 74, 23, 15, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_11] = {
-		400, 76, 25, 14, false, { 0.00, 0.00 }
+		427, 76, 25, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_12] = {
-		795, 74, 23, 15, false, { 0.00, 0.00 }
+		845, 74, 23, 15, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_13] = {
 		492, 92, 18, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_14] = {
-		290, 93, 15, 14, false, { 0.00, 0.00 }
+		776, 92, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_15] = {
-		995, 90, 19, 14, false, { 0.00, 0.00 }
+		450, 92, 19, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_16] = {
-		188, 93, 15, 14, false, { 0.00, 0.00 }
+		105, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_17] = {
-		41, 78, 20, 14, false, { 0.00, 0.00 }
+		63, 78, 20, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_18] = {
-		52, 94, 15, 14, false, { 0.00, 0.00 }
+		171, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_2] = {
-		589, 92, 15, 14, false, { 0.00, 0.00 }
+		188, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_3] = {
-		623, 92, 15, 14, false, { 0.00, 0.00 }
+		205, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_4] = {
-		674, 92, 15, 14, false, { 0.00, 0.00 }
+		222, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_5] = {
-		324, 93, 15, 14, false, { 0.00, 0.00 }
+		239, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_6] = {
-		307, 93, 15, 14, false, { 0.00, 0.00 }
+		256, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_7] = {
-		532, 92, 17, 14, false, { 0.00, 0.00 }
+		551, 92, 17, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_8] = {
-		610, 108, 19, 13, false, { 0.00, 0.00 }
+		589, 108, 19, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_GOLD_9] = {
 		237, 77, 22, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_0] = {
-		171, 93, 15, 14, false, { 0.00, 0.00 }
+		273, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_1] = {
-		759, 92, 15, 14, false, { 0.00, 0.00 }
+		290, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_10] = {
-		820, 74, 23, 15, false, { 0.00, 0.00 }
+		870, 74, 23, 15, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_11] = {
-		427, 76, 25, 14, false, { 0.00, 0.00 }
+		105, 77, 25, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_12] = {
 		455, 75, 23, 15, false, { 0.00, 0.00 }
@@ -419,49 +419,49 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		512, 92, 18, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_14] = {
-		105, 93, 15, 14, false, { 0.00, 0.00 }
+		307, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_15] = {
-		793, 91, 19, 14, false, { 0.00, 0.00 }
+		471, 92, 19, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_16] = {
-		239, 93, 15, 14, false, { 0.00, 0.00 }
+		324, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_17] = {
-		63, 78, 20, 14, false, { 0.00, 0.00 }
+		132, 78, 20, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_18] = {
-		256, 93, 15, 14, false, { 0.00, 0.00 }
+		341, 93, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_2] = {
 		1, 94, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_3] = {
-		273, 93, 15, 14, false, { 0.00, 0.00 }
+		18, 94, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_4] = {
-		776, 92, 15, 14, false, { 0.00, 0.00 }
+		35, 94, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_5] = {
-		742, 92, 15, 14, false, { 0.00, 0.00 }
+		52, 94, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_6] = {
-		725, 92, 15, 14, false, { 0.00, 0.00 }
+		69, 94, 15, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_7] = {
 		570, 92, 17, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_8] = {
-		358, 108, 19, 13, false, { 0.00, 0.00 }
+		610, 108, 19, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_CHESTS_IRON_9] = {
 		17, 78, 22, 14, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GREEN_BULLET_1] = {
-		340, 117, 6, 6, false, { 0.00, 0.00 }
+		237, 121, 6, 6, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GREEN_BULLET_STRETCHED_1] = {
-		340, 109, 9, 6, false, { 0.00, 0.00 }
+		262, 120, 9, 6, false, { 0.00, 0.00 }
 	},
 	[SPRITE_GROUND_1] = {
 		153, 60, 16, 16, false, { 0.00, 0.00 }
@@ -473,28 +473,28 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		883, 1, 15, 28, true, { 7.00, 24.00 }
 	},
 	[SPRITE_HERO_DEAD_2] = {
-		774, 1, 17, 29, true, { 8.00, 25.00 }
+		755, 1, 17, 29, true, { 8.00, 25.00 }
 	},
 	[SPRITE_HERO_DEAD_3] = {
 		630, 1, 19, 30, true, { 9.00, 26.00 }
 	},
 	[SPRITE_HERO_DEAD_4] = {
-		460, 1, 21, 31, true, { 10.00, 26.00 }
+		437, 1, 21, 31, true, { 10.00, 26.00 }
 	},
 	[SPRITE_HERO_DEAD_5] = {
-		437, 1, 21, 31, true, { 9.00, 26.00 }
+		460, 1, 21, 31, true, { 9.00, 26.00 }
 	},
 	[SPRITE_HERO_DEAD_6] = {
 		688, 1, 22, 29, true, { 10.00, 25.00 }
 	},
 	[SPRITE_HERO_DEAD_7] = {
-		252, 120, 7, 4, true, { 4.00, 25.00 }
+		176, 123, 7, 4, true, { 4.00, 25.00 }
 	},
 	[SPRITE_HERO_DEAD_8] = {
-		238, 121, 3, 2, true, { 0.00, 24.00 }
+		237, 129, 3, 2, true, { 0.00, 24.00 }
 	},
 	[SPRITE_HERO_DEAD_9] = {
-		243, 121, 1, 1, true, { 0.00, 24.00 }
+		1022, 128, 1, 1, true, { 0.00, 24.00 }
 	},
 	[SPRITE_HERO_HIT_0] = {
 		445, 34, 14, 21, true, { 7.00, 18.00 }
@@ -512,64 +512,64 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		915, 1, 13, 24, true, { 6.00, 21.00 }
 	},
 	[SPRITE_HERO_IDLE_3] = {
-		945, 1, 13, 24, true, { 6.00, 21.00 }
+		930, 1, 13, 24, true, { 6.00, 21.00 }
 	},
 	[SPRITE_HERO_IDLE_4] = {
-		883, 31, 13, 22, true, { 6.00, 19.00 }
+		900, 29, 13, 22, true, { 6.00, 19.00 }
 	},
 	[SPRITE_HERO_MOVE_DOWN_0] = {
-		509, 34, 14, 21, true, { 7.00, 18.00 }
+		477, 34, 14, 21, true, { 7.00, 18.00 }
 	},
 	[SPRITE_HERO_MOVE_DOWN_1] = {
-		716, 32, 12, 22, true, { 6.00, 19.00 }
+		688, 32, 12, 22, true, { 6.00, 19.00 }
 	},
 	[SPRITE_HERO_MOVE_DOWN_2] = {
-		943, 27, 12, 24, true, { 6.00, 21.00 }
+		960, 1, 12, 24, true, { 6.00, 21.00 }
 	},
 	[SPRITE_HERO_MOVE_DOWN_3] = {
-		929, 27, 12, 24, true, { 6.00, 21.00 }
+		974, 1, 12, 24, true, { 6.00, 21.00 }
 	},
 	[SPRITE_HERO_MOVE_DOWN_4] = {
-		557, 34, 14, 21, true, { 7.00, 18.00 }
-	},
-	[SPRITE_HERO_MOVE_DOWN_5] = {
-		730, 32, 12, 22, true, { 6.00, 19.00 }
-	},
-	[SPRITE_HERO_MOVE_DOWN_6] = {
-		1002, 1, 12, 24, true, { 6.00, 21.00 }
-	},
-	[SPRITE_HERO_MOVE_DOWN_7] = {
-		988, 1, 12, 24, true, { 6.00, 21.00 }
-	},
-	[SPRITE_HERO_MOVE_LEFT_0] = {
 		493, 34, 14, 21, true, { 7.00, 18.00 }
 	},
+	[SPRITE_HERO_MOVE_DOWN_5] = {
+		702, 32, 12, 22, true, { 6.00, 19.00 }
+	},
+	[SPRITE_HERO_MOVE_DOWN_6] = {
+		988, 1, 12, 24, true, { 6.00, 21.00 }
+	},
+	[SPRITE_HERO_MOVE_DOWN_7] = {
+		1002, 1, 12, 24, true, { 6.00, 21.00 }
+	},
+	[SPRITE_HERO_MOVE_LEFT_0] = {
+		509, 34, 14, 21, true, { 7.00, 18.00 }
+	},
 	[SPRITE_HERO_MOVE_LEFT_1] = {
-		900, 29, 13, 22, true, { 6.00, 19.00 }
+		883, 31, 13, 22, true, { 6.00, 19.00 }
 	},
 	[SPRITE_HERO_MOVE_LEFT_2] = {
 		915, 27, 12, 24, true, { 5.00, 21.00 }
 	},
 	[SPRITE_HERO_MOVE_LEFT_3] = {
-		930, 1, 13, 24, true, { 6.00, 21.00 }
+		945, 1, 13, 24, true, { 6.00, 21.00 }
 	},
 	[SPRITE_HERO_MOVE_UP_0] = {
-		541, 34, 14, 21, true, { 7.00, 18.00 }
+		525, 34, 14, 21, true, { 7.00, 18.00 }
 	},
 	[SPRITE_HERO_MOVE_UP_1] = {
-		702, 32, 12, 22, true, { 6.00, 19.00 }
+		716, 32, 12, 22, true, { 6.00, 19.00 }
 	},
 	[SPRITE_HERO_MOVE_UP_2] = {
-		974, 1, 12, 24, true, { 6.00, 21.00 }
+		929, 27, 12, 24, true, { 6.00, 21.00 }
 	},
 	[SPRITE_HERO_MOVE_UP_3] = {
-		960, 1, 12, 24, true, { 6.00, 21.00 }
+		943, 27, 12, 24, true, { 6.00, 21.00 }
 	},
 	[SPRITE_HERO_MOVE_UP_4] = {
-		477, 34, 14, 21, true, { 7.00, 18.00 }
+		541, 34, 14, 21, true, { 7.00, 18.00 }
 	},
 	[SPRITE_HERO_MOVE_UP_5] = {
-		688, 32, 12, 22, true, { 6.00, 19.00 }
+		730, 32, 12, 22, true, { 6.00, 19.00 }
 	},
 	[SPRITE_HERO_MOVE_UP_6] = {
 		957, 27, 12, 24, true, { 6.00, 21.00 }
@@ -581,76 +581,76 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		781, 108, 8, 9, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ITEM_CORN] = {
-		261, 120, 5, 4, false, { 0.00, 0.00 }
+		245, 128, 5, 4, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_COAL_0] = {
-		158, 37, 13, 21, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COAL_1] = {
-		631, 108, 13, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COAL_2] = {
-		428, 34, 15, 21, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COAL_3] = {
-		590, 56, 15, 17, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COAL_4] = {
-		607, 56, 15, 17, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COAL_5] = {
-		247, 36, 13, 21, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COAL_6] = {
-		646, 108, 13, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COPPER_0] = {
 		270, 35, 13, 21, false, { 0.00, 0.00 }
 	},
-	[SPRITE_ORE_COPPER_1] = {
-		661, 108, 13, 13, false, { 0.00, 0.00 }
+	[SPRITE_ORE_COAL_1] = {
+		155, 94, 13, 13, false, { 0.00, 0.00 }
 	},
-	[SPRITE_ORE_COPPER_2] = {
-		411, 34, 15, 21, false, { 0.00, 0.00 }
+	[SPRITE_ORE_COAL_2] = {
+		599, 33, 15, 21, false, { 0.00, 0.00 }
 	},
-	[SPRITE_ORE_COPPER_3] = {
-		624, 56, 15, 17, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COPPER_4] = {
-		641, 56, 15, 17, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COPPER_5] = {
-		232, 36, 13, 21, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_COPPER_6] = {
-		676, 108, 13, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_DIAMOND_0] = {
-		390, 35, 13, 21, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_DIAMOND_1] = {
-		691, 108, 13, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_DIAMOND_2] = {
-		667, 33, 15, 21, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_DIAMOND_3] = {
-		658, 56, 15, 17, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ORE_DIAMOND_4] = {
+	[SPRITE_ORE_COAL_3] = {
 		573, 56, 15, 17, false, { 0.00, 0.00 }
 	},
+	[SPRITE_ORE_COAL_4] = {
+		590, 56, 15, 17, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COAL_5] = {
+		285, 35, 13, 21, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COAL_6] = {
+		1010, 106, 13, 13, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COPPER_0] = {
+		300, 35, 13, 21, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COPPER_1] = {
+		964, 107, 13, 13, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COPPER_2] = {
+		616, 33, 15, 21, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COPPER_3] = {
+		607, 56, 15, 17, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COPPER_4] = {
+		624, 56, 15, 17, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COPPER_5] = {
+		315, 35, 13, 21, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_COPPER_6] = {
+		631, 108, 13, 13, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_DIAMOND_0] = {
+		330, 35, 13, 21, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_DIAMOND_1] = {
+		646, 108, 13, 13, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_DIAMOND_2] = {
+		633, 33, 15, 21, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_DIAMOND_3] = {
+		641, 56, 15, 17, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ORE_DIAMOND_4] = {
+		658, 56, 15, 17, false, { 0.00, 0.00 }
+	},
 	[SPRITE_ORE_DIAMOND_5] = {
-		375, 35, 13, 21, false, { 0.00, 0.00 }
+		345, 35, 13, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_DIAMOND_6] = {
-		721, 108, 13, 13, false, { 0.00, 0.00 }
+		661, 108, 13, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_GOLD_0] = {
 		360, 35, 13, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_GOLD_1] = {
-		751, 108, 13, 13, false, { 0.00, 0.00 }
+		676, 108, 13, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_GOLD_2] = {
 		650, 33, 15, 21, false, { 0.00, 0.00 }
@@ -662,19 +662,19 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		692, 56, 15, 17, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_GOLD_5] = {
-		345, 35, 13, 21, false, { 0.00, 0.00 }
+		375, 35, 13, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_GOLD_6] = {
-		155, 94, 13, 13, false, { 0.00, 0.00 }
+		691, 108, 13, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_IRON_0] = {
-		330, 35, 13, 21, false, { 0.00, 0.00 }
+		390, 35, 13, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_IRON_1] = {
 		706, 108, 13, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_IRON_2] = {
-		599, 33, 15, 21, false, { 0.00, 0.00 }
+		667, 33, 15, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_IRON_3] = {
 		709, 56, 15, 17, false, { 0.00, 0.00 }
@@ -683,19 +683,19 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		726, 56, 15, 17, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_IRON_5] = {
-		315, 35, 13, 21, false, { 0.00, 0.00 }
+		232, 36, 13, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_IRON_6] = {
-		1010, 106, 13, 13, false, { 0.00, 0.00 }
+		721, 108, 13, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_QUARTZ_0] = {
-		300, 35, 13, 21, false, { 0.00, 0.00 }
+		247, 36, 13, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_QUARTZ_1] = {
-		964, 107, 13, 13, false, { 0.00, 0.00 }
+		736, 108, 13, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_QUARTZ_2] = {
-		633, 33, 15, 21, false, { 0.00, 0.00 }
+		411, 34, 15, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_QUARTZ_3] = {
 		405, 57, 15, 17, false, { 0.00, 0.00 }
@@ -704,10 +704,10 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		422, 57, 15, 17, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_QUARTZ_5] = {
-		285, 35, 13, 21, false, { 0.00, 0.00 }
+		158, 37, 13, 21, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ORE_QUARTZ_6] = {
-		736, 108, 13, 13, false, { 0.00, 0.00 }
+		751, 108, 13, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_1] = {
 		252, 109, 14, 9, false, { 0.00, 0.00 }
@@ -719,37 +719,37 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		766, 108, 13, 12, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_12] = {
-		297, 109, 10, 8, false, { 0.00, 0.00 }
+		333, 119, 10, 8, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_13] = {
-		274, 120, 3, 3, false, { 0.00, 0.00 }
+		1017, 128, 3, 3, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_14] = {
-		145, 118, 6, 5, false, { 0.00, 0.00 }
+		1017, 121, 6, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_2] = {
-		115, 121, 3, 3, false, { 0.00, 0.00 }
+		176, 129, 3, 3, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_3] = {
-		279, 120, 2, 3, false, { 0.00, 0.00 }
+		181, 129, 2, 3, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_4] = {
-		283, 109, 12, 8, false, { 0.00, 0.00 }
+		333, 109, 12, 8, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_5] = {
-		309, 109, 9, 8, false, { 0.00, 0.00 }
+		347, 109, 9, 8, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_6] = {
-		268, 120, 4, 4, false, { 0.00, 0.00 }
+		760, 123, 4, 4, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_7] = {
-		320, 109, 8, 8, false, { 0.00, 0.00 }
+		252, 120, 8, 8, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_8] = {
 		268, 109, 13, 9, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_9] = {
-		334, 119, 3, 5, false, { 0.00, 0.00 }
+		245, 121, 3, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_CORN_0] = {
 		139, 94, 14, 14, false, { 0.00, 0.00 }
@@ -761,43 +761,76 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		1, 61, 14, 16, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLANT_CORN_3] = {
-		1001, 52, 14, 19, false, { 0.00, 0.00 }
+		77, 39, 14, 19, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_0] = {
-		766, 122, 49, 5, false, { 0.00, 0.00 }
+		505, 123, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_1] = {
-		817, 122, 49, 5, false, { 0.00, 0.00 }
+		556, 123, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_10] = {
-		283, 119, 49, 5, false, { 0.00, 0.00 }
+		607, 123, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_2] = {
-		348, 123, 49, 5, false, { 0.00, 0.00 }
+		658, 123, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_3] = {
-		187, 121, 49, 5, false, { 0.00, 0.00 }
+		709, 123, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_4] = {
-		399, 123, 49, 5, false, { 0.00, 0.00 }
+		262, 129, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_5] = {
-		450, 123, 49, 5, false, { 0.00, 0.00 }
+		966, 129, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_6] = {
-		501, 123, 49, 5, false, { 0.00, 0.00 }
+		1, 130, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_7] = {
-		970, 122, 49, 5, false, { 0.00, 0.00 }
+		505, 130, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_8] = {
-		919, 122, 49, 5, false, { 0.00, 0.00 }
+		556, 130, 49, 5, false, { 0.00, 0.00 }
 	},
 	[SPRITE_PLAYER_HP_UI_9] = {
-		868, 122, 49, 5, false, { 0.00, 0.00 }
+		607, 130, 49, 5, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_0] = {
+		283, 109, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_1] = {
+		1, 110, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_10] = {
+		51, 110, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_2] = {
+		283, 119, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_3] = {
+		1, 120, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_4] = {
+		51, 120, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_5] = {
+		101, 121, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_6] = {
+		187, 121, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_7] = {
+		766, 122, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_8] = {
+		816, 122, 48, 8, false, { 0.00, 0.00 }
+	},
+	[SPRITE_PLAYER_HUNGER_UI_9] = {
+		866, 122, 48, 8, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_IDLE_0] = {
-		811, 1, 16, 29, false, { 0.00, 0.00 }
+		793, 1, 16, 29, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_IDLE_1] = {
 		670, 1, 16, 30, false, { 0.00, 0.00 }
@@ -806,7 +839,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		521, 1, 16, 31, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_IDLE_3] = {
-		375, 1, 16, 32, false, { 0.00, 0.00 }
+		357, 1, 16, 32, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_IDLE_4] = {
 		196, 1, 16, 34, false, { 0.00, 0.00 }
@@ -815,22 +848,22 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		214, 1, 16, 34, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_IDLE_6] = {
-		393, 1, 16, 32, false, { 0.00, 0.00 }
+		375, 1, 16, 32, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_IDLE_7] = {
 		539, 1, 16, 31, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_MOVE_0] = {
-		755, 1, 17, 29, false, { 0.00, 0.00 }
+		774, 1, 17, 29, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_MOVE_1] = {
 		651, 1, 17, 30, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_MOVE_2] = {
-		502, 1, 17, 31, false, { 0.00, 0.00 }
+		483, 1, 17, 31, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_MOVE_3] = {
-		338, 1, 17, 32, false, { 0.00, 0.00 }
+		319, 1, 17, 32, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_MOVE_4] = {
 		158, 1, 17, 34, false, { 0.00, 0.00 }
@@ -839,31 +872,31 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		177, 1, 17, 34, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_MOVE_6] = {
-		319, 1, 17, 32, false, { 0.00, 0.00 }
+		338, 1, 17, 32, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_MOVE_7] = {
-		483, 1, 17, 31, false, { 0.00, 0.00 }
+		502, 1, 17, 31, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_0] = {
-		865, 1, 16, 29, false, { 0.00, 0.00 }
+		811, 1, 16, 29, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_1] = {
 		829, 1, 16, 29, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_10] = {
-		90, 1, 15, 36, false, { 0.00, 0.00 }
-	},
-	[SPRITE_ROBOT_GATHERER_PLANT_11] = {
 		39, 1, 15, 36, false, { 0.00, 0.00 }
 	},
-	[SPRITE_ROBOT_GATHERER_PLANT_12] = {
+	[SPRITE_ROBOT_GATHERER_PLANT_11] = {
 		56, 1, 15, 36, false, { 0.00, 0.00 }
+	},
+	[SPRITE_ROBOT_GATHERER_PLANT_12] = {
+		73, 1, 15, 36, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_13] = {
 		124, 1, 15, 35, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_14] = {
-		357, 1, 16, 32, false, { 0.00, 0.00 }
+		393, 1, 16, 32, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_15] = {
 		299, 1, 18, 32, false, { 0.00, 0.00 }
@@ -893,7 +926,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		735, 1, 18, 29, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_23] = {
-		793, 1, 16, 29, false, { 0.00, 0.00 }
+		865, 1, 16, 29, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_3] = {
 		557, 1, 15, 31, false, { 0.00, 0.00 }
@@ -911,7 +944,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		20, 1, 17, 36, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_8] = {
-		73, 1, 15, 36, false, { 0.00, 0.00 }
+		90, 1, 15, 36, false, { 0.00, 0.00 }
 	},
 	[SPRITE_ROBOT_GATHERER_PLANT_9] = {
 		107, 1, 15, 36, false, { 0.00, 0.00 }
@@ -920,46 +953,46 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		793, 107, 23, 13, false, { 0.00, 0.00 }
 	},
 	[SPRITE_SHORT_BLOCK_2] = {
-		918, 107, 23, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SHORT_BLOCK_3] = {
-		893, 107, 23, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SHORT_BLOCK_4] = {
-		843, 107, 23, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SHORT_BLOCK_5] = {
-		868, 107, 23, 13, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SHORT_BLOCK_6] = {
 		818, 107, 23, 13, false, { 0.00, 0.00 }
 	},
+	[SPRITE_SHORT_BLOCK_3] = {
+		843, 107, 23, 13, false, { 0.00, 0.00 }
+	},
+	[SPRITE_SHORT_BLOCK_4] = {
+		868, 107, 23, 13, false, { 0.00, 0.00 }
+	},
+	[SPRITE_SHORT_BLOCK_5] = {
+		893, 107, 23, 13, false, { 0.00, 0.00 }
+	},
+	[SPRITE_SHORT_BLOCK_6] = {
+		918, 107, 23, 13, false, { 0.00, 0.00 }
+	},
 	[SPRITE_SMALL_BLOCK_1] = {
-		221, 109, 15, 10, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SMALL_BLOCK_2] = {
-		204, 109, 15, 10, false, { 0.00, 0.00 }
-	},
-	[SPRITE_SMALL_BLOCK_3] = {
 		103, 109, 15, 10, false, { 0.00, 0.00 }
 	},
-	[SPRITE_SMALL_BLOCK_4] = {
+	[SPRITE_SMALL_BLOCK_2] = {
 		187, 109, 15, 10, false, { 0.00, 0.00 }
 	},
+	[SPRITE_SMALL_BLOCK_3] = {
+		204, 109, 15, 10, false, { 0.00, 0.00 }
+	},
+	[SPRITE_SMALL_BLOCK_4] = {
+		221, 109, 15, 10, false, { 0.00, 0.00 }
+	},
 	[SPRITE_WARRIOR_ATTACK_0] = {
-		525, 34, 14, 21, true, { 8.00, 18.00 }
+		557, 34, 14, 21, true, { 8.00, 18.00 }
 	},
 	[SPRITE_WARRIOR_ATTACK_1] = {
-		616, 33, 15, 21, true, { 9.00, 18.00 }
+		428, 34, 15, 21, true, { 9.00, 18.00 }
 	},
 	[SPRITE_WARRIOR_ATTACK_2] = {
 		439, 57, 14, 17, true, { 5.00, 14.00 }
 	},
 	[SPRITE_WARRIOR_ATTACK_3] = {
-		205, 93, 15, 14, true, { 5.00, 9.00 }
+		86, 94, 15, 14, true, { 5.00, 9.00 }
 	},
 	[SPRITE_WARRIOR_ATTACK_4] = {
-		222, 93, 15, 14, true, { 5.00, 10.00 }
+		122, 94, 15, 14, true, { 5.00, 10.00 }
 	},
 	[SPRITE_WARRIOR_DEAD_0] = {
 		877, 55, 18, 17, true, { 9.00, 16.00 }
@@ -983,16 +1016,16 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		982, 106, 26, 13, true, { 12.00, 11.00 }
 	},
 	[SPRITE_WARRIOR_DEAD_7] = {
-		145, 110, 7, 6, true, { 3.00, 4.00 }
+		273, 120, 7, 6, true, { 3.00, 4.00 }
 	},
 	[SPRITE_WARRIOR_HIT_0] = {
-		985, 52, 14, 19, true, { 8.00, 16.00 }
+		93, 39, 14, 19, true, { 8.00, 16.00 }
 	},
 	[SPRITE_WARRIOR_HIT_1] = {
 		1, 40, 14, 19, true, { 8.00, 16.00 }
 	},
 	[SPRITE_WARRIOR_IDLE_0] = {
-		778, 55, 15, 18, true, { 9.00, 15.00 }
+		744, 55, 15, 18, true, { 9.00, 15.00 }
 	},
 	[SPRITE_WARRIOR_IDLE_1] = {
 		761, 55, 15, 18, true, { 9.00, 15.00 }
@@ -1004,7 +1037,7 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		60, 39, 15, 19, true, { 9.00, 16.00 }
 	},
 	[SPRITE_WARRIOR_IDLE_4] = {
-		744, 55, 15, 18, true, { 9.00, 15.00 }
+		778, 55, 15, 18, true, { 9.00, 15.00 }
 	},
 	[SPRITE_WARRIOR_MOVE_LEFT_0] = {
 		962, 73, 15, 16, true, { 8.00, 13.00 }
@@ -1013,10 +1046,10 @@ Sprite sprite_table[SPRITE_COUNT] = {
 		979, 73, 14, 16, true, { 8.00, 13.00 }
 	},
 	[SPRITE_WARRIOR_MOVE_LEFT_2] = {
-		93, 39, 14, 19, true, { 8.00, 16.00 }
+		985, 52, 14, 19, true, { 8.00, 16.00 }
 	},
 	[SPRITE_WARRIOR_MOVE_LEFT_3] = {
-		77, 39, 14, 19, true, { 8.00, 16.00 }
+		1001, 52, 14, 19, true, { 8.00, 16.00 }
 	},
 };
 
@@ -1027,6 +1060,28 @@ Rect hitbox_table[SPRITE_COUNT] = {
 };
 
 Animation animation_table[ANIM_COUNT] = {
+	[ANIM_BOAR_2_DEATH] = {
+		.frames = {
+			{ SPRITE_BOAR_2_DEATH_0, 75 },
+			{ SPRITE_BOAR_2_DEATH_1, 75 },
+			{ SPRITE_BOAR_2_DEATH_2, 75 },
+			{ SPRITE_BOAR_2_DEATH_3, 75 },
+			{ SPRITE_BOAR_2_DEATH_4, 75 },
+			{ SPRITE_BOAR_2_DEATH_5, 75 },
+			{ SPRITE_BOAR_2_DEATH_6, 75 },
+			{ SPRITE_BOAR_2_DEATH_7, 75 },
+			{ SPRITE_BOAR_2_DEATH_8, 75 },
+			{ SPRITE_BOAR_2_DEATH_9, 75 },
+			{ SPRITE_BOAR_2_DEATH_10, 75 },
+			{ SPRITE_BOAR_2_DEATH_11, 75 },
+			{ SPRITE_BOAR_2_DEATH_12, 75 },
+			{ SPRITE_BOAR_2_DEATH_13, 75 },
+			{ SPRITE_BOAR_2_DEATH_14, 75 },
+			{ SPRITE_BOAR_2_DEATH_15, 75 },
+			{ SPRITE_BOAR_2_DEATH_16, 75 }
+		},
+		.frame_count = 17
+	},
 	[ANIM_BOAR_IDLE] = {
 		.frames = {
 			{ SPRITE_BOAR_IDLE_0, 75 },
@@ -1120,199 +1175,6 @@ Animation animation_table[ANIM_COUNT] = {
 		},
 		.frame_count = 8
 	},
-	[ANIM_WARRIOR_IDLE] = {
-		.frames = {
-			{ SPRITE_WARRIOR_IDLE_0, 100 },
-			{ SPRITE_WARRIOR_IDLE_1, 100 },
-			{ SPRITE_WARRIOR_IDLE_2, 100 },
-			{ SPRITE_WARRIOR_IDLE_3, 100 },
-			{ SPRITE_WARRIOR_IDLE_4, 100 }
-		},
-		.frame_count = 5
-	},
-	[ANIM_WARRIOR_MOVE_LEFT] = {
-		.frames = {
-			{ SPRITE_WARRIOR_MOVE_LEFT_0, 100 },
-			{ SPRITE_WARRIOR_MOVE_LEFT_1, 100 },
-			{ SPRITE_WARRIOR_MOVE_LEFT_2, 100 },
-			{ SPRITE_WARRIOR_MOVE_LEFT_3, 100 }
-		},
-		.frame_count = 4
-	},
-	[ANIM_WARRIOR_ATTACK] = {
-		.frames = {
-			{ SPRITE_WARRIOR_ATTACK_0, 100 },
-			{ SPRITE_WARRIOR_ATTACK_1, 100 },
-			{ SPRITE_WARRIOR_ATTACK_2, 100 },
-			{ SPRITE_WARRIOR_ATTACK_3, 100 },
-			{ SPRITE_WARRIOR_ATTACK_4, 100 }
-		},
-		.frame_count = 5
-	},
-	[ANIM_WARRIOR_HIT] = {
-		.frames = {
-			{ SPRITE_WARRIOR_HIT_0, 100 },
-			{ SPRITE_WARRIOR_HIT_1, 100 }
-		},
-		.frame_count = 2
-	},
-	[ANIM_WARRIOR_DEAD] = {
-		.frames = {
-			{ SPRITE_WARRIOR_DEAD_0, 100 },
-			{ SPRITE_WARRIOR_DEAD_1, 100 },
-			{ SPRITE_WARRIOR_DEAD_2, 100 },
-			{ SPRITE_WARRIOR_DEAD_3, 100 },
-			{ SPRITE_WARRIOR_DEAD_4, 100 },
-			{ SPRITE_WARRIOR_DEAD_5, 100 },
-			{ SPRITE_WARRIOR_DEAD_6, 100 },
-			{ SPRITE_WARRIOR_DEAD_7, 100 }
-		},
-		.frame_count = 8
-	},
-	[ANIM_HERO_IDLE] = {
-		.frames = {
-			{ SPRITE_HERO_IDLE_0, 100 },
-			{ SPRITE_HERO_IDLE_1, 100 },
-			{ SPRITE_HERO_IDLE_2, 100 },
-			{ SPRITE_HERO_IDLE_3, 100 },
-			{ SPRITE_HERO_IDLE_4, 100 }
-		},
-		.frame_count = 5
-	},
-	[ANIM_HERO_MOVE_LEFT] = {
-		.frames = {
-			{ SPRITE_HERO_MOVE_LEFT_0, 100 },
-			{ SPRITE_HERO_MOVE_LEFT_1, 100 },
-			{ SPRITE_HERO_MOVE_LEFT_2, 100 },
-			{ SPRITE_HERO_MOVE_LEFT_3, 100 }
-		},
-		.frame_count = 4
-	},
-	[ANIM_HERO_MOVE_DOWN] = {
-		.frames = {
-			{ SPRITE_HERO_MOVE_DOWN_0, 100 },
-			{ SPRITE_HERO_MOVE_DOWN_1, 100 },
-			{ SPRITE_HERO_MOVE_DOWN_2, 100 },
-			{ SPRITE_HERO_MOVE_DOWN_3, 100 },
-			{ SPRITE_HERO_MOVE_DOWN_4, 100 },
-			{ SPRITE_HERO_MOVE_DOWN_5, 100 },
-			{ SPRITE_HERO_MOVE_DOWN_6, 100 },
-			{ SPRITE_HERO_MOVE_DOWN_7, 100 }
-		},
-		.frame_count = 8
-	},
-	[ANIM_HERO_MOVE_UP] = {
-		.frames = {
-			{ SPRITE_HERO_MOVE_UP_0, 100 },
-			{ SPRITE_HERO_MOVE_UP_1, 100 },
-			{ SPRITE_HERO_MOVE_UP_2, 100 },
-			{ SPRITE_HERO_MOVE_UP_3, 100 },
-			{ SPRITE_HERO_MOVE_UP_4, 100 },
-			{ SPRITE_HERO_MOVE_UP_5, 100 },
-			{ SPRITE_HERO_MOVE_UP_6, 100 },
-			{ SPRITE_HERO_MOVE_UP_7, 100 }
-		},
-		.frame_count = 8
-	},
-	[ANIM_HERO_HIT] = {
-		.frames = {
-			{ SPRITE_HERO_HIT_0, 100 },
-			{ SPRITE_HERO_HIT_1, 100 }
-		},
-		.frame_count = 2
-	},
-	[ANIM_HERO_DEAD] = {
-		.frames = {
-			{ SPRITE_HERO_DEAD_0, 100 },
-			{ SPRITE_HERO_DEAD_1, 100 },
-			{ SPRITE_HERO_DEAD_2, 100 },
-			{ SPRITE_HERO_DEAD_3, 100 },
-			{ SPRITE_HERO_DEAD_4, 100 },
-			{ SPRITE_HERO_DEAD_5, 100 },
-			{ SPRITE_HERO_DEAD_6, 100 },
-			{ SPRITE_HERO_DEAD_7, 100 },
-			{ SPRITE_HERO_DEAD_8, 100 },
-			{ SPRITE_HERO_DEAD_9, 100 }
-		},
-		.frame_count = 10
-	},
-	[ANIM_BOAR_2_DEATH] = {
-		.frames = {
-			{ SPRITE_BOAR_2_DEATH_0, 75 },
-			{ SPRITE_BOAR_2_DEATH_1, 75 },
-			{ SPRITE_BOAR_2_DEATH_2, 75 },
-			{ SPRITE_BOAR_2_DEATH_3, 75 },
-			{ SPRITE_BOAR_2_DEATH_4, 75 },
-			{ SPRITE_BOAR_2_DEATH_5, 75 },
-			{ SPRITE_BOAR_2_DEATH_6, 75 },
-			{ SPRITE_BOAR_2_DEATH_7, 75 },
-			{ SPRITE_BOAR_2_DEATH_8, 75 },
-			{ SPRITE_BOAR_2_DEATH_9, 75 },
-			{ SPRITE_BOAR_2_DEATH_10, 75 },
-			{ SPRITE_BOAR_2_DEATH_11, 75 },
-			{ SPRITE_BOAR_2_DEATH_12, 75 },
-			{ SPRITE_BOAR_2_DEATH_13, 75 },
-			{ SPRITE_BOAR_2_DEATH_14, 75 },
-			{ SPRITE_BOAR_2_DEATH_15, 75 },
-			{ SPRITE_BOAR_2_DEATH_16, 75 }
-		},
-		.frame_count = 17
-	},
-	[ANIM_ROBOT_GATHERER_IDLE] = {
-		.frames = {
-			{ SPRITE_ROBOT_GATHERER_IDLE_0, 75 },
-			{ SPRITE_ROBOT_GATHERER_IDLE_1, 75 },
-			{ SPRITE_ROBOT_GATHERER_IDLE_2, 75 },
-			{ SPRITE_ROBOT_GATHERER_IDLE_3, 75 },
-			{ SPRITE_ROBOT_GATHERER_IDLE_4, 75 },
-			{ SPRITE_ROBOT_GATHERER_IDLE_5, 75 },
-			{ SPRITE_ROBOT_GATHERER_IDLE_6, 75 },
-			{ SPRITE_ROBOT_GATHERER_IDLE_7, 75 }
-		},
-		.frame_count = 8
-	},
-	[ANIM_ROBOT_GATHERER_MOVE] = {
-		.frames = {
-			{ SPRITE_ROBOT_GATHERER_MOVE_0, 75 },
-			{ SPRITE_ROBOT_GATHERER_MOVE_1, 75 },
-			{ SPRITE_ROBOT_GATHERER_MOVE_2, 75 },
-			{ SPRITE_ROBOT_GATHERER_MOVE_3, 75 },
-			{ SPRITE_ROBOT_GATHERER_MOVE_4, 75 },
-			{ SPRITE_ROBOT_GATHERER_MOVE_5, 75 },
-			{ SPRITE_ROBOT_GATHERER_MOVE_6, 75 },
-			{ SPRITE_ROBOT_GATHERER_MOVE_7, 75 }
-		},
-		.frame_count = 8
-	},
-	[ANIM_ROBOT_GATHERER_PLANT] = {
-		.frames = {
-			{ SPRITE_ROBOT_GATHERER_PLANT_0, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_1, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_2, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_3, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_4, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_5, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_6, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_7, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_8, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_9, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_10, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_11, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_12, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_13, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_14, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_15, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_16, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_17, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_18, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_19, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_20, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_21, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_22, 75 },
-			{ SPRITE_ROBOT_GATHERER_PLANT_23, 75 }
-		},
-		.frame_count = 24
-	},
 	[ANIM_CHESTS_GOLD] = {
 		.frames = {
 			{ SPRITE_CHESTS_GOLD_0, 65 },
@@ -1384,5 +1246,176 @@ Animation animation_table[ANIM_COUNT] = {
 			{ SPRITE_CHESTS_IRON_18, 65 }
 		},
 		.frame_count = 19
+	},
+	[ANIM_HERO_IDLE] = {
+		.frames = {
+			{ SPRITE_HERO_IDLE_0, 100 },
+			{ SPRITE_HERO_IDLE_1, 100 },
+			{ SPRITE_HERO_IDLE_2, 100 },
+			{ SPRITE_HERO_IDLE_3, 100 },
+			{ SPRITE_HERO_IDLE_4, 100 }
+		},
+		.frame_count = 5
+	},
+	[ANIM_HERO_MOVE_LEFT] = {
+		.frames = {
+			{ SPRITE_HERO_MOVE_LEFT_0, 100 },
+			{ SPRITE_HERO_MOVE_LEFT_1, 100 },
+			{ SPRITE_HERO_MOVE_LEFT_2, 100 },
+			{ SPRITE_HERO_MOVE_LEFT_3, 100 }
+		},
+		.frame_count = 4
+	},
+	[ANIM_HERO_MOVE_DOWN] = {
+		.frames = {
+			{ SPRITE_HERO_MOVE_DOWN_0, 100 },
+			{ SPRITE_HERO_MOVE_DOWN_1, 100 },
+			{ SPRITE_HERO_MOVE_DOWN_2, 100 },
+			{ SPRITE_HERO_MOVE_DOWN_3, 100 },
+			{ SPRITE_HERO_MOVE_DOWN_4, 100 },
+			{ SPRITE_HERO_MOVE_DOWN_5, 100 },
+			{ SPRITE_HERO_MOVE_DOWN_6, 100 },
+			{ SPRITE_HERO_MOVE_DOWN_7, 100 }
+		},
+		.frame_count = 8
+	},
+	[ANIM_HERO_MOVE_UP] = {
+		.frames = {
+			{ SPRITE_HERO_MOVE_UP_0, 100 },
+			{ SPRITE_HERO_MOVE_UP_1, 100 },
+			{ SPRITE_HERO_MOVE_UP_2, 100 },
+			{ SPRITE_HERO_MOVE_UP_3, 100 },
+			{ SPRITE_HERO_MOVE_UP_4, 100 },
+			{ SPRITE_HERO_MOVE_UP_5, 100 },
+			{ SPRITE_HERO_MOVE_UP_6, 100 },
+			{ SPRITE_HERO_MOVE_UP_7, 100 }
+		},
+		.frame_count = 8
+	},
+	[ANIM_HERO_HIT] = {
+		.frames = {
+			{ SPRITE_HERO_HIT_0, 100 },
+			{ SPRITE_HERO_HIT_1, 100 }
+		},
+		.frame_count = 2
+	},
+	[ANIM_HERO_DEAD] = {
+		.frames = {
+			{ SPRITE_HERO_DEAD_0, 100 },
+			{ SPRITE_HERO_DEAD_1, 100 },
+			{ SPRITE_HERO_DEAD_2, 100 },
+			{ SPRITE_HERO_DEAD_3, 100 },
+			{ SPRITE_HERO_DEAD_4, 100 },
+			{ SPRITE_HERO_DEAD_5, 100 },
+			{ SPRITE_HERO_DEAD_6, 100 },
+			{ SPRITE_HERO_DEAD_7, 100 },
+			{ SPRITE_HERO_DEAD_8, 100 },
+			{ SPRITE_HERO_DEAD_9, 100 }
+		},
+		.frame_count = 10
+	},
+	[ANIM_ROBOT_GATHERER_IDLE] = {
+		.frames = {
+			{ SPRITE_ROBOT_GATHERER_IDLE_0, 75 },
+			{ SPRITE_ROBOT_GATHERER_IDLE_1, 75 },
+			{ SPRITE_ROBOT_GATHERER_IDLE_2, 75 },
+			{ SPRITE_ROBOT_GATHERER_IDLE_3, 75 },
+			{ SPRITE_ROBOT_GATHERER_IDLE_4, 75 },
+			{ SPRITE_ROBOT_GATHERER_IDLE_5, 75 },
+			{ SPRITE_ROBOT_GATHERER_IDLE_6, 75 },
+			{ SPRITE_ROBOT_GATHERER_IDLE_7, 75 }
+		},
+		.frame_count = 8
+	},
+	[ANIM_ROBOT_GATHERER_MOVE] = {
+		.frames = {
+			{ SPRITE_ROBOT_GATHERER_MOVE_0, 75 },
+			{ SPRITE_ROBOT_GATHERER_MOVE_1, 75 },
+			{ SPRITE_ROBOT_GATHERER_MOVE_2, 75 },
+			{ SPRITE_ROBOT_GATHERER_MOVE_3, 75 },
+			{ SPRITE_ROBOT_GATHERER_MOVE_4, 75 },
+			{ SPRITE_ROBOT_GATHERER_MOVE_5, 75 },
+			{ SPRITE_ROBOT_GATHERER_MOVE_6, 75 },
+			{ SPRITE_ROBOT_GATHERER_MOVE_7, 75 }
+		},
+		.frame_count = 8
+	},
+	[ANIM_ROBOT_GATHERER_PLANT] = {
+		.frames = {
+			{ SPRITE_ROBOT_GATHERER_PLANT_0, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_1, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_2, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_3, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_4, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_5, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_6, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_7, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_8, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_9, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_10, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_11, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_12, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_13, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_14, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_15, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_16, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_17, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_18, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_19, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_20, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_21, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_22, 75 },
+			{ SPRITE_ROBOT_GATHERER_PLANT_23, 75 }
+		},
+		.frame_count = 24
+	},
+	[ANIM_WARRIOR_IDLE] = {
+		.frames = {
+			{ SPRITE_WARRIOR_IDLE_0, 100 },
+			{ SPRITE_WARRIOR_IDLE_1, 100 },
+			{ SPRITE_WARRIOR_IDLE_2, 100 },
+			{ SPRITE_WARRIOR_IDLE_3, 100 },
+			{ SPRITE_WARRIOR_IDLE_4, 100 }
+		},
+		.frame_count = 5
+	},
+	[ANIM_WARRIOR_MOVE_LEFT] = {
+		.frames = {
+			{ SPRITE_WARRIOR_MOVE_LEFT_0, 100 },
+			{ SPRITE_WARRIOR_MOVE_LEFT_1, 100 },
+			{ SPRITE_WARRIOR_MOVE_LEFT_2, 100 },
+			{ SPRITE_WARRIOR_MOVE_LEFT_3, 100 }
+		},
+		.frame_count = 4
+	},
+	[ANIM_WARRIOR_ATTACK] = {
+		.frames = {
+			{ SPRITE_WARRIOR_ATTACK_0, 100 },
+			{ SPRITE_WARRIOR_ATTACK_1, 100 },
+			{ SPRITE_WARRIOR_ATTACK_2, 100 },
+			{ SPRITE_WARRIOR_ATTACK_3, 100 },
+			{ SPRITE_WARRIOR_ATTACK_4, 100 }
+		},
+		.frame_count = 5
+	},
+	[ANIM_WARRIOR_HIT] = {
+		.frames = {
+			{ SPRITE_WARRIOR_HIT_0, 100 },
+			{ SPRITE_WARRIOR_HIT_1, 100 }
+		},
+		.frame_count = 2
+	},
+	[ANIM_WARRIOR_DEAD] = {
+		.frames = {
+			{ SPRITE_WARRIOR_DEAD_0, 100 },
+			{ SPRITE_WARRIOR_DEAD_1, 100 },
+			{ SPRITE_WARRIOR_DEAD_2, 100 },
+			{ SPRITE_WARRIOR_DEAD_3, 100 },
+			{ SPRITE_WARRIOR_DEAD_4, 100 },
+			{ SPRITE_WARRIOR_DEAD_5, 100 },
+			{ SPRITE_WARRIOR_DEAD_6, 100 },
+			{ SPRITE_WARRIOR_DEAD_7, 100 }
+		},
+		.frame_count = 8
 	}
 };
