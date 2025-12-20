@@ -109,6 +109,14 @@ void entity_init() {
         .type_name_string = "Iron Chest",
         .default_sprite = SPRITE_CHESTS_IRON_0,
     };
+
+    entity_info[ENTITY_TYPE_ROBOT_GATHERER] = {.animations =
+                                                   {
+                                                       .idle = ANIM_ROBOT_GATHERER_IDLE,
+                                                       .move = ANIM_ROBOT_GATHERER_MOVE,
+                                                   },
+                                               .type_name_string = "Gatherer Robot",
+                                               .default_sprite = SPRITE_ROBOT_GATHERER_IDLE_0};
 }
 
 Sprite entity_get_default_sprite(EntityType type) {
@@ -196,7 +204,7 @@ bool entity_same(EntityHandle entity_a, EntityHandle entity_b) {
     return entity_a.id == entity_b.id && entity_a.generation == entity_b.generation;
 }
 
-Collider entity_rect_collider_from_sprite(SpriteID sprite_id) {
+Collider entity_collider_from_sprite(SpriteID sprite_id) {
     Vec2 sprite_world_size = sprite_get_world_size(sprite_id);
 
     Collider result = {
@@ -236,7 +244,7 @@ EntityHandle entity_create_resource(EntityData* entity_data, EntityType entity_t
     entity->type = entity_type;
     entity->position = position;
     entity->sprite_id = sprite_id;
-    entity->collider = entity_rect_collider_from_sprite(sprite_id);
+    entity->collider = entity_collider_from_sprite(sprite_id);
     set(entity->flags, opts);
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = hp;
@@ -253,7 +261,7 @@ EntityHandle entity_create_ore_deposit(EntityData* entity_data, EntityType entit
     entity->type = entity_type;
     entity->position = position;
     entity->sprite_id = sprite_id;
-    entity->collider = entity_rect_collider_from_sprite(sprite_id);
+    entity->collider = entity_collider_from_sprite(sprite_id);
     set(entity->flags, ENTITY_F_BLOCKER);
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = 1000000;
@@ -302,7 +310,7 @@ EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags o
     set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
     set(entity->flags, ENTITY_F_KILLABLE);
 
-    entity->collider = entity_rect_collider_from_sprite(sprite_id);
+    entity->collider = entity_collider_from_sprite(sprite_id);
 
     return entity_to_handle(entity, entity_data);
 }
@@ -359,6 +367,20 @@ EntityHandle entity_create_warrior(EntityData* entity_data, Vec2 position) {
     return entity_to_handle(entity, entity_data);
 }
 
+EntityHandle entity_create_robot_gatherer(EntityData* entity_data, Vec2 position) {
+    Entity* entity = entity_new(entity_data);
+
+    entity->type = ENTITY_TYPE_ROBOT_GATHERER;
+    entity->position = position;
+    set(entity->flags, ENTITY_F_KILLABLE);
+    entity->hp = MAX_HP_ROBOT_GATHERER;
+
+    entity->collider = entity_collider_from_sprite(entity_info[entity->type].default_sprite);
+    entity->brain.type = BRAIN_TYPE_ROBOT_GATHERER;
+
+    return entity_to_handle(entity, entity_data);
+}
+
 EntityHandle entity_create_projectile(EntityData* entity_data, Vec2 position, float rotation_rads, Vec2 velocity) {
     Entity* entity = entity_new(entity_data);
 
@@ -384,7 +406,7 @@ EntityHandle entity_create_boar_meat(EntityData* entity_data, Vec2 position) {
     entity->type = ENTITY_TYPE_BOAR_MEAT;
     entity->sprite_id = SPRITE_BOAR_MEAT_RAW;
     entity->position = position;
-    entity->collider = entity_rect_collider_from_sprite(entity->sprite_id);
+    entity->collider = entity_collider_from_sprite(entity->sprite_id);
 
     set(entity->flags, ENTITY_F_ITEM);
     set(entity->flags, ENTITY_F_NONSPACIAL);
@@ -402,7 +424,7 @@ EntityHandle entity_create_item(EntityData* entity_data, EntityType type, Vec2 p
     entity->type = type;
     entity->sprite_id = sprite_id;
     entity->position = position;
-    entity->collider = entity_rect_collider_from_sprite(entity->sprite_id);
+    entity->collider = entity_collider_from_sprite(entity->sprite_id);
 
     set(entity->flags, ENTITY_F_ITEM);
     set(entity->flags, ENTITY_F_NONSPACIAL);
@@ -636,6 +658,9 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
         }
         break;
     }
+    case ENTITY_TYPE_ROBOT_GATHERER:
+        entity_create_robot_gatherer(entity_data, position);
+        break;
     default:
         // TODO: this is probably a debug only function, so this assertion is kind of annoying
         // cause it will force me to not call this with ineligible entities. So commenting out

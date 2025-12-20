@@ -131,7 +131,7 @@ if [[ "$1" == "-g" ]]; then
 	mv $BUILD_DIR/$CURR_GAME_EXECUTABLE_NAME $BUILD_DIR/$GAME_EXECUTABLE_NAME
     # if the dSYM file name is different after reloading, lldb does not reload the symbols and connect it to the source map.
 	if [[ "$OS" == "$MAC" ]]; then
-    	cp -r $BUILD_DIR/game_main.dylib.dSYM $BUILD_DIR/temp_game_main.dylib.dSYM
+    	cp -r $BUILD_DIR/game_main.dylib.tmp.dSYM $BUILD_DIR/temp_game_main.dylib.dSYM
 	fi
     end_time=$($DATE_CMD +%s%N)
     compile_time=$(( (end_time - start_time) / 1000000 ))

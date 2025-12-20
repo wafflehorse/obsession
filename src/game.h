@@ -4,7 +4,7 @@
 #define MAX_ENTITIES 10000
 #define MAX_COLLISION_RULES 512
 
-#define MAX_DECORATIONS 1000
+#define MAX_DECORATIONS 5000
 
 #define BASE_RESOLUTION_WIDTH 640
 #define BASE_RESOLUTION_HEIGHT 360
@@ -24,10 +24,17 @@
 #define MAX_HP_PLAYER 10
 #define MAX_HP_WARRIOR 4
 #define MAX_HP_PLANT_CORN 2
+#define MAX_HP_ROBOT_GATHERER 10
 
 #define ATTACK_ID_MAX_IDS 512
 #define ATTACK_ID_START (MAX_ENTITIES - 1)
 #define ATTACK_ID_LAST (ATTACK_ID_START + ATTACK_ID_MAX_IDS - 1)
+
+#define FOURCC(a, b, c, d) ((uint32)(a) << 24 | (uint32)(b) << 16 | (uint32)(c) << 8 | (uint32)(d))
+
+#define SEED_IRON_ORE FOURCC('I', 'R', 'O', 'N')
+#define SEED_PLANT FOURCC('P', 'L', 'A', 'N')
+#define SEED_CORN FOURCC('C', 'O', 'R', 'N')
 
 struct FontData {
     uint32 ascent;
@@ -100,7 +107,7 @@ struct Collider {
 
 enum AIState { AI_STATE_IDLE, AI_STATE_WANDER, AI_STATE_CHASE, AI_STATE_ATTACK, AI_STATE_DEAD };
 
-enum BrainType { BRAIN_TYPE_NONE, BRAIN_TYPE_BOAR, BRAIN_TYPE_WARRIOR };
+enum BrainType { BRAIN_TYPE_NONE, BRAIN_TYPE_BOAR, BRAIN_TYPE_WARRIOR, BRAIN_TYPE_ROBOT_GATHERER };
 
 struct Brain {
     BrainType type;
@@ -146,6 +153,7 @@ enum EntityType {
     ENTITY_TYPE_PLANT_CORN,
     ENTITY_TYPE_ITEM_CORN,
     ENTITY_TYPE_CHEST_IRON,
+    ENTITY_TYPE_ROBOT_GATHERER,
     ENTITY_TYPE_COUNT
 };
 
@@ -237,6 +245,7 @@ struct EntityItemSpawnInfo {
 struct WorldGenContext {
     FBMContext ore_fbm_context;
     FBMContext plant_fbm_context;
+    FBMContext corn_fbm_context;
 };
 
 struct WorldInput {
@@ -281,6 +290,7 @@ struct GameState {
     uint32 frame_flags;
     GameInit game_init_config;
     WorldInit world_init;
+    uint32 world_seed;
     WorldInput world_input;
 
     Camera camera;

@@ -10,6 +10,9 @@
 #include "math.h"
 #include "asset_ids.h"
 
+#define STB_PERLIN_IMPLEMENTATION
+#include "stb_perlin.h"
+
 #ifdef _WIN32
 #define W_PATH_MAX 500 // 260 is standard
 #else
@@ -51,8 +54,8 @@ typedef uint32 flags;
 #define unset(flags, flag) (flags &= ~flag)
 #define toggle(flags, flag) (flags ^= flag)
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
+#ifndef W_PI
+#define W_PI 3.14159265358979323846
 #endif
 
 #define ANIMATION_MAX_FRAME_COUNT 32
@@ -81,6 +84,11 @@ struct Rect {
     float w;
     float h;
 };
+
+// struct AABB {
+//     Vec2 min;
+//     Vec2 max;
+// };
 
 struct Arena {
     char* data;
@@ -178,6 +186,10 @@ double w_min(double a, double b) {
         return b;
     }
     return a;
+}
+
+float w_floorf(float a) {
+    return floorf(a);
 }
 
 float w_abs(float a) {
@@ -800,110 +812,40 @@ float w_xor_shift_next_f32(XorShift32Context* context) {
     return (float)(w_xor_shift_next_u32(context)) / (float)UINT32_MAX;
 }
 
-// ~~~~~~~~~~~~~~~~~~~~ Perlin Noise ~~~~~~~~~~~~~~~~~~~~~~ //
-// DANGER: This implementation is broken. I'm using stb_perlin.h for now and maybe forever
-
-// NOTE: the classic perlin noise algorithm assumes that (0, 0) is in the bottom left
-
-#define PERLIN_NOISE_PERIOD 256
-#define PERLIN_NOISE_HASH_SIZE (PERLIN_NOISE_PERIOD * 2)
-
-struct PerlinContext {
-    uint32 hash[PERLIN_NOISE_HASH_SIZE];
-    uint32 seed;
-};
-
-uint32 perlin_hash[PERLIN_NOISE_HASH_SIZE];
-
-void w_perlin_seed(PerlinContext* context, uint32 seed) {
-
-    XorShift32Context rng;
-    w_xor_shift_seed(&rng, seed);
-
-    for (int i = 0; i < PERLIN_NOISE_PERIOD; i++) {
-        context->hash[i] = i;
-    }
-
-    for (int i = PERLIN_NOISE_PERIOD - 1; i > 0; i--) {
-        uint32 j = w_xor_shift_next_u32(&rng) % (i + 1);
-        uint32 tmp = context->hash[i];
-        context->hash[i] = context->hash[j];
-        context->hash[j] = tmp;
-    }
-
-    for (int i = 0; i < PERLIN_NOISE_PERIOD; i++) {
-        context->hash[i + PERLIN_NOISE_PERIOD] = context->hash[i];
-    }
-    context->seed = seed;
+// MurmurHash3 fmix32 finalizer
+uint32 w_fmix32(uint32 h) {
+    h ^= h >> 16;
+    h *= 0x7feb352d;
+    h ^= h >> 15;
+    h *= 0x846ca68b;
+    h ^= h >> 16;
+    return h;
 }
 
-float perlin_fade(float t) {
-    return t * t * t * (t * (t * 6 - 15) + 10);
+uint32 w_vec_hash(Vec2 vec, uint32 world_seed) {
+    uint32 h = world_seed;
+    h ^= w_fmix32((uint32)vec.x + 0x9e3779b9);
+    h ^= w_fmix32((uint32)vec.y + 0x85ebca6b);
+    return w_fmix32(h);
 }
 
-// This function determines the dot product by using the hash to define the
-// gradient vector and x and y to describe the location vector
-float grad(uint32 hash, float x, float y) {
-    float result;
-    switch (hash & 0x7) {
-    case 0x0:
-        result = (x + y) * 0.70710678f;
-        break;
-    case 0x1:
-        result = (-x + y) * 0.70710678f;
-        break;
-    case 0x2:
-        result = (x - y) * 0.70710678f;
-        break;
-    case 0x3:
-        result = (-x - y) * 0.70710678f;
-        break;
-    case 0x4:
-        result = x;
-        break;
-    case 0x5:
-        result = -x;
-        break;
-    case 0x6:
-        result = y;
-        break;
-    case 0x7:
-        result = -y;
-        break;
-    default:
-        result = 0;
-        break;
-    }
-
-    return result;
+uint32 w_rng_u32(uint32* x) {
+    *x = w_fmix32(*x);
+    return *x;
 }
 
-float w_perlin(float x, float y, PerlinContext* context) {
-    int xi = (int)floorf(x) & (PERLIN_NOISE_PERIOD - 1);
-    int yi = (int)floorf(y) & (PERLIN_NOISE_PERIOD - 1);
-    float xf = x - (int)floorf(x);
-    float yf = y - (int)floorf(y);
-
-    float u = perlin_fade(xf);
-    float v = perlin_fade(yf);
-
-    uint32* perlin_hash = context->hash;
-
-    uint32 aa = perlin_hash[perlin_hash[xi] + yi];
-    uint32 ab = perlin_hash[perlin_hash[xi] + yi + 1];
-    uint32 ba = perlin_hash[perlin_hash[xi + 1] + yi];
-    uint32 bb = perlin_hash[perlin_hash[xi + 1] + yi + 1];
-
-    float w1 = w_lerp(grad(aa, xf, yf), grad(ab, xf, yf - 1), u);
-    float w2 = w_lerp(grad(ba, xf - 1, yf), grad(bb, xf - 1, yf - 1), u);
-
-    float result = w_lerp(w1, w2, v);
-    return result;
-    // return (result + 1.0f) * 0.5f;
+float w_rng_f32(uint32* x) {
+    uint32 result = w_rng_u32(x);
+    return (result >> 8) * (1.0f / 16777216.0f); // 2^24
 }
 
-// ~~~~~~~~~~~~~~ Fractal Brownian Motion ~~~~~~~~~~~~~~~~~ //
-// Ref: https://thebookofshaders.com/13/
+float w_rng_range_f32(uint32* rng, float min, float max) {
+    return min + w_rng_f32(rng) * (max - min);
+}
+
+int w_rng_range_i32(uint32* rng, int min, int max) {
+    return min + (int)(w_rng_u32(rng) % (uint32)(max - min + 1));
+}
 
 struct FBMContext {
     uint32 octaves;
@@ -911,26 +853,157 @@ struct FBMContext {
     float gain;
     float amp;
     float freq;
-    PerlinContext perlin_context;
+    uint32 seed;
 };
 
-float w_fbm(float x, float y, FBMContext* params) {
-    uint32 octaves = params->octaves;
-    float amp = params->amp;
-    float freq = params->freq;
-    float lacunarity = params->lacunarity;
-    float gain = params->gain;
-    float max_amp = 0.0f;
+float w_fbm_noise2_seed(float x, float y, float lacunarity, float gain, int octaves, int seed) {
+    float sum = 0.0f;
+    float amp = 1.0f;
+    float freq = 1.0f;
 
-    float result = 0;
     for (int i = 0; i < octaves; i++) {
-        result += amp * w_perlin(x * freq, y * freq, &params->perlin_context);
-        max_amp += amp;
+        sum += amp * stb_perlin_noise3_seed(x * freq, y * freq, 0, 0, 0, 0,
+                                            seed + i * 1013 // decorrelate octaves
+                     );
 
         freq *= lacunarity;
         amp *= gain;
     }
 
-    return result / max_amp;
+    return sum;
 }
+
+// ~~~~~~~~~~~~~~~~~~~~ Perlin Noise ~~~~~~~~~~~~~~~~~~~~~~ //
+// DANGER: This implementation is broken. I'm using stb_perlin.h for now and maybe forever
+
+// NOTE: the classic perlin noise algorithm assumes that (0, 0) is in the bottom left
+
+// #define PERLIN_NOISE_PERIOD 256
+// #define PERLIN_NOISE_HASH_SIZE (PERLIN_NOISE_PERIOD * 2)
+//
+// struct PerlinContext {
+//     uint32 hash[PERLIN_NOISE_HASH_SIZE];
+//     uint32 seed;
+// };
+//
+// uint32 perlin_hash[PERLIN_NOISE_HASH_SIZE];
+//
+// void w_perlin_seed(PerlinContext* context, uint32 seed) {
+//
+//     XorShift32Context rng;
+//     w_xor_shift_seed(&rng, seed);
+//
+//     for (int i = 0; i < PERLIN_NOISE_PERIOD; i++) {
+//         context->hash[i] = i;
+//     }
+//
+//     for (int i = PERLIN_NOISE_PERIOD - 1; i > 0; i--) {
+//         uint32 j = w_xor_shift_next_u32(&rng) % (i + 1);
+//         uint32 tmp = context->hash[i];
+//         context->hash[i] = context->hash[j];
+//         context->hash[j] = tmp;
+//     }
+//
+//     for (int i = 0; i < PERLIN_NOISE_PERIOD; i++) {
+//         context->hash[i + PERLIN_NOISE_PERIOD] = context->hash[i];
+//     }
+//     context->seed = seed;
+// }
+//
+// float perlin_fade(float t) {
+//     return t * t * t * (t * (t * 6 - 15) + 10);
+// }
+//
+// // This function determines the dot product by using the hash to define the
+// // gradient vector and x and y to describe the location vector
+// float grad(uint32 hash, float x, float y) {
+//     float result;
+//     switch (hash & 0x7) {
+//     case 0x0:
+//         result = (x + y) * 0.70710678f;
+//         break;
+//     case 0x1:
+//         result = (-x + y) * 0.70710678f;
+//         break;
+//     case 0x2:
+//         result = (x - y) * 0.70710678f;
+//         break;
+//     case 0x3:
+//         result = (-x - y) * 0.70710678f;
+//         break;
+//     case 0x4:
+//         result = x;
+//         break;
+//     case 0x5:
+//         result = -x;
+//         break;
+//     case 0x6:
+//         result = y;
+//         break;
+//     case 0x7:
+//         result = -y;
+//         break;
+//     default:
+//         result = 0;
+//         break;
+//     }
+//
+//     return result;
+// }
+//
+// float w_perlin(float x, float y, PerlinContext* context) {
+//     int xi = (int)floorf(x) & (PERLIN_NOISE_PERIOD - 1);
+//     int yi = (int)floorf(y) & (PERLIN_NOISE_PERIOD - 1);
+//     float xf = x - (int)floorf(x);
+//     float yf = y - (int)floorf(y);
+//
+//     float u = perlin_fade(xf);
+//     float v = perlin_fade(yf);
+//
+//     uint32* perlin_hash = context->hash;
+//
+//     uint32 aa = perlin_hash[perlin_hash[xi] + yi];
+//     uint32 ab = perlin_hash[perlin_hash[xi] + yi + 1];
+//     uint32 ba = perlin_hash[perlin_hash[xi + 1] + yi];
+//     uint32 bb = perlin_hash[perlin_hash[xi + 1] + yi + 1];
+//
+//     float w1 = w_lerp(grad(aa, xf, yf), grad(ab, xf, yf - 1), u);
+//     float w2 = w_lerp(grad(ba, xf - 1, yf), grad(bb, xf - 1, yf - 1), u);
+//
+//     float result = w_lerp(w1, w2, v);
+//     return result;
+//     // return (result + 1.0f) * 0.5f;
+// }
+//
+// // ~~~~~~~~~~~~~~ Fractal Brownian Motion ~~~~~~~~~~~~~~~~~ //
+// // Ref: https://thebookofshaders.com/13/
+//
+// struct FBMContext {
+//     uint32 octaves;
+//     float lacunarity; // Kind of affects how noisey or gappy the noise is
+//     float gain;
+//     float amp;
+//     float freq;
+//     uint32 seed;
+// };
+//
+// float w_fbm(float x, float y, FBMContext* params) {
+//     uint32 octaves = params->octaves;
+//     float amp = params->amp;
+//     float freq = params->freq;
+//     float lacunarity = params->lacunarity;
+//     float gain = params->gain;
+//     float max_amp = 0.0f;
+//
+//     float result = 0;
+//     for (int i = 0; i < octaves; i++) {
+//         result += amp * w_perlin(x * freq, y * freq, &params->perlin_context);
+//         max_amp += amp;
+//
+//         freq *= lacunarity;
+//         amp *= gain;
+//     }
+//
+//     return result / max_amp;
+// }
 #endif

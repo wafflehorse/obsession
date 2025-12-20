@@ -12,8 +12,6 @@
 #include "sound.cpp"
 #include "asset_ids.h"
 #include "asset_tables.h"
-#define STB_PERLIN_IMPLEMENTATION
-#include "stb_perlin.h"
 
 char* g_base_path;
 char* g_debug_project_dir;
@@ -21,8 +19,8 @@ uint32 g_pixels_per_unit;
 double g_sim_dt_s;
 RenderGroup* g_debug_render_group;
 
-#define DEFAULT_WORLD_WIDTH 128
-#define DEFAULT_WORLD_HEIGHT 128
+#define DEFAULT_WORLD_WIDTH 256
+#define DEFAULT_WORLD_HEIGHT 256
 
 Vec2 get_world_top_left_tile_position() {
     return {-DEFAULT_WORLD_WIDTH / 2 + 0.5, DEFAULT_WORLD_HEIGHT / 2 - 0.5};
@@ -124,32 +122,131 @@ Vec2 sprite_get_world_size(SpriteID sprite_id) {
     return {sprite.w / BASE_PIXELS_PER_UNIT, sprite.h / BASE_PIXELS_PER_UNIT};
 }
 
+uint32 get_next_attack_id(uint32* attack_id_next) {
+    uint32 result = (*attack_id_next)++;
+
+    if (*attack_id_next > ATTACK_ID_LAST) {
+        *attack_id_next = ATTACK_ID_START;
+    }
+
+    return result;
+}
+
+// TODO: make this faster?
+void remove_collision_rules(uint32 id, CollisionRule** hash, CollisionRule** free_list) {
+    for (int i = 0; i < MAX_COLLISION_RULES; i++) {
+        for (CollisionRule** rule = &hash[i]; *rule;) {
+            if ((*rule)->a_id == id || (*rule)->b_id == id) {
+                CollisionRule* free_rule = *rule;
+                *rule = (*rule)->next_rule;
+
+                free_rule->next_rule = *free_list;
+                *free_list = &(*free_rule);
+            } else {
+                rule = &(*rule)->next_rule;
+            }
+        }
+    }
+}
+
 #include "entity.cpp"
 #include "inventory.cpp"
 #include "hotbar.cpp"
+#include "brain.cpp"
 
-void proc_gen_iron_ore(EntityData* entity_data, FBMContext* fbm_context) {
+bool w_is_local_maximum(FBMContext* fbm_context, Vec2 position, float radius, float peak_threshold) {
+    float center =
+        w_fbm_noise2_seed(position.x * fbm_context->freq, position.y * fbm_context->freq, fbm_context->lacunarity,
+                          fbm_context->gain, fbm_context->octaves, fbm_context->seed);
+
+    if (center < peak_threshold) {
+        return false;
+    }
+
+    Vec2 directions[8] = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
+
+    for (int i = 0; i < 8; i++) {
+        Vec2 sample_delta = w_vec_mult(directions[i], radius);
+        Vec2 sample_position = w_vec_add(position, sample_delta);
+
+        float sample_value =
+            w_fbm_noise2_seed(sample_position.x * fbm_context->freq, sample_position.y * fbm_context->freq,
+                              fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves, fbm_context->seed);
+
+        if (sample_value >= center) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void try_spawn_entity_patch(Vec2 patch_coord, Vec2 patch_position, EntityType entity_type, EntityData* entity_data,
+                            Rect chunk_bounds, FBMContext* fbm_context) {
+    if (w_is_local_maximum(fbm_context, patch_coord, 1, 0.0f)) {
+        // patch exists at this spot
+        uint32 patch_seed = w_vec_hash(patch_coord, fbm_context->seed);
+
+        int MIN_NODES = 3;
+        int MAX_NODES = 6;
+        float MIN_RADIUS = 5;
+        float MAX_RADIUS = 10;
+
+        int count = w_rng_range_i32(&patch_seed, MIN_NODES, MAX_NODES);
+        float max_radius = w_rng_range_f32(&patch_seed, MIN_RADIUS, MAX_RADIUS);
+
+        for (int i = 0; i < count; i++) {
+            float angle = w_rng_f32(&patch_seed) * 2 * W_PI;
+            float radius = w_rng_f32(&patch_seed) * max_radius;
+
+            Vec2 offset = {cosf(angle) * radius, sinf(angle) * radius};
+
+            Vec2 item_position = w_vec_add(patch_position, offset);
+
+            if (w_check_point_in_rect(chunk_bounds, item_position)) {
+                entity_create(entity_data, entity_type, item_position);
+            }
+        }
+    }
+}
+
+void proc_gen_entity_patches(EntityData* entity_data, EntityType entity_type, FBMContext* fbm_context) {
     for (int i = 0; i < entity_data->entity_count; i++) {
-        if (entity_data->entities[i].type == ENTITY_TYPE_IRON_DEPOSIT) {
+        if (entity_data->entities[i].type == entity_type) {
             set(entity_data->entities[i].flags, ENTITY_F_MARK_FOR_DELETION);
         }
     }
 
-    Vec2 world_top_left_tile_position = get_world_top_left_tile_position();
+    float CHUNK_SIZE = 512.0f;
+    Vec2 chunk_position = {0, 0};
 
-    for (int i = 0; i < DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT; i++) {
-        uint32 col = i % DEFAULT_WORLD_WIDTH;
-        uint32 row = i / DEFAULT_WORLD_HEIGHT;
-        Vec2 position = {world_top_left_tile_position.x + col, world_top_left_tile_position.y - row};
+    float MAX_PATCH_RADIUS = 10;
+    float PATCH_SPACING = 20;
 
-        float noise_val = stb_perlin_fbm_noise3(position.x * fbm_context->freq, position.y * fbm_context->freq, 0,
-                                                fbm_context->lacunarity, fbm_context->gain, fbm_context->octaves);
-        if (noise_val > 0.7f) {
-            entity_create_ore_deposit(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
+    float chunk_min_x = chunk_position.x - (CHUNK_SIZE / 2);
+    float chunk_max_x = chunk_min_x + CHUNK_SIZE;
+    float chunk_min_y = chunk_position.y - (CHUNK_SIZE / 2);
+    float chunk_max_y = chunk_min_y + CHUNK_SIZE;
+
+    Rect chunk_bounds = {.x = chunk_position.x, .y = chunk_position.y, .w = CHUNK_SIZE, .h = CHUNK_SIZE};
+
+    float gen_min_x = chunk_min_x - MAX_PATCH_RADIUS;
+    float gen_max_x = chunk_max_x + MAX_PATCH_RADIUS;
+    float gen_min_y = chunk_min_y - MAX_PATCH_RADIUS;
+    float gen_max_y = chunk_max_y + MAX_PATCH_RADIUS;
+
+    int patch_min_x = (int)w_floorf(gen_min_x / PATCH_SPACING);
+    int patch_max_x = (int)w_floorf(gen_max_x / PATCH_SPACING);
+    int patch_min_y = (int)w_floorf(gen_min_y / PATCH_SPACING);
+    int patch_max_y = (int)w_floorf(gen_max_y / PATCH_SPACING);
+
+    for (int py = patch_min_y; py < patch_max_y; py++) {
+        for (int px = patch_min_x; px < patch_max_x; px++) {
+            Vec2 patch_coord = {(float)px, (float)py};
+            Vec2 patch_position = {px * PATCH_SPACING, py * PATCH_SPACING};
+
+            try_spawn_entity_patch(patch_coord, patch_position, entity_type, entity_data, chunk_bounds, fbm_context);
         }
-        // else if (noise_val < 0.61f && noise_val > 0.6f) {
-        // 	create_prop_entity(&game_state->entity_data, position, SPRITE_BLOCK_1);
-        // }
     }
 }
 
@@ -287,33 +384,6 @@ PlayerInput player_input_get(GameInput* game_input, GameState* game_state) {
     return input;
 }
 
-uint32 get_next_attack_id(uint32* attack_id_next) {
-    uint32 result = (*attack_id_next)++;
-
-    if (*attack_id_next > ATTACK_ID_LAST) {
-        *attack_id_next = ATTACK_ID_START;
-    }
-
-    return result;
-}
-
-// TODO: make this faster?
-void remove_collision_rules(uint32 id, CollisionRule** hash, CollisionRule** free_list) {
-    for (int i = 0; i < MAX_COLLISION_RULES; i++) {
-        for (CollisionRule** rule = &hash[i]; *rule;) {
-            if ((*rule)->a_id == id || (*rule)->b_id == id) {
-                CollisionRule* free_rule = *rule;
-                *rule = (*rule)->next_rule;
-
-                free_rule->next_rule = *free_list;
-                *free_list = &(*free_rule);
-            } else {
-                rule = &(*rule)->next_rule;
-            }
-        }
-    }
-}
-
 uint32 sort_and_get_collision_hash_bucket(uint32* a_id, uint32* b_id) {
     if (*a_id > *b_id) {
         uint32 temp = *a_id;
@@ -425,118 +495,6 @@ void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, fl
         Vec2 collision_normal_acceleration = w_vec_mult(collision_normal, collision_normal_acceleration_penetration);
         subject->acceleration = w_vec_sub(subject->acceleration, collision_normal_acceleration);
         *can_move_freely = false;
-    }
-}
-
-void update_brain(Entity* entity, GameState* game_state, double dt_s) {
-    Entity* player = game_state->player;
-    Brain* brain = &entity->brain;
-    brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
-    float distance_to_player = w_euclid_dist(entity->position, player->position);
-    EntityAnimations animations = entity_info[entity->type].animations;
-    if (brain->type == BRAIN_TYPE_WARRIOR) {
-        if (distance_to_player < 5 && brain->ai_state != AI_STATE_ATTACK && brain->ai_state != AI_STATE_DEAD) {
-            brain->ai_state = AI_STATE_CHASE;
-        }
-        switch (brain->ai_state) {
-        case AI_STATE_IDLE:
-            if (brain->cooldown_s <= 0) {
-                brain->target_position = random_point_near_position(entity->position, 5, 5);
-                brain->cooldown_s = 10;
-                brain->ai_state = AI_STATE_WANDER;
-            }
-            entity->velocity = {0, 0};
-            entity_play_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
-            break;
-        case AI_STATE_WANDER: {
-            if (w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
-                brain->ai_state = AI_STATE_IDLE;
-                brain->cooldown_s = w_random_between(1, 6);
-            }
-
-            Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-            entity->velocity = w_vec_mult(wander_direction, 1.0f);
-            entity->facing_direction = w_vec_norm(entity->velocity);
-            entity_play_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
-            break;
-        }
-        case AI_STATE_CHASE:
-            if (distance_to_player >= 5) {
-                brain->ai_state = AI_STATE_IDLE;
-                brain->cooldown_s = w_random_between(1, 6);
-            } else if (distance_to_player < 0.5) {
-                brain->ai_state = AI_STATE_ATTACK;
-            } else {
-                brain->target_position = player->position;
-                Vec2 chase_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-                entity->velocity = w_vec_mult(chase_direction, 5.0f);
-            }
-            entity->facing_direction = w_vec_norm(entity->velocity);
-            entity_play_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
-            break;
-        case AI_STATE_ATTACK: {
-            entity->velocity = {0, 0};
-            if (player->position.x < entity->position.x) {
-                entity->facing_direction.x = -1;
-            } else {
-                entity->facing_direction.x = 1;
-            }
-            entity_play_animation_with_direction(animations.attack, &entity->anim_state, entity->facing_direction);
-            if (entity->attack_id == 0) {
-                entity->attack_id = get_next_attack_id(&game_state->attack_id_next);
-            }
-            if (w_animation_complete(&entity->anim_state, dt_s)) {
-                entity->attack_id = 0;
-                remove_collision_rules(entity->attack_id, game_state->collision_rule_hash,
-                                       &game_state->collision_rule_free_list);
-                brain->ai_state = AI_STATE_CHASE;
-                brain->cooldown_s = w_random_between(1, 6);
-            }
-            break;
-        }
-        case AI_STATE_DEAD:
-            entity->velocity = {0, 0};
-            set(entity->flags, ENTITY_F_NONSPACIAL);
-            set(entity->flags, ENTITY_F_DELETE_AFTER_ANIMATION);
-            if (animations.death != ANIM_UNKNOWN) {
-                entity_play_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
-            }
-            break;
-        }
-    } else if (brain->type == BRAIN_TYPE_BOAR) {
-        switch (brain->ai_state) {
-        case AI_STATE_IDLE:
-            if (brain->cooldown_s <= 0) {
-                brain->target_position = random_point_near_position(entity->position, 5, 5);
-                brain->cooldown_s = 10;
-                brain->ai_state = AI_STATE_WANDER;
-            }
-            entity->velocity = {0, 0};
-            entity_play_animation_with_direction(animations.idle, &entity->anim_state, entity->facing_direction);
-            break;
-        case AI_STATE_WANDER: {
-            if (w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
-                brain->ai_state = AI_STATE_IDLE;
-                brain->cooldown_s = w_random_between(1, 6);
-            }
-
-            Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-            entity->velocity = w_vec_mult(wander_direction, 1.0f);
-            entity->facing_direction = w_vec_norm(entity->velocity);
-            entity_play_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
-            break;
-        }
-        case AI_STATE_DEAD:
-            entity->velocity = {0, 0};
-            set(entity->flags, ENTITY_F_NONSPACIAL);
-            set(entity->flags, ENTITY_F_DELETE_AFTER_ANIMATION);
-            if (animations.death != ANIM_UNKNOWN) {
-                entity_play_animation_with_direction(animations.death, &entity->anim_state, entity->facing_direction);
-            }
-            break;
-        default:
-            break;
-        }
     }
 }
 
@@ -915,20 +873,34 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         game_state->player = entity_find_first_of_type(&game_state->entity_data, ENTITY_TYPE_PLAYER);
         ASSERT(game_state->player, "Player must exist at initialization");
 
-        FBMContext* ore_fbm_context = &game_state->world_gen_context.ore_fbm_context;
+        game_state->world_seed = 12756671;
 
-        *ore_fbm_context = {.amp = 1.0f, .octaves = 4, .freq = 0.12f, .lacunarity = 2.0f, .gain = 0.45f};
+        game_state->world_gen_context = {
+            .ore_fbm_context = {.amp = 1.0f,
+                                .octaves = 4,
+                                .freq = 0.12f,
+                                .lacunarity = 2.0f,
+                                .gain = 0.45f,
+                                .seed = w_fmix32(game_state->world_seed ^ SEED_IRON_ORE)},
+            .plant_fbm_context = {.amp = 1.0f,
+                                  .octaves = 4,
+                                  .freq = 0.2f,
+                                  .lacunarity = 2.0f,
+                                  .gain = 0.90f,
+                                  .seed = w_fmix32(game_state->world_seed ^ SEED_PLANT)},
+            .corn_fbm_context = {.amp = 1.0f,
+                                 .octaves = 4,
+                                 .freq = 0.12f,
+                                 .lacunarity = 2.0f,
+                                 .gain = 0.45f,
+                                 .seed = w_fmix32(game_state->world_seed ^ SEED_CORN)},
+        };
 
-        w_perlin_seed(&ore_fbm_context->perlin_context, 12756671);
-
-        FBMContext* plant_fbm_context = &game_state->world_gen_context.plant_fbm_context;
-
-        *plant_fbm_context = {.amp = 1.0f, .octaves = 4, .freq = 0.2f, .lacunarity = 2.0f, .gain = 0.90f};
-
-        w_perlin_seed(&plant_fbm_context->perlin_context, 32756671);
-
-        proc_gen_iron_ore(&game_state->entity_data, ore_fbm_context);
-        proc_gen_plants(&game_state->decoration_data, plant_fbm_context);
+        proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT,
+                                &game_state->world_gen_context.ore_fbm_context);
+        proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_PLANT_CORN,
+                                &game_state->world_gen_context.corn_fbm_context);
+        proc_gen_plants(&game_state->decoration_data, &game_state->world_gen_context.plant_fbm_context);
     }
 
     game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
@@ -991,7 +963,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
         // ~~~~~~~~~~~~~~ Update entity intentions (brain / player input) ~~~~~~~~~~~~~~~~ //
 
-        update_brain(entity, game_state, g_sim_dt_s);
+        brain_update(entity, game_state, g_sim_dt_s);
 
         if (entity->type == ENTITY_TYPE_PLAYER) {
             if (entity->hp > 0) {

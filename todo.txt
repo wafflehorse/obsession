@@ -218,12 +218,16 @@
 	[x] Add inventory item spawning when chest is "killed"
 [x] Fix: Inventory item ui renders stack size under entity sprite
 [] Update controls so player inventory can be open while player moves
-[] Automate food supply
-	[x] Add some sort of foragable food entity
-	[x] Add ability to pick up food items
-	[x] Add food storage box
-	[] Add food gathering robot
-	[] Add hunger to player
+[x] Add some sort of foragable food entity
+[x] Add ability to pick up food items
+[x] Add food storage box
+[] Add food gathering robot
+	[] Add food gathering robot animations and sprites
+	[] Add food gathering robot entity
+	[] Add gatherer brain
+		[]	
+	[] How does the player interact with it? And tell it where to go? 
+[] Add hunger to player
 
 [] Bug: items that persist as entities don't spew from chest when chest is destroyed
 [] Fix collision tunneling 
