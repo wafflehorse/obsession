@@ -12,12 +12,14 @@ struct EntityAnimations {
 
 #define ENTITY_INFO_F_PERSIST_IN_INVENTORY (1 << 0)
 #define ENTITY_INFO_F_PLACEABLE (1 << 1)
+#define ENTITY_INFO_F_FOOD (1 << 2)
 
 struct EntityInfo {
     flags flags;
     EntityAnimations animations;
     SpriteID default_sprite;
     char type_name_string[256];
+    uint32 hunger_gain;
 };
 
 EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
@@ -100,9 +102,7 @@ void entity_init() {
     };
 
     entity_info[ENTITY_TYPE_ITEM_CORN] = {
-        .type_name_string = "Corn",
-        .default_sprite = SPRITE_ITEM_CORN,
-    };
+        .flags = ENTITY_INFO_F_FOOD, .type_name_string = "Corn", .default_sprite = SPRITE_ITEM_CORN, .hunger_gain = 3};
 
     entity_info[ENTITY_TYPE_CHEST_IRON] = {
         .flags = ENTITY_INFO_F_PLACEABLE,

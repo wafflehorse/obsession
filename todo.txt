@@ -220,7 +220,11 @@
 [x] Add some sort of foragable food entity
 [x] Add ability to pick up food items
 [x] Add food storage box
-[] Add hunger to player
+[x] Add hunger to player
+[] Add food item consumption
+	- I think we should introduce an InputAction concept which has is_pressed, is_held, and held_duration
+	- Might want to think about is_pressed, and is_held. What if we want to do something when the input is released.
+		- Like a charge shot or something
 [] Add food gathering robot
 	[x] Add food gathering robot animations and sprites
 	[x] Add food gathering robot entity
