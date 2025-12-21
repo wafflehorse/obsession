@@ -103,9 +103,79 @@ STOP_TEXT_INPUT(stop_text_input) {
     return SDL_StopTextInput(window);
 }
 
+KeyInput sdl_scancode_to_key[SDL_SCANCODE_COUNT] = {
+    [SDL_SCANCODE_A] = KEY_A,
+    [SDL_SCANCODE_B] = KEY_B,
+    [SDL_SCANCODE_C] = KEY_C,
+    [SDL_SCANCODE_D] = KEY_D,
+    [SDL_SCANCODE_E] = KEY_E,
+    [SDL_SCANCODE_F] = KEY_F,
+    [SDL_SCANCODE_G] = KEY_G,
+    [SDL_SCANCODE_H] = KEY_H,
+    [SDL_SCANCODE_I] = KEY_I,
+    [SDL_SCANCODE_J] = KEY_J,
+    [SDL_SCANCODE_K] = KEY_K,
+    [SDL_SCANCODE_L] = KEY_L,
+    [SDL_SCANCODE_M] = KEY_M,
+    [SDL_SCANCODE_N] = KEY_N,
+    [SDL_SCANCODE_O] = KEY_O,
+    [SDL_SCANCODE_P] = KEY_P,
+    [SDL_SCANCODE_Q] = KEY_Q,
+    [SDL_SCANCODE_R] = KEY_R,
+    [SDL_SCANCODE_S] = KEY_S,
+    [SDL_SCANCODE_T] = KEY_T,
+    [SDL_SCANCODE_U] = KEY_U,
+    [SDL_SCANCODE_V] = KEY_V,
+    [SDL_SCANCODE_W] = KEY_W,
+    [SDL_SCANCODE_X] = KEY_X,
+    [SDL_SCANCODE_Y] = KEY_Y,
+    [SDL_SCANCODE_Z] = KEY_Z,
+
+    [SDL_SCANCODE_0] = KEY_0,
+    [SDL_SCANCODE_1] = KEY_1,
+    [SDL_SCANCODE_2] = KEY_2,
+    [SDL_SCANCODE_3] = KEY_3,
+    [SDL_SCANCODE_4] = KEY_4,
+    [SDL_SCANCODE_5] = KEY_5,
+    [SDL_SCANCODE_6] = KEY_6,
+    [SDL_SCANCODE_7] = KEY_7,
+    [SDL_SCANCODE_8] = KEY_8,
+    [SDL_SCANCODE_9] = KEY_9,
+
+    [SDL_SCANCODE_RETURN] = KEY_RETURN,
+    [SDL_SCANCODE_ESCAPE] = KEY_ESCAPE,
+    [SDL_SCANCODE_BACKSPACE] = KEY_BACKSPACE,
+    [SDL_SCANCODE_CAPSLOCK] = KEY_CAPSLOCK,
+    [SDL_SCANCODE_TAB] = KEY_TAB,
+    [SDL_SCANCODE_SPACE] = KEY_SPACE,
+
+    [SDL_SCANCODE_APOSTROPHE] = KEY_APOSTROPHE,
+    [SDL_SCANCODE_COMMA] = KEY_COMMA,
+    [SDL_SCANCODE_MINUS] = KEY_MINUS,
+    [SDL_SCANCODE_EQUALS] = KEY_EQUALS,
+    [SDL_SCANCODE_PERIOD] = KEY_PERIOD,
+    [SDL_SCANCODE_BACKSLASH] = KEY_BACKSLASH,
+    [SDL_SCANCODE_SLASH] = KEY_SLASH,
+    [SDL_SCANCODE_SEMICOLON] = KEY_SEMICOLON,
+    [SDL_SCANCODE_LEFTBRACKET] = KEY_LEFT_BRACKET,
+    [SDL_SCANCODE_RIGHTBRACKET] = KEY_RIGHT_BRACKET,
+    [SDL_SCANCODE_GRAVE] = KEY_GRAVE,
+
+    [SDL_SCANCODE_LSHIFT] = KEY_L_SHIFT,
+    [SDL_SCANCODE_RSHIFT] = KEY_R_SHIFT,
+    [SDL_SCANCODE_LCTRL] = KEY_L_CTRL,
+    [SDL_SCANCODE_RCTRL] = KEY_R_CTRL,
+    [SDL_SCANCODE_LALT] = KEY_L_ALT,
+    [SDL_SCANCODE_RALT] = KEY_R_ALT,
+
+    [SDL_SCANCODE_LGUI] = KEY_L_GUI,
+    [SDL_SCANCODE_RGUI] = KEY_R_GUI,
+};
+
 void clear_inputs(GameInput* game_input) {
     for (int i = 0; i < KEY_INPUT_COUNT; i++) {
         game_input->key_input_states[i].is_pressed = false;
+        game_input->key_input_states[i].is_released = false;
     }
 
     for (int i = 0; i < TEXT_INPUT_COUNT; i++) {
@@ -114,12 +184,14 @@ void clear_inputs(GameInput* game_input) {
 
     for (int i = 0; i < MOUSE_INPUT_COUNT; i++) {
         game_input->mouse_state.input_states[i].is_pressed = false;
+        game_input->mouse_state.input_states[i].is_released = false;
     }
 
     game_input->text_buffer[0] = '\0';
 
     for (int i = 0; i < GAMEPAD_BUTTON_COUNT; i++) {
         game_input->gamepad_state.buttons[i].is_pressed = false;
+        game_input->gamepad_state.buttons[i].is_released = false;
     }
 }
 
@@ -135,264 +207,26 @@ void handle_sdl_keyboard_mouse_event(SDL_Event* event, GameInput* game_input) {
         case SDL_BUTTON_LEFT:
             mouse_state->input_states[MOUSE_LEFT_BUTTON].is_held = is_down;
             mouse_state->input_states[MOUSE_LEFT_BUTTON].is_pressed = is_down;
+            mouse_state->input_states[MOUSE_LEFT_BUTTON].is_released = !is_down;
             break;
         case SDL_BUTTON_RIGHT:
             mouse_state->input_states[MOUSE_RIGHT_BUTTON].is_held = is_down;
             mouse_state->input_states[MOUSE_RIGHT_BUTTON].is_pressed = is_down;
+            mouse_state->input_states[MOUSE_RIGHT_BUTTON].is_released = !is_down;
             break;
         case SDL_BUTTON_MIDDLE:
             mouse_state->input_states[MOUSE_MIDDLE_BUTTON].is_held = is_down;
-            mouse_state->input_states[MOUSE_MIDDLE_BUTTON].is_held = is_down;
+            mouse_state->input_states[MOUSE_MIDDLE_BUTTON].is_pressed = is_down;
+            mouse_state->input_states[MOUSE_MIDDLE_BUTTON].is_released = !is_down;
             break;
         }
-    } else if ((event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) && !event->key.repeat) {
+    } else if ((event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) &&
+               sdl_scancode_to_key[event->key.scancode] != KEY_UNKNOWN && !event->key.repeat) {
         bool is_down = event->type == SDL_EVENT_KEY_DOWN;
-        switch (event->key.key) {
-        case SDLK_A:
-            key_input_states[KEY_A].is_held = is_down;
-            key_input_states[KEY_A].is_pressed = is_down;
-            break;
-        case SDLK_B:
-            key_input_states[KEY_B].is_held = is_down;
-            key_input_states[KEY_B].is_pressed = is_down;
-            break;
-        case SDLK_C:
-            key_input_states[KEY_C].is_held = is_down;
-            key_input_states[KEY_C].is_pressed = is_down;
-            break;
-        case SDLK_D:
-            key_input_states[KEY_D].is_held = is_down;
-            key_input_states[KEY_D].is_pressed = is_down;
-            break;
-        case SDLK_E:
-            key_input_states[KEY_E].is_held = is_down;
-            key_input_states[KEY_E].is_pressed = is_down;
-            break;
-        case SDLK_F:
-            key_input_states[KEY_F].is_held = is_down;
-            key_input_states[KEY_F].is_pressed = is_down;
-            break;
-        case SDLK_G:
-            key_input_states[KEY_G].is_held = is_down;
-            key_input_states[KEY_G].is_pressed = is_down;
-            break;
-        case SDLK_H:
-            key_input_states[KEY_H].is_held = is_down;
-            key_input_states[KEY_H].is_pressed = is_down;
-            break;
-        case SDLK_I:
-            key_input_states[KEY_I].is_held = is_down;
-            key_input_states[KEY_I].is_pressed = is_down;
-            break;
-        case SDLK_J:
-            key_input_states[KEY_J].is_held = is_down;
-            key_input_states[KEY_J].is_pressed = is_down;
-            break;
-        case SDLK_K:
-            key_input_states[KEY_K].is_held = is_down;
-            key_input_states[KEY_K].is_pressed = is_down;
-            break;
-        case SDLK_L:
-            key_input_states[KEY_L].is_held = is_down;
-            key_input_states[KEY_L].is_pressed = is_down;
-            break;
-        case SDLK_M:
-            key_input_states[KEY_M].is_held = is_down;
-            key_input_states[KEY_M].is_pressed = is_down;
-            break;
-        case SDLK_N:
-            key_input_states[KEY_N].is_held = is_down;
-            key_input_states[KEY_N].is_pressed = is_down;
-            break;
-        case SDLK_O:
-            key_input_states[KEY_O].is_held = is_down;
-            key_input_states[KEY_O].is_pressed = is_down;
-            break;
-        case SDLK_P:
-            key_input_states[KEY_P].is_held = is_down;
-            key_input_states[KEY_P].is_pressed = is_down;
-            break;
-        case SDLK_Q:
-            key_input_states[KEY_Q].is_held = is_down;
-            key_input_states[KEY_Q].is_pressed = is_down;
-            break;
-        case SDLK_R:
-            key_input_states[KEY_R].is_held = is_down;
-            key_input_states[KEY_R].is_pressed = is_down;
-            break;
-        case SDLK_S:
-            key_input_states[KEY_S].is_held = is_down;
-            key_input_states[KEY_S].is_pressed = is_down;
-            break;
-        case SDLK_T:
-            key_input_states[KEY_T].is_held = is_down;
-            key_input_states[KEY_T].is_pressed = is_down;
-            break;
-        case SDLK_U:
-            key_input_states[KEY_U].is_held = is_down;
-            key_input_states[KEY_U].is_pressed = is_down;
-            break;
-        case SDLK_V:
-            key_input_states[KEY_V].is_held = is_down;
-            key_input_states[KEY_V].is_pressed = is_down;
-            break;
-        case SDLK_W:
-            key_input_states[KEY_W].is_held = is_down;
-            key_input_states[KEY_W].is_pressed = is_down;
-            break;
-        case SDLK_X:
-            key_input_states[KEY_X].is_held = is_down;
-            key_input_states[KEY_X].is_pressed = is_down;
-            break;
-        case SDLK_Y:
-            key_input_states[KEY_Y].is_held = is_down;
-            key_input_states[KEY_Y].is_pressed = is_down;
-            break;
-        case SDLK_Z:
-            key_input_states[KEY_Z].is_held = is_down;
-            key_input_states[KEY_Z].is_pressed = is_down;
-            break;
-        case SDLK_0:
-            key_input_states[KEY_0].is_held = is_down;
-            key_input_states[KEY_0].is_pressed = is_down;
-            break;
-        case SDLK_1:
-            key_input_states[KEY_1].is_held = is_down;
-            key_input_states[KEY_1].is_pressed = is_down;
-            break;
-        case SDLK_2:
-            key_input_states[KEY_2].is_held = is_down;
-            key_input_states[KEY_2].is_pressed = is_down;
-            break;
-        case SDLK_3:
-            key_input_states[KEY_3].is_held = is_down;
-            key_input_states[KEY_3].is_pressed = is_down;
-            break;
-        case SDLK_4:
-            key_input_states[KEY_4].is_held = is_down;
-            key_input_states[KEY_4].is_pressed = is_down;
-            break;
-        case SDLK_5:
-            key_input_states[KEY_5].is_held = is_down;
-            key_input_states[KEY_5].is_pressed = is_down;
-            break;
-        case SDLK_6:
-            key_input_states[KEY_6].is_held = is_down;
-            key_input_states[KEY_6].is_pressed = is_down;
-            break;
-        case SDLK_7:
-            key_input_states[KEY_7].is_held = is_down;
-            key_input_states[KEY_7].is_pressed = is_down;
-            break;
-        case SDLK_8:
-            key_input_states[KEY_8].is_held = is_down;
-            key_input_states[KEY_8].is_pressed = is_down;
-            break;
-        case SDLK_9:
-            key_input_states[KEY_9].is_held = is_down;
-            key_input_states[KEY_9].is_pressed = is_down;
-            break;
-        case SDLK_RETURN:
-            key_input_states[KEY_RETURN].is_held = is_down;
-            key_input_states[KEY_RETURN].is_pressed = is_down;
-            break;
-        case SDLK_ESCAPE:
-            key_input_states[KEY_ESCAPE].is_held = is_down;
-            key_input_states[KEY_ESCAPE].is_pressed = is_down;
-            break;
-        case SDLK_BACKSPACE:
-            key_input_states[KEY_BACKSPACE].is_held = is_down;
-            key_input_states[KEY_BACKSPACE].is_pressed = is_down;
-            break;
-        case SDLK_CAPSLOCK:
-            key_input_states[KEY_CAPSLOCK].is_held = is_down;
-            key_input_states[KEY_CAPSLOCK].is_pressed = is_down;
-            break;
-        case SDLK_TAB:
-            key_input_states[KEY_TAB].is_held = is_down;
-            key_input_states[KEY_TAB].is_pressed = is_down;
-            break;
-        case SDLK_SPACE:
-            key_input_states[KEY_SPACE].is_held = is_down;
-            key_input_states[KEY_SPACE].is_pressed = is_down;
-            break;
-        case SDLK_APOSTROPHE:
-            key_input_states[KEY_APOSTROPHE].is_held = is_down;
-            key_input_states[KEY_APOSTROPHE].is_pressed = is_down;
-            break;
-        case SDLK_COMMA:
-            key_input_states[KEY_COMMA].is_held = is_down;
-            key_input_states[KEY_COMMA].is_pressed = is_down;
-            break;
-        case SDLK_MINUS:
-            key_input_states[KEY_MINUS].is_held = is_down;
-            key_input_states[KEY_MINUS].is_pressed = is_down;
-            break;
-        case SDLK_EQUALS:
-            key_input_states[KEY_EQUALS].is_held = is_down;
-            key_input_states[KEY_EQUALS].is_pressed = is_down;
-            break;
-        case SDLK_PERIOD:
-            key_input_states[KEY_PERIOD].is_held = is_down;
-            key_input_states[KEY_PERIOD].is_pressed = is_down;
-            break;
-        case SDLK_BACKSLASH:
-            key_input_states[KEY_BACKSLASH].is_held = is_down;
-            key_input_states[KEY_BACKSLASH].is_pressed = is_down;
-            break;
-        case SDLK_SLASH:
-            key_input_states[KEY_SLASH].is_held = is_down;
-            key_input_states[KEY_SLASH].is_pressed = is_down;
-            break;
-        case SDLK_SEMICOLON:
-            key_input_states[KEY_SEMICOLON].is_held = is_down;
-            key_input_states[KEY_SEMICOLON].is_pressed = is_down;
-            break;
-        case SDLK_LSHIFT:
-            key_input_states[KEY_L_SHIFT].is_held = is_down;
-            key_input_states[KEY_L_SHIFT].is_pressed = is_down;
-            break;
-        case SDLK_RSHIFT:
-            key_input_states[KEY_R_SHIFT].is_held = is_down;
-            key_input_states[KEY_R_SHIFT].is_pressed = is_down;
-            break;
-        case SDLK_LCTRL:
-            key_input_states[KEY_L_CTRL].is_held = is_down;
-            key_input_states[KEY_L_CTRL].is_pressed = is_down;
-            break;
-        case SDLK_RCTRL:
-            key_input_states[KEY_R_CTRL].is_held = is_down;
-            key_input_states[KEY_R_CTRL].is_pressed = is_down;
-            break;
-        case SDLK_LALT:
-            key_input_states[KEY_L_ALT].is_held = is_down;
-            key_input_states[KEY_L_ALT].is_pressed = is_down;
-            break;
-        case SDLK_RALT:
-            key_input_states[KEY_R_ALT].is_held = is_down;
-            key_input_states[KEY_R_ALT].is_pressed = is_down;
-            break;
-        case SDLK_LEFTBRACKET:
-            key_input_states[KEY_LEFT_BRACKET].is_held = is_down;
-            key_input_states[KEY_LEFT_BRACKET].is_pressed = is_down;
-            break;
-        case SDLK_RIGHTBRACKET:
-            key_input_states[KEY_RIGHT_BRACKET].is_held = is_down;
-            key_input_states[KEY_RIGHT_BRACKET].is_pressed = is_down;
-            break;
-        case SDLK_LGUI:
-            key_input_states[KEY_L_GUI].is_held = is_down;
-            key_input_states[KEY_L_GUI].is_pressed = is_down;
-            break;
-        case SDLK_RGUI:
-            key_input_states[KEY_R_GUI].is_held = is_down;
-            key_input_states[KEY_R_GUI].is_pressed = is_down;
-            break;
-        case SDLK_GRAVE:
-            key_input_states[KEY_GRAVE].is_held = is_down;
-            key_input_states[KEY_GRAVE].is_pressed = is_down;
-            break;
-        }
+        KeyInput key = sdl_scancode_to_key[event->key.scancode];
+        key_input_states[key].is_held = is_down;
+        key_input_states[key].is_pressed = is_down;
+        key_input_states[key].is_released = !is_down;
     } else if (event->type == SDL_EVENT_TEXT_INPUT) {
         const char* input = event->text.text;
         // the first condition here is just to protect against weirdness
@@ -408,6 +242,8 @@ void handle_sdl_keyboard_mouse_event(SDL_Event* event, GameInput* game_input) {
     }
 }
 
+// Note: We probably want to switch to handling SDL_GamepadButtonEvent's so that we
+// can capture is_released on these gamepad button states
 void update_gamepad_state(GameInput* game_input, SDL_Gamepad* gamepad) {
     GamepadState* gamepad_state = &game_input->gamepad_state;
 
@@ -544,7 +380,7 @@ int main(int argc, char* argv[]) {
     game_memory.init_audio = init_audio;
     game_memory.push_audio_samples = push_audio_samples;
     game_memory.performance_frequency = SDL_GetPerformanceFrequency();
-    game_memory.window.size = {MIN_SCREEN_WIDTH * 2, MIN_SCREEN_HEIGHT * 2};
+    game_memory.window.size = {MIN_SCREEN_WIDTH * 2.1, MIN_SCREEN_HEIGHT * 2.1};
     w_str_copy(game_memory.base_path, (char*)SDL_GetBasePath());
 
     w_init_waffle_lib(game_memory.base_path);

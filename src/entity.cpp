@@ -638,6 +638,9 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
         entity_create_resource(entity_data, ENTITY_TYPE_PLANT_CORN, position, SPRITE_PLANT_CORN_3, MAX_HP_PLANT_CORN,
                                0);
         break;
+    case ENTITY_TYPE_ITEM_CORN:
+        entity_create_item(entity_data, ENTITY_TYPE_ITEM_CORN, position);
+        break;
     case ENTITY_TYPE_IRON:
         entity_create_item(entity_data, ENTITY_TYPE_IRON, position);
         break;

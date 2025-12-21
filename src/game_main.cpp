@@ -28,12 +28,19 @@ Vec2 get_world_top_left_tile_position() {
 
 #define DEFAULT_Z_INDEX 1.0f
 
+struct PlayerInputAction {
+    bool is_held;
+    bool was_pressed;
+    bool was_released;
+    float held_duration_s;
+};
+
 struct PlayerInputWorld {
     Vec2 movement_vec;
     Vec2 aim_vec;
-    KeyInputState use_held_item;
+    PlayerInputAction use_held_item;
+    PlayerInputAction interact;
     bool drop_item;
-    bool interact;
 };
 
 struct PlayerInputInventory {
@@ -319,7 +326,19 @@ bool inventory_ui_open(GameState* game_state) {
            entity_find(game_state->open_entity_inventory, &game_state->entity_data);
 }
 
-PlayerInput player_input_get(GameInput* game_input, GameState* game_state) {
+void player_action_update_from_input(PlayerInputAction* action, KeyInputState key_input_state, float sim_dt_s) {
+    if (key_input_state.is_held) {
+        action->held_duration_s += sim_dt_s;
+    } else {
+        action->held_duration_s = 0;
+    }
+
+    action->is_held = key_input_state.is_held;
+    action->was_pressed = key_input_state.is_pressed;
+    action->was_released = key_input_state.is_released;
+}
+
+PlayerInput player_input_get(GameInput* game_input, GameState* game_state, float sim_dt_s) {
     PlayerInput input = {};
     bool inventory_ui_is_open = inventory_ui_open(game_state);
     if (game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
@@ -355,13 +374,12 @@ PlayerInput player_input_get(GameInput* game_input, GameState* game_state) {
 
 #ifdef DEBUG
             if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
-                input.world.use_held_item.is_pressed =
-                    game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
-                input.world.use_held_item.is_held = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_held;
+                player_action_update_from_input(&input.world.use_held_item,
+                                                game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON], sim_dt_s);
             }
 #else
-            input.world.use_held_item = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed;
-            input.world.use_held_item.is_held = game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_held;
+            player_action_update_from_input(&input.world.use_held_item,
+                                            game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON]);
 #endif
 
             Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
@@ -370,9 +388,7 @@ PlayerInput player_input_get(GameInput* game_input, GameState* game_state) {
                 {mouse_world_position.x - player_position.x, mouse_world_position.y - (player_position.y + 0.5f)});
         }
 
-        if (key_input_states[KEY_E].is_pressed) {
-            input.world.interact = true;
-        }
+        player_action_update_from_input(&input.world.interact, key_input_states[KEY_E], sim_dt_s);
 
         if (key_input_states[KEY_I].is_pressed) {
             toggle(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
@@ -973,7 +989,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    PlayerInput player_input = player_input_get(game_input, game_state);
+    PlayerInput player_input = player_input_get(game_input, game_state, g_sim_dt_s);
 
     for (int i = 0; i < game_state->entity_data.entity_count; i++) {
         Entity* entity = &game_state->entity_data.entities[i];
@@ -1169,7 +1185,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
                     entity->position = w_rotate_around_pivot(entity->position, pivot, entity->rotation_rads);
 
-                    if (player_input.world.use_held_item.is_pressed) {
+                    if (player_input.world.use_held_item.was_pressed) {
                         Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
                         Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
                         Vec2 projectile_position = {entity->position.x, entity->position.y + entity->z_pos};
@@ -1283,7 +1299,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    if (player_input.world.interact) {
+    if (player_input.world.interact.was_pressed) {
         Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
         if (!entity_with_open_inventory && closest_interactable_entity) {
             game_state->open_entity_inventory = entity_to_handle(closest_interactable_entity, &game_state->entity_data);
@@ -1307,12 +1323,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
         if (player_input.world.use_held_item.is_held) {
             EntityInfo* e_info = &entity_info[active_hotbar_entity_type];
-            if (is_set(e_info->flags, ENTITY_INFO_F_PLACEABLE) && player_input.world.use_held_item.is_pressed) {
+            if (is_set(e_info->flags, ENTITY_INFO_F_PLACEABLE) && player_input.world.use_held_item.was_pressed) {
                 Vec2 placement_position =
                     hotbar_placeable_position(game_state->player->position, player_input.world.aim_vec);
                 entity_create(&game_state->entity_data, active_hotbar_entity_type, placement_position);
                 inventory_remove_items_by_index(&game_state->hotbar.inventory, game_state->hotbar.active_item_idx, 1);
-            } else if (is_set(e_info->flags, ENTITY_INFO_F_FOOD)) {
+            } else if (is_set(e_info->flags, ENTITY_INFO_F_FOOD) && player_input.world.use_held_item.was_pressed) {
                 game_state->player->hunger =
                     w_clamp_max(game_state->player->hunger + e_info->hunger_gain, MAX_HUNGER_PLAYER);
                 inventory_remove_items_by_index(&game_state->hotbar.inventory, game_state->hotbar.active_item_idx, 1);

@@ -82,9 +82,11 @@ enum InputType { INPUT_TYPE_UNKNOWN, INPUT_TYPE_KEYBOARD_MOUSE, INPUT_TYPE_GAMEP
 struct KeyInputState {
     bool is_pressed;
     bool is_held;
+    bool is_released;
 };
 
 enum KeyInput {
+    KEY_UNKNOWN,
     KEY_A,
     KEY_B,
     KEY_C,
@@ -273,6 +275,7 @@ struct MouseState {
 struct ButtonInputState {
     bool is_pressed;
     bool is_held;
+    bool is_released;
 };
 
 enum GamepadButtonID {
