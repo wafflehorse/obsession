@@ -487,7 +487,7 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
     return should_collide;
 }
 
-void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, float dt_collision_s,
+void handle_collision(Entity* subject, Entity* target, Vec2 collision_normal, double dt_collision_s,
                       bool* can_move_freely, GameState* game_state) {
     *can_move_freely = true;
 
@@ -770,6 +770,28 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
     return shake_offset;
 }
 
+bool debug_entity_is_penetrating_blocker(Entity* entity, EntityData* entity_data) {
+
+    Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
+    Rect subject = {subject_collider_position.x, subject_collider_position.y, entity->collider.width,
+                    entity->collider.height};
+
+    for (int i = 0; i < entity_data->entity_count; i++) {
+        Entity* target = &entity_data->entities[i];
+        if (is_set(target->flags, ENTITY_F_BLOCKER) && target->id != entity->id) {
+
+            Vec2 target_collider_position = w_vec_add(target->position, target->collider.offset);
+            Rect target_rect = {target_collider_position.x, target_collider_position.y, target->collider.width,
+                                target->collider.height};
+            if (w_check_aabb_overlap(subject, target_rect)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     // ~~~~~~~~~~~~~~~~~~ Debug Flags ~~~~~~~~~~~~~~~~~~~~ //
     GameState* game_state = (GameState*)game_memory->memory;
@@ -1025,15 +1047,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         // bool has_collided = false;
         // Note: This is an optimization
         if (!is_set(entity->flags, ENTITY_F_NONSPACIAL)) {
-            float t_remaining = 1.0f;
+            double t_remaining = 1.0f;
             for (int attempts = 0; attempts < 4 && t_remaining > 0.0f; attempts++) {
-                float t_min = 1.0f;
+                double t_min = 1.0f;
                 Vec2 collision_normal = {0, 0};
                 Entity* entity_collided_with = NULL;
 
                 Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
-                Vec2 subject_delta = w_calc_position_delta(entity->acceleration, entity->velocity, entity->position,
-                                                           t_remaining * g_sim_dt_s);
+                Vec2 subject_delta = w_calc_position_delta(entity->acceleration, entity->velocity,
+                                                           subject_collider_position, t_remaining * g_sim_dt_s);
 
                 for (int j = 0; j < game_state->entity_data.entity_count; j++) {
                     Entity* target_entity = &game_state->entity_data.entities[j];
@@ -1045,12 +1067,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                         Vec2 target_collider_position =
                             w_vec_add(target_entity->position, target_entity->collider.offset);
                         Vec2 target_delta = w_calc_position_delta(target_entity->acceleration, target_entity->velocity,
-                                                                  target_entity->position, g_sim_dt_s);
+                                                                  target_collider_position, g_sim_dt_s);
 
                         Rect target = {target_collider_position.x, target_collider_position.y,
                                        target_entity->collider.width, target_entity->collider.height};
 
-                        float prev_t_min = t_min;
+                        double prev_t_min = t_min;
 
                         w_rect_collision(subject, subject_delta, target, target_delta, &t_min, &collision_normal);
 
@@ -1061,12 +1083,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 }
 
                 if (t_min < 1) {
-                    t_min = w_max(0.0, t_min - 0.01); // epsilon adjustment
+                    t_min = w_max(0.0, t_min - 0.8); // epsilon adjustment
                 }
 
-                float t_effective = t_min * t_remaining;
+                double t_effective = t_min * t_remaining;
                 t_remaining -= t_effective;
-                float effective_dt_s = t_effective * g_sim_dt_s;
+                double effective_dt_s = t_effective * g_sim_dt_s;
 
                 bool can_move_freely = true;
                 if (entity_collided_with) {
@@ -1210,7 +1232,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
         entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
 
-        if (is_set(entity->flags, ENTITY_F_GETS_HUNGERY)) {
+        if (is_set(entity->flags, ENTITY_F_GETS_HUNGERY) && !game_state->tools.disable_hunger) {
             entity->hunger_cooldown_s = w_clamp_min(entity->hunger_cooldown_s - g_sim_dt_s, 0);
             if (entity->hunger_cooldown_s <= 0) {
                 entity->hunger = w_clamp_min(entity->hunger - 1, 0);

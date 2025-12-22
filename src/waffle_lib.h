@@ -500,12 +500,12 @@ bool w_check_aabb_overlap(Rect subject, Rect target) {
 }
 
 bool w_test_wall_collision(float start_x, float start_y, float delta_x, float delta_y, float wall_x, float wall_min_y,
-                           float wall_max_y, float* t_min) {
+                           float wall_max_y, double* t_min) {
     if (delta_x == 0.0f) {
         return false;
     }
 
-    float t = (wall_x - start_x) / delta_x;
+    double t = (wall_x - start_x) / delta_x;
 
     if (t < *t_min && t >= 0) {
         float collision_y = (delta_y * t) + start_y;
@@ -519,7 +519,7 @@ bool w_test_wall_collision(float start_x, float start_y, float delta_x, float de
     return false;
 }
 
-void w_rect_collision(Rect subject, Vec2 subject_delta, Rect target, Vec2 target_delta, float* t_collision,
+void w_rect_collision(Rect subject, Vec2 subject_delta, Rect target, Vec2 target_delta, double* t_collision,
                       Vec2* collision_normal) {
     // Uses minkowski sums
     float wall_top_y = target.y + (target.h / 2) + (subject.h / 2);

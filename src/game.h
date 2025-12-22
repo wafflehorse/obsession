@@ -269,6 +269,7 @@ struct Tools {
     bool draw_colliders;
     bool draw_entity_positions;
     bool draw_hitboxes;
+    bool disable_hunger;
 };
 
 struct GameInit {

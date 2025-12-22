@@ -56,6 +56,7 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
         ImGui::Checkbox("Draw colliders", &game_state->tools.draw_colliders);
         ImGui::Checkbox("Draw entity positions", &game_state->tools.draw_entity_positions);
         ImGui::Checkbox("Draw hitboxes", &game_state->tools.draw_hitboxes);
+        ImGui::Checkbox("Disable hunger", &game_state->tools.disable_hunger);
 
         if (ImGui::CollapsingHeader("Entity")) {
             ImGui::Text("Entity count: %i", game_state->entity_data.entity_count);

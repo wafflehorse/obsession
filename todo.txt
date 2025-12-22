@@ -221,25 +221,35 @@
 [x] Add ability to pick up food items
 [x] Add food storage box
 [x] Add hunger to player
-[] Add food item consumption
+[x] Add food item consumption
 	- I think we should introduce an InputAction concept which has is_pressed, is_held, and held_duration
 	- Might want to think about is_pressed, and is_held. What if we want to do something when the input is released.
 		- Like a charge shot or something
+[x] Add items to pre-existing entity stack if exists in hotbar
+	- Right now the hotbar just looks for the first available slot and fills it
+[kinda for now] Fix collision tunneling 
+	- I dived pretty deep on this issue. And my takeaways are:
+		- floating point precision is a part of the problem
+		- The other issue is that our collision equestions around time of impact assume
+		that the objects are in linear motion. t = wall_x - start_x / delta_x. But since
+		our entities accelerate, the time of impact won't be accurate. The hope is that it's accurate
+		enough and we resolve it with an epsilon.
+		- So, i've increased the epsilon to a large number (.5) for now, but if I want a more
+		robust collision response, I'll need to add a separation step to ensure entities never overlap.
 [] Add food gathering robot
 	[x] Add food gathering robot animations and sprites
 	[x] Add food gathering robot entity
 	[] Add gatherer brain
 		[]	
 	[] How does the player interact with it? And tell it where to go? 
+[] Add boar spawning points
+	- Need to figure out best way to do this using proc gen
 
+[] Food item consumption with input holding, item animation, and sound effect
 [] Update controls so player inventory can be open while player moves
 [] Bug: items that persist as entities don't spew from chest when chest is destroyed
-[] Fix collision tunneling 
 [] Projectile collider seems off
-[] Add items to pre-existing entity stack if exists in hotbar
-	- Right now the hotbar just looks for the first available slot and fills it
 [] Randomly spawn enemies around the map
-[] Add item consumption
 [] Add mech entity
 [] Add mech AI
 	- How should the player control the mech?
