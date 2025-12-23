@@ -236,14 +236,18 @@
 		enough and we resolve it with an epsilon.
 		- So, i've increased the epsilon to a large number (.5) for now, but if I want a more
 		robust collision response, I'll need to add a separation step to ensure entities never overlap.
+[] Add enemy spawning
+	- Need to figure out best way to do this using proc gen
+	- Let's take this approach as a first draft:
+		1. Break the world into chunks with their own managed populations
+		2. On each spawn tick (maybe 0.5 secs?) we check if population is less than max
+		3. If it is, then 
 [] Add food gathering robot
 	[x] Add food gathering robot animations and sprites
 	[x] Add food gathering robot entity
 	[] Add gatherer brain
 		[]	
 	[] How does the player interact with it? And tell it where to go? 
-[] Add boar spawning points
-	- Need to figure out best way to do this using proc gen
 
 [] Food item consumption with input holding, item animation, and sound effect
 [] Update controls so player inventory can be open while player moves
