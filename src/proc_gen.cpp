@@ -1,3 +1,139 @@
+#include "proc_gen.h"
+
+BiomeSpawnTable biome_spawn_tables[BIOME_COUNT] = {
+    [BIOME_FART] = {.entries = {{.entity_type = ENTITY_TYPE_BOAR, .weight = 0.5, .group_min = 1, .group_max = 2},
+                                {.entity_type = ENTITY_TYPE_WARRIOR, .weight = 0.25, .group_min = 1, .group_max = 3}
+
+                    },
+                    .entry_count = 2,
+                    .max_chunk_population = 16,
+                    .spawn_interval_s = 1}
+
+};
+
+void proc_gen_init_chunk_states(Vec2 world_dimensions, ChunkSpawn* chunk_spawn, uint32 world_seed) {
+    int chunks_wide = world_dimensions.x / SPAWN_CHUNK_DIMENSION;
+    int chunks_tall = world_dimensions.y / SPAWN_CHUNK_DIMENSION;
+
+    chunk_spawn->state_count = chunks_wide * chunks_tall;
+    chunk_spawn->num_rows = chunks_wide;
+    chunk_spawn->num_cols = chunks_tall;
+
+    ASSERT(chunk_spawn->state_count < MAX_CHUNK_SPAWN_STATES, "chunk spawn state count exceeds the max");
+
+    for (int row = 0; row < chunk_spawn->num_rows; row++) {
+        for (int col = 0; col < chunk_spawn->num_cols; col++) {
+            uint32 idx = row * chunk_spawn->num_cols + col;
+            chunk_spawn->states[idx].rng = w_vec_hash({(float)row, (float)col}, world_seed);
+        }
+    }
+}
+
+Vec2 proc_gen_world_position_to_chunk_position(Vec2 world_position) {
+    Vec2 world_position_top_left_origin = {.x = world_position.x + (DEFAULT_WORLD_WIDTH / 2.0f),
+                                           .y = (DEFAULT_WORLD_HEIGHT / 2.0f) - world_position.y};
+
+    Vec2 result;
+    result.x = (int)w_floorf(world_position_top_left_origin.x / (float)SPAWN_CHUNK_DIMENSION);
+    result.y = (int)w_floorf(world_position_top_left_origin.y / (float)SPAWN_CHUNK_DIMENSION);
+
+    return result;
+}
+
+Vec2 proc_gen_chunk_position_to_world_position_top_left(int row, int col) {
+    Vec2 world_pos_rel_top_left = {.x = col * (float)SPAWN_CHUNK_DIMENSION, .y = row * (float)SPAWN_CHUNK_DIMENSION};
+
+    Vec2 world_pos_top_left = {.x = world_pos_rel_top_left.x - (DEFAULT_WORLD_WIDTH / 2),
+                               .y = -world_pos_rel_top_left.y + (DEFAULT_WORLD_HEIGHT / 2)};
+
+    return world_pos_top_left;
+}
+
+void proc_gen_update_chunk_states(Vec2 player_position, GameState* game_state, double sim_dt_s) {
+    ChunkSpawn* chunk_spawn = &game_state->chunk_spawn;
+    Vec2 center_spawn_chunk = proc_gen_world_position_to_chunk_position(player_position);
+    Vec2 start_spawn_chunk = w_vec_sub(center_spawn_chunk, {2, 2});
+
+    int grid_dimension = 5;
+
+    // loop over AxA grid centered at player chunk
+    for (int row = start_spawn_chunk.y; row < (start_spawn_chunk.y + grid_dimension); row++) {
+        for (int col = start_spawn_chunk.x; col < (start_spawn_chunk.x + grid_dimension); col++) {
+            if (row >= chunk_spawn->num_rows || row < 0 || col >= chunk_spawn->num_cols || col < 0) {
+                continue;
+            }
+            uint32 state_idx = row * chunk_spawn->num_cols + col;
+            ChunkSpawnState* state = &chunk_spawn->states[state_idx];
+
+            state->respawn_timer_s += sim_dt_s;
+
+            BiomeSpawnTable* spawn_table = &biome_spawn_tables[BIOME_FART];
+
+            if (state->respawn_timer_s >= spawn_table->spawn_interval_s) {
+                state->respawn_timer_s = 0;
+
+                if (state->current_population < spawn_table->max_chunk_population) {
+                    float total_spawn_entry_weight = 0;
+
+                    for (int i = 0; i < spawn_table->entry_count; i++) {
+                        total_spawn_entry_weight += spawn_table->entries[i].weight;
+                    }
+
+                    float rng = w_rng_range_f32(&state->rng, 0, total_spawn_entry_weight);
+
+                    int chosen_entry_idx = -1;
+
+                    for (int entry_idx = 0; entry_idx < spawn_table->entry_count; entry_idx++) {
+                        SpawnEntry spawn_entry = spawn_table->entries[entry_idx];
+                        if (rng <= spawn_entry.weight) {
+                            chosen_entry_idx = entry_idx;
+                            break;
+                        } else {
+                            rng -= spawn_entry.weight;
+                        }
+                    }
+
+                    ASSERT(chosen_entry_idx != -1, "Did not find an entity to spawn");
+
+                    SpawnEntry spawn_entry = spawn_table->entries[chosen_entry_idx];
+
+                    uint32 count = w_rng_range_i32(&state->rng, spawn_entry.group_min, spawn_entry.group_max);
+
+                    for (int i = 0; i < count; i++) {
+                        Vec2 world_top_left = proc_gen_chunk_position_to_world_position_top_left(row, col);
+                        bool spawn_position_found = false;
+                        Vec2 spawn_position;
+
+                        for (int spawn_attempts = 0; spawn_attempts < 4; spawn_attempts++) {
+                            spawn_position.x = w_rng_range_f32(&state->rng, world_top_left.x,
+                                                               world_top_left.x + SPAWN_CHUNK_DIMENSION);
+                            spawn_position.y = w_rng_range_f32(&state->rng, world_top_left.y,
+                                                               world_top_left.y - SPAWN_CHUNK_DIMENSION);
+
+                            Rect player_safe_space = {.x = game_state->player->position.x,
+                                                      .y = game_state->player->position.y,
+                                                      .w = PLAYER_SAFE_DIMENSION,
+                                                      .h = PLAYER_SAFE_DIMENSION};
+
+                            if (w_check_point_in_rect(player_safe_space, spawn_position)) {
+                                continue;
+                            }
+
+                            spawn_position_found = true;
+                            break;
+                        }
+
+                        if (spawn_position_found) {
+                            entity_create(&game_state->entity_data, spawn_entry.entity_type, spawn_position);
+                        }
+                    }
+
+                    state->current_population += count;
+                }
+            }
+        }
+    }
+}
 
 bool w_is_local_maximum(FBMContext* fbm_context, Vec2 position, float radius, float peak_threshold) {
     float center =

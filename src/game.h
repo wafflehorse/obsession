@@ -1,4 +1,6 @@
 #pragma once
+#include "proc_gen.h"
+#include "entity.h"
 
 #define MAX_SOUND_VARIATIONS 10
 #define MAX_ENTITIES 10000
@@ -140,24 +142,6 @@ struct EntityLookup {
 struct EntityHandle {
     uint32 id;
     int generation;
-};
-
-enum EntityType {
-    ENTITY_TYPE_UNKNOWN,
-    ENTITY_TYPE_PLAYER,
-    ENTITY_TYPE_GUN,
-    ENTITY_TYPE_WARRIOR,
-    ENTITY_TYPE_PROJECTILE,
-    ENTITY_TYPE_BLOCK,
-    ENTITY_TYPE_BOAR,
-    ENTITY_TYPE_BOAR_MEAT,
-    ENTITY_TYPE_IRON_DEPOSIT,
-    ENTITY_TYPE_IRON,
-    ENTITY_TYPE_PLANT_CORN,
-    ENTITY_TYPE_ITEM_CORN,
-    ENTITY_TYPE_CHEST_IRON,
-    ENTITY_TYPE_ROBOT_GATHERER,
-    ENTITY_TYPE_COUNT
 };
 
 struct InventoryItem {
@@ -320,4 +304,6 @@ struct GameState {
     TextureInfo sprite_texture_info;
     TextureInfo font_texture_info;
     Tools tools;
+    ChunkSpawn chunk_spawn;
+    uint32 chunk_spawn_state_count;
 };

@@ -699,6 +699,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
         game_state->world_seed = 12756671;
 
+        proc_gen_init_chunk_states({DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT}, &game_state->chunk_spawn,
+                                   game_state->world_seed);
+
         game_state->world_gen_context = {
             .ore_fbm_context = {.amp = 1.0f,
                                 .octaves = 4,
@@ -1098,6 +1101,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             game_state->open_entity_inventory = entity_null_handle;
         }
     }
+
+    proc_gen_update_chunk_states(game_state->player->position, game_state, g_sim_dt_s);
 
     Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
     if (entity_with_open_inventory) {
