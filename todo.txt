@@ -236,12 +236,9 @@
 		enough and we resolve it with an epsilon.
 		- So, i've increased the epsilon to a large number (.5) for now, but if I want a more
 		robust collision response, I'll need to add a separation step to ensure entities never overlap.
-[] Add enemy spawning
+[x] Add entity spawning system using biome spawn tables and chunk based populations
 	- Need to figure out best way to do this using proc gen
-	- Let's take this approach as a first draft:
-		1. Break the world into chunks with their own managed populations
-		2. On each spawn tick (maybe 0.5 secs?) we check if population is less than max
-		3. If it is, then 
+[] Update resource spawning to use some of the chunk based techniques used by our entity spawning
 [] Add food gathering robot
 	[x] Add food gathering robot animations and sprites
 	[x] Add food gathering robot entity
@@ -249,6 +246,7 @@
 		[]	
 	[] How does the player interact with it? And tell it where to go? 
 
+[] Add SpawnGroupArchetypes to entity spawning system so that we can have cross-entity groups (like enemy patrols)
 [] Food item consumption with input holding, item animation, and sound effect
 [] Update controls so player inventory can be open while player moves
 [] Bug: items that persist as entities don't spew from chest when chest is destroyed
