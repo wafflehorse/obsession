@@ -37,9 +37,9 @@
 
 #define FOURCC(a, b, c, d) ((uint32)(a) << 24 | (uint32)(b) << 16 | (uint32)(c) << 8 | (uint32)(d))
 
-#define SEED_IRON_ORE FOURCC('I', 'R', 'O', 'N')
+// #define SEED_IRON_ORE FOURCC('I', 'R', 'O', 'N')
+// #define SEED_CORN FOURCC('C', 'O', 'R', 'N')
 #define SEED_PLANT FOURCC('P', 'L', 'A', 'N')
-#define SEED_CORN FOURCC('C', 'O', 'R', 'N')
 
 struct FontData {
     uint32 ascent;
@@ -233,9 +233,9 @@ struct EntityItemSpawnInfo {
 };
 
 struct WorldGenContext {
-    FBMContext ore_fbm_context;
+    // FBMContext ore_fbm_context;
+    // FBMContext corn_fbm_context;
     FBMContext plant_fbm_context;
-    FBMContext corn_fbm_context;
 };
 
 struct WorldInput {

@@ -702,31 +702,38 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         proc_gen_init_chunk_states({DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT}, &game_state->chunk_spawn,
                                    game_state->world_seed);
 
-        game_state->world_gen_context = {
-            .ore_fbm_context = {.amp = 1.0f,
-                                .octaves = 4,
-                                .freq = 0.12f,
-                                .lacunarity = 2.0f,
-                                .gain = 0.45f,
-                                .seed = w_fmix32(game_state->world_seed ^ SEED_IRON_ORE)},
-            .plant_fbm_context = {.amp = 1.0f,
-                                  .octaves = 4,
-                                  .freq = 0.2f,
-                                  .lacunarity = 2.0f,
-                                  .gain = 0.90f,
-                                  .seed = w_fmix32(game_state->world_seed ^ SEED_PLANT)},
-            .corn_fbm_context = {.amp = 1.0f,
-                                 .octaves = 4,
-                                 .freq = 0.12f,
-                                 .lacunarity = 2.0f,
-                                 .gain = 0.45f,
-                                 .seed = w_fmix32(game_state->world_seed ^ SEED_CORN)},
-        };
+        // game_state->world_gen_context = {
+        //     .ore_fbm_context = {.amp = 1.0f,
+        //                         .octaves = 4,
+        //                         .freq = 0.12f,
+        //                         .lacunarity = 2.0f,
+        //                         .gain = 0.45f,
+        //                         .seed = w_fmix32(game_state->world_seed ^ SEED_IRON_ORE)},
+        //     .plant_fbm_context = {.amp = 1.0f,
+        //                           .octaves = 4,
+        //                           .freq = 0.2f,
+        //                           .lacunarity = 2.0f,
+        //                           .gain = 0.90f,
+        //                           .seed = w_fmix32(game_state->world_seed ^ SEED_PLANT)},
+        //     .corn_fbm_context = {.amp = 1.0f,
+        //                          .octaves = 4,
+        //                          .freq = 0.12f,
+        //                          .lacunarity = 2.0f,
+        //                          .gain = 0.45f,
+        //                          .seed = w_fmix32(game_state->world_seed ^ SEED_CORN)},
+        // };
 
-        proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT,
-                                &game_state->world_gen_context.ore_fbm_context);
-        proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_PLANT_CORN,
-                                &game_state->world_gen_context.corn_fbm_context);
+        game_state->world_gen_context.plant_fbm_context = {.amp = 1.0f,
+                                                           .octaves = 4,
+                                                           .freq = 0.2f,
+                                                           .lacunarity = 2.0f,
+                                                           .gain = 0.90f,
+                                                           .seed = w_fmix32(game_state->world_seed ^ SEED_PLANT)};
+
+        // proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT,
+        //                         &game_state->world_gen_context.ore_fbm_context);
+        // proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_PLANT_CORN,
+        //                         &game_state->world_gen_context.corn_fbm_context);
         proc_gen_plants(&game_state->decoration_data, &game_state->world_gen_context.plant_fbm_context);
     }
 

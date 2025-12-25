@@ -144,23 +144,23 @@ void tools_render_panel(GameMemory* game_memory, GameState* game_state, GameInpu
         }
 
         if (ImGui::CollapsingHeader("Proc Gen")) {
-            if (ImGui::TreeNode("Iron Ore")) {
-                FBMContext* fbm_context = &game_state->world_gen_context.ore_fbm_context;
-                ImGuiSliderFlags slider_flags = 0;
-
-                ImGui::DragInt("Octaves", (int*)&fbm_context->octaves, 0.1f, 1, 16, "%i", slider_flags);
-                ImGui::DragFloat("Amp", &fbm_context->amp, 0.1f, 0, 16, "%.4f", slider_flags);
-                ImGui::DragFloat("Freq", &fbm_context->freq, 0.001f, 0, 4, "%.4f", slider_flags);
-                ImGui::DragFloat("Gain", &fbm_context->gain, 0.1f, 0, 8, "%.4f", slider_flags);
-                ImGui::DragFloat("Lacunarity", &fbm_context->lacunarity, 0.1f, 0, 8, "%.4f", slider_flags);
-                if (ImGui::Button("Gen")) {
-                    proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT,
-                                            &game_state->world_gen_context.ore_fbm_context);
-                }
-
-                ImGui::TreePop();
-            }
-
+            // if (ImGui::TreeNode("Iron Ore")) {
+            //     FBMContext* fbm_context = &game_state->world_gen_context.ore_fbm_context;
+            //     ImGuiSliderFlags slider_flags = 0;
+            //
+            //     ImGui::DragInt("Octaves", (int*)&fbm_context->octaves, 0.1f, 1, 16, "%i", slider_flags);
+            //     ImGui::DragFloat("Amp", &fbm_context->amp, 0.1f, 0, 16, "%.4f", slider_flags);
+            //     ImGui::DragFloat("Freq", &fbm_context->freq, 0.001f, 0, 4, "%.4f", slider_flags);
+            //     ImGui::DragFloat("Gain", &fbm_context->gain, 0.1f, 0, 8, "%.4f", slider_flags);
+            //     ImGui::DragFloat("Lacunarity", &fbm_context->lacunarity, 0.1f, 0, 8, "%.4f", slider_flags);
+            //     if (ImGui::Button("Gen")) {
+            //         proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT,
+            //                                 &game_state->world_gen_context.ore_fbm_context);
+            //     }
+            //
+            //     ImGui::TreePop();
+            // }
+            //
             if (ImGui::TreeNode("Plants")) {
                 FBMContext* fbm_context = &game_state->world_gen_context.plant_fbm_context;
                 ImGuiSliderFlags slider_flags = 0;
