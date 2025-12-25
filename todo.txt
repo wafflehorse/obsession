@@ -238,7 +238,8 @@
 		robust collision response, I'll need to add a separation step to ensure entities never overlap.
 [x] Add entity spawning system using biome spawn tables and chunk based populations
 	- Need to figure out best way to do this using proc gen
-[] Update resource spawning to use some of the chunk based techniques used by our entity spawning
+[x] Update resource spawning to use some of the chunk based techniques used by our entity spawning
+[] Put spaceship like structure near spawn point to center and orient player
 [] Add food gathering robot
 	[x] Add food gathering robot animations and sprites
 	[x] Add food gathering robot entity
