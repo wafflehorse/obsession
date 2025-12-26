@@ -14,7 +14,7 @@ void sprite_to_uv_coordinates(SpriteID sprite_id, Vec2 texture_size, Vec2* uv0, 
 void tools_update_input(GameInput* game_input, GameState* game_state) {
     KeyInputState* key_input_states = game_input->key_input_states;
 
-    if (key_input_states[KEY_CAPSLOCK].is_held) {
+    if (key_input_states[KEY_CAPSLOCK].is_held || key_input_states[KEY_R_CTRL].is_held) {
         if (key_input_states[KEY_E].is_pressed) {
             game_state->tools.is_panel_open = !game_state->tools.is_panel_open;
         }

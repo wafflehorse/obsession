@@ -26,6 +26,19 @@ EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
 
 EntityHandle entity_null_handle = {.generation = -1};
 
+Collider entity_collider_from_sprite(SpriteID sprite_id) {
+    Vec2 sprite_world_size = sprite_get_world_size(sprite_id);
+
+    Collider result = {
+        .shape = COLLIDER_SHAPE_RECT,
+        .offset = {0, sprite_world_size.y / 2},
+        .width = sprite_world_size.x,
+        .height = sprite_world_size.y,
+    };
+
+    return result;
+}
+
 void entity_init() {
     entity_info[ENTITY_TYPE_UNKNOWN] = {
         .type_name_string = "Unknown",
@@ -117,6 +130,9 @@ void entity_init() {
                                                    },
                                                .type_name_string = "Gatherer Robot",
                                                .default_sprite = SPRITE_ROBOT_GATHERER_IDLE_0};
+
+    entity_info[ENTITY_TYPE_LANDING_POD_YELLOW] = {.type_name_string = "Yellow Landing Pod",
+                                                   .default_sprite = SPRITE_LANDING_POD_YELLOW};
 }
 
 Sprite entity_get_default_sprite(EntityType type) {
@@ -202,19 +218,6 @@ EntityHandle entity_to_handle(Entity* entity, EntityData* entity_data) {
 
 bool entity_same(EntityHandle entity_a, EntityHandle entity_b) {
     return entity_a.id == entity_b.id && entity_a.generation == entity_b.generation;
-}
-
-Collider entity_collider_from_sprite(SpriteID sprite_id) {
-    Vec2 sprite_world_size = sprite_get_world_size(sprite_id);
-
-    Collider result = {
-        .shape = COLLIDER_SHAPE_RECT,
-        .offset = {0, sprite_world_size.y / 2},
-        .width = sprite_world_size.x,
-        .height = sprite_world_size.y,
-    };
-
-    return result;
 }
 
 EntityHandle entity_create_blocker(EntityData* entity_data, EntityType type, Vec2 position, SpriteID sprite_id) {
@@ -667,6 +670,8 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
     case ENTITY_TYPE_ROBOT_GATHERER:
         entity_create_robot_gatherer(entity_data, position);
         break;
+    case ENTITY_TYPE_LANDING_POD_YELLOW:
+        entity_create_blocker(entity_data, ENTITY_TYPE_LANDING_POD_YELLOW, position, SPRITE_LANDING_POD_YELLOW);
     default:
         // TODO: this is probably a debug only function, so this assertion is kind of annoying
         // cause it will force me to not call this with ineligible entities. So commenting out
