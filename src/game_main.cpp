@@ -322,10 +322,9 @@ void debug_render_entity_colliders(Entity* entity, bool has_collided) {
     if (!is_set(entity->flags, ENTITY_F_NONSPACIAL)) {
         RenderQuad* quad = get_next_quad(g_debug_render_group);
 
-        Collider collider = entity->collider;
-        Vec2 collider_position = w_vec_add(entity->position, collider.offset);
-        quad->world_position = collider_position;
-        quad->world_size = {collider.width, collider.height};
+        WorldCollider collider = entity_get_world_collider(entity);
+        quad->world_position = collider.position;
+        quad->world_size = collider.size;
         quad->draw_colored_rect = 1;
         quad->rgba = {0, 0, 255, 0.5};
         if (has_collided) {
@@ -541,17 +540,16 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
 
 bool debug_entity_is_penetrating_blocker(Entity* entity, EntityData* entity_data) {
 
-    Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
-    Rect subject = {subject_collider_position.x, subject_collider_position.y, entity->collider.width,
-                    entity->collider.height};
+    WorldCollider subject_collider = entity_get_world_collider(entity);
+    Rect subject = {subject_collider.position.x, subject_collider.position.y, subject_collider.size.x,
+                    subject_collider.size.y};
 
     for (int i = 0; i < entity_data->entity_count; i++) {
         Entity* target = &entity_data->entities[i];
         if (is_set(target->flags, ENTITY_F_BLOCKER) && target->id != entity->id) {
-
-            Vec2 target_collider_position = w_vec_add(target->position, target->collider.offset);
-            Rect target_rect = {target_collider_position.x, target_collider_position.y, target->collider.width,
-                                target->collider.height};
+            WorldCollider target_collider = entity_get_world_collider(target);
+            Rect target_rect = {target_collider.position.x, target_collider.position.y, target_collider.size.x,
+                                target_collider.size.y};
             if (w_check_aabb_overlap(subject, target_rect)) {
                 return true;
             }
@@ -702,27 +700,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         proc_gen_init_chunk_states({DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT}, &game_state->chunk_spawn,
                                    game_state->world_seed);
 
-        // game_state->world_gen_context = {
-        //     .ore_fbm_context = {.amp = 1.0f,
-        //                         .octaves = 4,
-        //                         .freq = 0.12f,
-        //                         .lacunarity = 2.0f,
-        //                         .gain = 0.45f,
-        //                         .seed = w_fmix32(game_state->world_seed ^ SEED_IRON_ORE)},
-        //     .plant_fbm_context = {.amp = 1.0f,
-        //                           .octaves = 4,
-        //                           .freq = 0.2f,
-        //                           .lacunarity = 2.0f,
-        //                           .gain = 0.90f,
-        //                           .seed = w_fmix32(game_state->world_seed ^ SEED_PLANT)},
-        //     .corn_fbm_context = {.amp = 1.0f,
-        //                          .octaves = 4,
-        //                          .freq = 0.12f,
-        //                          .lacunarity = 2.0f,
-        //                          .gain = 0.45f,
-        //                          .seed = w_fmix32(game_state->world_seed ^ SEED_CORN)},
-        // };
-
         game_state->world_gen_context.plant_fbm_context = {.amp = 1.0f,
                                                            .octaves = 4,
                                                            .freq = 0.2f,
@@ -730,10 +707,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                                                            .gain = 0.90f,
                                                            .seed = w_fmix32(game_state->world_seed ^ SEED_PLANT)};
 
-        // proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_IRON_DEPOSIT,
-        //                         &game_state->world_gen_context.ore_fbm_context);
-        // proc_gen_entity_patches(&game_state->entity_data, ENTITY_TYPE_PLANT_CORN,
-        //                         &game_state->world_gen_context.corn_fbm_context);
         proc_gen_plants(&game_state->decoration_data, &game_state->world_gen_context.plant_fbm_context);
     }
 
@@ -832,24 +805,23 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 Vec2 collision_normal = {0, 0};
                 Entity* entity_collided_with = NULL;
 
-                Vec2 subject_collider_position = w_vec_add(entity->position, entity->collider.offset);
+                WorldCollider subject_collider = entity_get_world_collider(entity);
                 Vec2 subject_delta = w_calc_position_delta(entity->acceleration, entity->velocity,
-                                                           subject_collider_position, t_remaining * g_sim_dt_s);
+                                                           subject_collider.position, t_remaining * g_sim_dt_s);
 
                 for (int j = 0; j < game_state->entity_data.entity_count; j++) {
                     Entity* target_entity = &game_state->entity_data.entities[j];
 
                     if (should_collide(entity, target_entity, game_state->collision_rule_hash)) {
-                        Rect subject = {subject_collider_position.x, subject_collider_position.y,
-                                        entity->collider.width, entity->collider.height};
+                        Rect subject = {subject_collider.position.x, subject_collider.position.y,
+                                        subject_collider.size.x, subject_collider.size.y};
 
-                        Vec2 target_collider_position =
-                            w_vec_add(target_entity->position, target_entity->collider.offset);
+                        WorldCollider target_collider = entity_get_world_collider(target_entity);
                         Vec2 target_delta = w_calc_position_delta(target_entity->acceleration, target_entity->velocity,
-                                                                  target_collider_position, g_sim_dt_s);
+                                                                  target_collider.position, g_sim_dt_s);
 
-                        Rect target = {target_collider_position.x, target_collider_position.y,
-                                       target_entity->collider.width, target_entity->collider.height};
+                        Rect target = {target_collider.position.x, target_collider.position.y, target_collider.size.x,
+                                       target_collider.size.y};
 
                         double prev_t_min = t_min;
 
@@ -1059,11 +1031,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                     CollisionRule* collision_rule =
                         find_collision_rule(entity->attack_id, target_entity->id, game_state);
                     if (!collision_rule || collision_rule->should_collide) {
-                        Vec2 target_collider_position =
-                            w_vec_add(target_entity->position, target_entity->collider.offset);
+                        WorldCollider target_collider = entity_get_world_collider(target_entity);
 
-                        Rect target = {target_collider_position.x, target_collider_position.y,
-                                       target_entity->collider.width, target_entity->collider.height};
+                        Rect target = {target_collider.position.x, target_collider.position.y, target_collider.size.x,
+                                       target_collider.size.y};
 
                         if (w_check_aabb_overlap(subject_hitbox, target)) {
                             entity_deal_damage(target_entity, 1, game_state);

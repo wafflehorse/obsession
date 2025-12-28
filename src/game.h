@@ -103,11 +103,16 @@ enum ColliderShape {
     COLLIDER_SHAPE_RECT,
 };
 
+struct WorldCollider {
+    ColliderShape shape;
+    Vec2 position;
+    Vec2 size;
+};
+
 struct Collider {
     ColliderShape shape;
     Vec2 offset;
-    float width;
-    float height;
+    Vec2 size;
 };
 
 enum AIState { AI_STATE_IDLE, AI_STATE_WANDER, AI_STATE_CHASE, AI_STATE_ATTACK, AI_STATE_DEAD };
@@ -184,8 +189,6 @@ struct Entity {
     float z_velocity;
     float z_acceleration;
 
-    Collider collider;
-
     AnimationState anim_state;
     SpriteID sprite_id;
     float z_index;
@@ -233,8 +236,6 @@ struct EntityItemSpawnInfo {
 };
 
 struct WorldGenContext {
-    // FBMContext ore_fbm_context;
-    // FBMContext corn_fbm_context;
     FBMContext plant_fbm_context;
 };
 

@@ -58,8 +58,6 @@ bool should_collide(Entity* entity_a, Entity* entity_b, CollisionRule** hash) {
         return false;
     }
 
-    ASSERT(entity_a->collider.shape != COLLIDER_SHAPE_UNKNOWN, "unknown collider shape on spacial entity")
-
     bool should_collide = true;
     if (is_set(entity_a->flags, ENTITY_F_KILLABLE) && !is_set(entity_b->flags, ENTITY_F_BLOCKER)) {
         should_collide = false;

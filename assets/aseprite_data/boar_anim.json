@@ -566,7 +566,7 @@
    { "name": "walk", "from": 61, "to": 68, "direction": "forward", "color": "#000000ff" }
   ],
   "slices": [
-   { "name": "ground_anchor", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 98, "y": 100, "w": 1, "h": 1 } }, { "frame": 3, "bounds": {"x": 98, "y": 100, "w": 1, "h": 1 } }] }
+   { "name": "ground_anchor", "color": "#0000ffff", "keys": [{ "frame": 0, "bounds": {"x": 93, "y": 100, "w": 1, "h": 1 } }, { "frame": 10, "bounds": {"x": 93, "y": 100, "w": 1, "h": 1 } }, { "frame": 68, "bounds": {"x": 93, "y": 100, "w": 1, "h": 1 } }] }
   ]
  }
 }

@@ -20,23 +20,39 @@ struct EntityInfo {
     SpriteID default_sprite;
     char type_name_string[256];
     uint32 hunger_gain;
+    Collider collider;
 };
 
 EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
 
 EntityHandle entity_null_handle = {.generation = -1};
 
-Collider entity_collider_from_sprite(SpriteID sprite_id) {
-    Vec2 sprite_world_size = sprite_get_world_size(sprite_id);
+struct ColliderAdjustments {
+    float offset_x;
+    float offset_y;
+    float size_x;
+    float size_y;
+};
 
-    Collider result = {
-        .shape = COLLIDER_SHAPE_RECT,
-        .offset = {0, sprite_world_size.y / 2},
-        .width = sprite_world_size.x,
-        .height = sprite_world_size.y,
-    };
+Collider entity_collider_from_sprite(SpriteID sprite_id, ColliderAdjustments adjustments) {
+    Vec2 sprite_world_size = sprite_get_world_size(sprite_id);
+    Vec2 size = sprite_world_size;
+
+    size.x += adjustments.size_x;
+    size.y += adjustments.size_y;
+
+    Vec2 offset = {0, size.y / 2};
+
+    offset.x += adjustments.offset_x;
+    offset.y += adjustments.offset_y;
+
+    Collider result = {.shape = COLLIDER_SHAPE_RECT, .offset = offset, .size = size};
 
     return result;
+}
+
+Collider entity_collider_from_sprite(SpriteID sprite_id) {
+    return entity_collider_from_sprite(sprite_id, {});
 }
 
 void entity_init() {
@@ -44,18 +60,17 @@ void entity_init() {
         .type_name_string = "Unknown",
     };
 
-    entity_info[ENTITY_TYPE_PLAYER] = {
-        .type_name_string = "Player",
-        .animations =
-            {
-                .idle = ANIM_HERO_IDLE,
-                .move = ANIM_HERO_MOVE_LEFT,
-                .move_down = ANIM_HERO_MOVE_DOWN,
-                .move_up = ANIM_HERO_MOVE_UP,
-                .death = ANIM_HERO_DEAD,
-            },
-        .default_sprite = SPRITE_HERO_IDLE_0,
-    };
+    entity_info[ENTITY_TYPE_PLAYER] = {.type_name_string = "Player",
+                                       .animations =
+                                           {
+                                               .idle = ANIM_HERO_IDLE,
+                                               .move = ANIM_HERO_MOVE_LEFT,
+                                               .move_down = ANIM_HERO_MOVE_DOWN,
+                                               .move_up = ANIM_HERO_MOVE_UP,
+                                               .death = ANIM_HERO_DEAD,
+                                           },
+                                       .default_sprite = SPRITE_HERO_IDLE_0,
+                                       .collider = entity_collider_from_sprite(SPRITE_HERO_IDLE_0, {.size_y = -0.5f})};
 
     entity_info[ENTITY_TYPE_GUN] = {
         .flags = ENTITY_INFO_F_PERSIST_IN_INVENTORY,
@@ -92,7 +107,8 @@ void entity_init() {
                                              .move = ANIM_BOAR_WALK,
                                              .death = ANIM_BOAR_2_DEATH,
                                          },
-                                     .default_sprite = SPRITE_BOAR_IDLE_0};
+                                     .default_sprite = SPRITE_BOAR_IDLE_0,
+                                     .collider = entity_collider_from_sprite(SPRITE_BOAR_IDLE_0, {.size_y = -0.25f})};
 
     entity_info[ENTITY_TYPE_BOAR_MEAT] = {
         .type_name_string = "Boar Meat",
@@ -123,16 +139,46 @@ void entity_init() {
         .default_sprite = SPRITE_CHESTS_IRON_0,
     };
 
-    entity_info[ENTITY_TYPE_ROBOT_GATHERER] = {.animations =
-                                                   {
-                                                       .idle = ANIM_ROBOT_GATHERER_IDLE,
-                                                       .move = ANIM_ROBOT_GATHERER_MOVE,
-                                                   },
-                                               .type_name_string = "Gatherer Robot",
-                                               .default_sprite = SPRITE_ROBOT_GATHERER_IDLE_0};
+    entity_info[ENTITY_TYPE_ROBOT_GATHERER] = {
+        .animations =
+            {
+                .idle = ANIM_ROBOT_GATHERER_IDLE,
+                .move = ANIM_ROBOT_GATHERER_MOVE,
+            },
+        .type_name_string = "Gatherer Robot",
+        .default_sprite = SPRITE_ROBOT_GATHERER_IDLE_0,
+        .collider = entity_collider_from_sprite(SPRITE_ROBOT_GATHERER_IDLE_0, {.size_y = -0.6f, .offset_y = 0.5f})};
 
-    entity_info[ENTITY_TYPE_LANDING_POD_YELLOW] = {.type_name_string = "Yellow Landing Pod",
-                                                   .default_sprite = SPRITE_LANDING_POD_YELLOW};
+    {
+
+        entity_info[ENTITY_TYPE_LANDING_POD_YELLOW] = {
+            .type_name_string = "Yellow Landing Pod",
+            .default_sprite = SPRITE_LANDING_POD_YELLOW,
+            .collider = entity_collider_from_sprite(
+                SPRITE_LANDING_POD_YELLOW, {.size_x = -2.2, .size_y = -2.7, .offset_x = -.01f, .offset_y = 0.5f})};
+    }
+}
+
+Collider entity_get_collider(Entity* entity) {
+    EntityInfo* e_info = &entity_info[entity->type];
+    Collider result = e_info->collider;
+
+    if (result.size.x == 0 || result.size.y == 0) {
+        result = entity_collider_from_sprite(e_info->default_sprite);
+    }
+
+    return result;
+}
+
+WorldCollider entity_get_world_collider(Entity* entity) {
+    Collider entity_collider = entity_get_collider(entity);
+
+    WorldCollider world_collider;
+    world_collider.shape = entity_collider.shape;
+    world_collider.size = entity_collider.size;
+    world_collider.position = w_vec_add(entity->position, entity_collider.offset);
+
+    return world_collider;
 }
 
 Sprite entity_get_default_sprite(EntityType type) {
@@ -227,14 +273,6 @@ EntityHandle entity_create_blocker(EntityData* entity_data, EntityType type, Vec
     entity->position = position;
     entity->sprite_id = sprite_id;
 
-    Vec2 sprite_size = sprite_get_world_size(sprite_id);
-    Vec2 collider_size = {sprite_size.x, sprite_size.y / 2};
-
-    entity->collider = {.shape = COLLIDER_SHAPE_RECT,
-                        .offset = {0, collider_size.y / 2},
-                        .width = collider_size.x,
-                        .height = collider_size.y};
-
     set(entity->flags, ENTITY_F_BLOCKER);
 
     return entity_to_handle(entity, entity_data);
@@ -247,7 +285,6 @@ EntityHandle entity_create_resource(EntityData* entity_data, EntityType entity_t
     entity->type = entity_type;
     entity->position = position;
     entity->sprite_id = sprite_id;
-    entity->collider = entity_collider_from_sprite(sprite_id);
     set(entity->flags, opts);
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = hp;
@@ -264,7 +301,6 @@ EntityHandle entity_create_ore_deposit(EntityData* entity_data, EntityType entit
     entity->type = entity_type;
     entity->position = position;
     entity->sprite_id = sprite_id;
-    entity->collider = entity_collider_from_sprite(sprite_id);
     set(entity->flags, ENTITY_F_BLOCKER);
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = 1000000;
@@ -285,17 +321,6 @@ EntityHandle entity_create_player(EntityData* entity_data, Vec2 position) {
     entity->hunger_cooldown_s = HUNGER_TICK_COOLDOWN_S;
     set(entity->flags, ENTITY_F_GETS_HUNGERY);
 
-    Vec2 collider_world_size = {11 / BASE_PIXELS_PER_UNIT, 17 / BASE_PIXELS_PER_UNIT};
-
-    collider_world_size.y *= 0.5f;
-    // TODO: think about this collider size
-    entity->collider = {
-        .shape = COLLIDER_SHAPE_RECT,
-        .offset = {0, collider_world_size.y / 2},
-        .width = collider_world_size.x,
-        .height = collider_world_size.y,
-    };
-
     return entity_to_handle(entity, entity_data);
 }
 
@@ -315,8 +340,6 @@ EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags o
     set(entity->flags, ENTITY_F_BLOCKER);
     set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
     set(entity->flags, ENTITY_F_KILLABLE);
-
-    entity->collider = entity_collider_from_sprite(sprite_id);
 
     return entity_to_handle(entity, entity_data);
 }
@@ -339,15 +362,9 @@ EntityHandle entity_create_boar(EntityData* entity_data, Vec2 position) {
     entity->type = ENTITY_TYPE_BOAR;
     entity->position = position;
 
-    Vec2 sprite_size = sprite_get_world_size(SPRITE_BOAR_IDLE_0);
-
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = MAX_HP_BOAR;
 
-    entity->collider = {.shape = COLLIDER_SHAPE_RECT,
-                        .offset = {0, sprite_size.y / 2},
-                        .width = sprite_size.x,
-                        .height = sprite_size.y};
     entity->brain.type = BRAIN_TYPE_BOAR;
 
     return entity_to_handle(entity, entity_data);
@@ -362,12 +379,6 @@ EntityHandle entity_create_warrior(EntityData* entity_data, Vec2 position) {
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = MAX_HP_WARRIOR;
 
-    Vec2 collider_world_size = {11 / BASE_PIXELS_PER_UNIT, 14 / BASE_PIXELS_PER_UNIT};
-
-    entity->collider = {.shape = COLLIDER_SHAPE_RECT,
-                        .offset = {0, collider_world_size.y / 2},
-                        .width = collider_world_size.x,
-                        .height = collider_world_size.y};
     entity->brain.type = BRAIN_TYPE_WARRIOR;
 
     return entity_to_handle(entity, entity_data);
@@ -381,7 +392,6 @@ EntityHandle entity_create_robot_gatherer(EntityData* entity_data, Vec2 position
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = MAX_HP_ROBOT_GATHERER;
 
-    entity->collider = entity_collider_from_sprite(entity_info[entity->type].default_sprite);
     entity->brain.type = BRAIN_TYPE_ROBOT_GATHERER;
 
     return entity_to_handle(entity, entity_data);
@@ -395,13 +405,6 @@ EntityHandle entity_create_projectile(EntityData* entity_data, Vec2 position, fl
     entity->position = position;
     entity->rotation_rads = rotation_rads;
     entity->velocity = velocity;
-    Sprite sprite = sprite_table[SPRITE_GREEN_BULLET_STRETCHED_1];
-    entity->collider = {
-        .shape = COLLIDER_SHAPE_RECT,
-        .offset = {0, 0},
-        .width = sprite.w / BASE_PIXELS_PER_UNIT,
-        .height = sprite.h / BASE_PIXELS_PER_UNIT,
-    };
 
     return entity_to_handle(entity, entity_data);
 }
@@ -412,7 +415,6 @@ EntityHandle entity_create_boar_meat(EntityData* entity_data, Vec2 position) {
     entity->type = ENTITY_TYPE_BOAR_MEAT;
     entity->sprite_id = SPRITE_BOAR_MEAT_RAW;
     entity->position = position;
-    entity->collider = entity_collider_from_sprite(entity->sprite_id);
 
     set(entity->flags, ENTITY_F_ITEM);
     set(entity->flags, ENTITY_F_NONSPACIAL);
@@ -430,7 +432,6 @@ EntityHandle entity_create_item(EntityData* entity_data, EntityType type, Vec2 p
     entity->type = type;
     entity->sprite_id = sprite_id;
     entity->position = position;
-    entity->collider = entity_collider_from_sprite(entity->sprite_id);
 
     set(entity->flags, ENTITY_F_ITEM);
     set(entity->flags, ENTITY_F_NONSPACIAL);

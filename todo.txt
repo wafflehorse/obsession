@@ -1,3 +1,40 @@
+[] Add food gathering robot
+	[x] Add food gathering robot animations and sprites
+	[x] Add food gathering robot entity
+	[] Add gatherer brain
+		[]	
+	[] How does the player interact with it? And tell it where to go? 
+
+[] Make it easier to add new entities
+	[x] Should collider be an entity_info concept and we look up the collider info during collision?
+	[] Is it possible to consolidate entity creation to a single entity_create function?
+		- Could we just use entity_info as a way to activate code paths in the create method and everything needed
+		to create new entities would live in entity info? Might be worth exploring. 
+		- The idea is that we could reduce entity creation to modifying entity_info and adding the entity type. 
+[] Add SpawnGroupArchetypes to entity spawning system so that we can have cross-entity groups (like enemy patrols)
+[] Food item consumption with input holding, item animation, and sound effect
+[] Update controls so player inventory can be open while player moves
+[] Bug: items that persist as entities don't spew from chest when chest is destroyed
+[] Projectile collider seems off
+[] Randomly spawn enemies around the map
+[] Add mech entity
+[] Add mech AI
+	- How should the player control the mech?
+[] Add warrior aggro when shot
+[] Add workbench
+
+[] Add centering to container elements (centering children)
+[] Add support for sprite scaling
+[] Add boar sleeping
+[] Add ground pivots to spritesheet aseprite file types (non animation)
+	- Can hopefully use the pivot value on the same slices that define the bitmap
+	- Then we just need to add the parsing of sprite sheet aseprite json files to pack.cpp
+[] Add pathfinding to player when in range
+[] Add a bed where player sleeps overnight (resets the enemies)
+[] Create map bounds
+[] lighting
+[] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
+
 [x] Update RenderQuad struct to remove Rect
 [x] Add basic tilemap
 [x] Create a base resolution in the game and allow for window resizing that scales quads to the right resolution
@@ -239,36 +276,6 @@
 [x] Add entity spawning system using biome spawn tables and chunk based populations
 	- Need to figure out best way to do this using proc gen
 [x] Update resource spawning to use some of the chunk based techniques used by our entity spawning
-[] Put spaceship like structure near spawn point to center and orient player
-[] Add food gathering robot
-	[x] Add food gathering robot animations and sprites
-	[x] Add food gathering robot entity
-	[] Add gatherer brain
-		[]	
-	[] How does the player interact with it? And tell it where to go? 
-
-[] Add SpawnGroupArchetypes to entity spawning system so that we can have cross-entity groups (like enemy patrols)
-[] Food item consumption with input holding, item animation, and sound effect
-[] Update controls so player inventory can be open while player moves
-[] Bug: items that persist as entities don't spew from chest when chest is destroyed
-[] Projectile collider seems off
-[] Randomly spawn enemies around the map
-[] Add mech entity
-[] Add mech AI
-	- How should the player control the mech?
-[] Add warrior aggro when shot
-[] Add workbench
-
-[] Add mouse_world_position to game state
-[] Add centering to container elements (centering children)
-[] Add support for sprite scaling
-[] Add boar sleeping
-[] Add ground pivots to spritesheet aseprite file types (non animation)
-	- Can hopefully use the pivot value on the same slices that define the bitmap
-	- Then we just need to add the parsing of sprite sheet aseprite json files to pack.cpp
-[] Add pathfinding to player when in range
-[] Add a bed where player sleeps overnight (resets the enemies)
-[] Create map bounds
-[] lighting
-[] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
+[x] Put spaceship like structure near spawn point to center and orient player
+[x] Add mouse_world_position to game state
 
