@@ -151,10 +151,15 @@ bool inventory_move_items(uint32 index, uint32 quantity, Inventory* source_inven
 }
 
 Vec2 inventory_ui_get_size(Inventory* inventory, float padding, float slot_gap, float scale) {
-    Vec2 inventory_ui_size = {.x = inventory->col_count * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
-                                   (slot_gap * (inventory->col_count - 1)) + (padding * 2),
-                              .y = inventory->row_count * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
-                                   (slot_gap * (inventory->row_count - 1)) + (padding * 2)};
+    Vec2 inventory_ui_size;
+    if (inventory->col_count == 0 || inventory->row_count == 0) {
+        inventory_ui_size = {0, 0};
+    } else {
+        inventory_ui_size = {.x = inventory->col_count * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
+                                  (slot_gap * (inventory->col_count - 1)) + (padding * 2),
+                             .y = inventory->row_count * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
+                                  (slot_gap * (inventory->row_count - 1)) + (padding * 2)};
+    }
 
     return inventory_ui_size;
 }
@@ -191,15 +196,13 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                                .y = slot_size.y};
 
     for (int row = 0; row < inventory->row_count; row++) {
-        UIElement* item_row_container = ui_create_container(
-            {
-                .padding = 0,
-                .min_size = row_container_size,
-                .max_size = row_container_size,
-                .child_gap = opts.slot_gap,
-                .opts = UI_ELEMENT_F_CONTAINER_ROW,
-            },
-            &game_state->frame_arena);
+        UIElement* item_row_container = ui_create_container({
+            .padding = 0,
+            .min_size = row_container_size,
+            .max_size = row_container_size,
+            .child_gap = opts.slot_gap,
+            .opts = UI_ELEMENT_F_CONTAINER_ROW,
+        });
 
         ui_push(container, item_row_container);
 
@@ -212,19 +215,17 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                 ui_create_container({.min_size = slot_size,
                                      .max_size = slot_size,
                                      .background_rgba = opts.background_rgba,
-                                     .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
-                                    &game_state->frame_arena);
+                                     .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND});
 
             if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
                 Sprite sprite = entity_get_default_sprite(item->entity_type);
-                UIElement* item_sprite = ui_create_sprite(sprite, &game_state->frame_arena);
+                UIElement* item_sprite = ui_create_sprite(sprite);
                 ui_push_centered(item_slot, item_sprite);
 
                 if (item->stack_size > 1) {
                     char stack_size_str[3] = {};
                     snprintf(stack_size_str, 3, "%i", item->stack_size);
-                    UIElement* stack_size_element =
-                        ui_create_text(stack_size_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
+                    UIElement* stack_size_element = ui_create_text(stack_size_str, COLOR_WHITE, 0.5);
 
                     Vec2 stack_size_rel_position = {item_slot->size.x - stack_size_element->size.x - pixels_to_units(2),
                                                     -stack_size_element->size.y / 2};

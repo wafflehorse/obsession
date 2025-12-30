@@ -297,7 +297,7 @@ struct GameState {
     CollisionRule* collision_rule_free_list;
     Entity* player;
     HotBar hotbar;
-    EntityHandle open_entity_inventory;
+    EntityHandle player_interacted_entity;
     EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
     uint32 attack_id_next;
     WorldGenContext world_gen_context;

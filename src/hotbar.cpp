@@ -61,13 +61,12 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
     float padding = 0.5f;
 
     UIElement* container =
-        ui_create_container({.padding = padding, .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND},
-                            &game_state->frame_arena);
+        ui_create_container({.padding = padding, .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
+    Entity* player_interacted_entity = entity_find(game_state->player_interacted_entity, &game_state->entity_data);
 
     flags inventory_render_option_flags = 0;
-    if (!entity_with_open_inventory) {
+    if (!player_interacted_entity) {
         inventory_render_option_flags |= INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED;
     }
 
@@ -85,12 +84,13 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
     InventoryInput inventory_input = inventory_render(container, container_top_left, &game_state->hotbar.inventory,
                                                       game_state, game_input, inventory_opts);
 
-    if (entity_with_open_inventory && inventory_input.idx_clicked != -1) {
+    // TODO: we'll need to know if interacted with entity should be able to take items or not
+    if (player_interacted_entity && inventory_input.idx_clicked != -1) {
         InventoryItem* item = &game_state->hotbar.inventory.items[inventory_input.idx_clicked];
 
         if (item->entity_type != ENTITY_TYPE_UNKNOWN) {
             inventory_move_items(inventory_input.idx_clicked, item->stack_size, &game_state->hotbar.inventory,
-                                 &entity_with_open_inventory->inventory, &game_state->entity_data);
+                                 &player_interacted_entity->inventory, &game_state->entity_data);
         }
     }
 

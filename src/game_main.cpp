@@ -206,7 +206,7 @@ void init_entity_data(EntityData* entity_data) {
 
 bool inventory_ui_open(GameState* game_state) {
     return is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN) ||
-           entity_find(game_state->open_entity_inventory, &game_state->entity_data);
+           entity_find(game_state->player_interacted_entity, &game_state->entity_data);
 }
 
 void player_action_update_from_input(PlayerInputAction* action, KeyInputState key_input_state, float sim_dt_s) {
@@ -306,10 +306,10 @@ void render_player_health_ui(Entity* player, Camera camera, RenderGroup* render_
     Vec2 camera_top_left = {camera.position.x - (camera.size.x / 2), camera.position.y + (camera.size.y / 2)};
 
     UIElement* container =
-        ui_create_container({.padding = 0.5f, .child_gap = 0.5f, .opts = UI_ELEMENT_F_CONTAINER_COL}, frame_arena);
+        ui_create_container({.padding = 0.5f, .child_gap = 0.5f, .opts = UI_ELEMENT_F_CONTAINER_COL});
 
-    UIElement* hp_sprite_element = ui_create_sprite(hp_sprite, frame_arena);
-    UIElement* hunger_sprite_element = ui_create_sprite(hunger_sprite, frame_arena);
+    UIElement* hp_sprite_element = ui_create_sprite(hp_sprite);
+    UIElement* hunger_sprite_element = ui_create_sprite(hunger_sprite);
 
     ui_push(container, hp_sprite_element);
     ui_push(container, hunger_sprite_element);
@@ -395,6 +395,44 @@ void crafting_craft_item(EntityData* entity_data, EntityType entity_type, HotBar
         inventory_add_item(&hotbar->inventory, entity_type, 1);
     }
 }
+void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
+                                     GameInput* game_input) {
+    float padding = pixels_to_units(16);
+    float slot_gap = pixels_to_units(8);
+
+    Vec2 inventory_ui_size = {8, 8};
+
+    Vec2 inventory_ui_position = game_state->camera.position;
+    inventory_ui_position.x -= (inventory_ui_size.x / 2);
+    inventory_ui_position.y += (inventory_ui_size.y / 2) + 5;
+
+    UIElement* container = ui_create_container({.min_size = inventory_ui_size,
+                                                .max_size = inventory_ui_size,
+                                                .padding = padding,
+                                                .child_gap = slot_gap,
+                                                .background_rgba = COLOR_BLACK,
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
+
+    InventoryInput input =
+        inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input,
+                         {.scale = 1, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
+
+    UIElement* start_button = ui_create_button("Start", inventory_ui_position, container);
+
+    if (ui_button_pressed(inventory_ui_position, start_button)) {
+        printf("button pressed\n");
+    }
+
+    ui_draw_element(container, inventory_ui_position, render_group);
+
+    if (input.idx_clicked > -1) {
+        InventoryItem slot = entity->inventory.items[input.idx_clicked];
+        if (slot.entity_type != ENTITY_TYPE_UNKNOWN) {
+            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->hotbar.inventory,
+                                 &game_state->entity_data);
+        }
+    }
+}
 
 void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
     float padding = pixels_to_units(16);
@@ -409,8 +447,7 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
     UIElement* container = ui_create_container({.padding = padding,
                                                 .child_gap = slot_gap,
                                                 .background_rgba = COLOR_BLACK,
-                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND},
-                                               &game_state->frame_arena);
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
     InventoryInput input =
         inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input,
@@ -438,10 +475,9 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
                                                 .min_size = crafting_menu_size,
                                                 .max_size = crafting_menu_size,
                                                 .background_rgba = COLOR_BLACK,
-                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND},
-                                               &game_state->frame_arena);
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    UIElement* title = ui_create_text("Crafting", COLOR_WHITE, 1.0f, &game_state->frame_arena);
+    UIElement* title = ui_create_text("Crafting", COLOR_WHITE, 1.0f);
     ui_push(container, title);
 
     Inventory inventory = {};
@@ -473,16 +509,14 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
         for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe.ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN; i++) {
             CraftingIngredient ingredient = recipe.ingredients[i];
 
-            UIElement* ingredient_container = ui_create_container(
-                {.child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW}, &game_state->frame_arena);
-            UIElement* ingredient_sprite_element =
-                ui_create_sprite(entity_get_default_sprite(ingredient.entity_type), &game_state->frame_arena);
+            UIElement* ingredient_container =
+                ui_create_container({.child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW});
+            UIElement* ingredient_sprite_element = ui_create_sprite(entity_get_default_sprite(ingredient.entity_type));
 
             const char* entity_name_string = entity_info[ingredient.entity_type].type_name_string;
             char ingredient_text[64] = {};
             snprintf(ingredient_text, 64, "%i %s", ingredient.quantity, entity_name_string);
-            UIElement* ingredient_text_element =
-                ui_create_text(ingredient_text, COLOR_WHITE, 1, &game_state->frame_arena);
+            UIElement* ingredient_text_element = ui_create_text(ingredient_text, COLOR_WHITE, 1);
 
             ui_push(ingredient_container, ingredient_sprite_element);
             ui_push(ingredient_container, ingredient_text_element);
@@ -673,7 +707,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         init_entity_data(&game_state->entity_data);
-        game_state->open_entity_inventory = entity_null_handle;
+        game_state->player_interacted_entity = entity_null_handle;
         hotbar_init(&game_state->hotbar);
 
         game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
@@ -711,7 +745,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     }
 
     game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
-    init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT);
+    init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT, &game_state->frame_arena, &game_state->world_input,
+            game_input);
     game_state->frame_arena.next = game_state->frame_arena.data;
     game_state->frame_flags = 0;
 
@@ -1072,20 +1107,25 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     }
 
     if (player_input.world.interact.was_pressed) {
-        Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
-        if (!entity_with_open_inventory && closest_interactable_entity) {
-            game_state->open_entity_inventory = entity_to_handle(closest_interactable_entity, &game_state->entity_data);
+        Entity* player_interacted_entity = entity_find(game_state->player_interacted_entity, &game_state->entity_data);
+        if (!player_interacted_entity && closest_interactable_entity) {
+            game_state->player_interacted_entity =
+                entity_to_handle(closest_interactable_entity, &game_state->entity_data);
         } else {
-            game_state->open_entity_inventory = entity_null_handle;
+            game_state->player_interacted_entity = entity_null_handle;
         }
     }
 
     proc_gen_update_chunk_states(game_state->player->position, game_state, g_sim_dt_s);
 
-    Entity* entity_with_open_inventory = entity_find(game_state->open_entity_inventory, &game_state->entity_data);
-    if (entity_with_open_inventory) {
+    Entity* player_interacted_entity = entity_find(game_state->player_interacted_entity, &game_state->entity_data);
+    if (player_interacted_entity) {
         unset(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
-        entity_inventory_render(entity_with_open_inventory, game_state, &render_group_ui, game_input);
+        if (player_interacted_entity->type == ENTITY_TYPE_ROBOT_GATHERER) {
+            entity_robot_interact_ui_render(player_interacted_entity, game_state, &render_group_ui, game_input);
+        } else {
+            entity_inventory_render(player_interacted_entity, game_state, &render_group_ui, game_input);
+        }
     }
 
     if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
@@ -1169,11 +1209,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     snprintf(fps_str, 32, "FPS: %.0f", w_round((float)fps));
     snprintf(avg_preswap_dt_str, 32, "Frame ms: %.3f", avg_preswap_dt_ms);
 
-    UIElement* debug_text_container = ui_create_container(
-        {.padding = 0.25, .child_gap = 0, .opts = UI_ELEMENT_F_CONTAINER_COL}, &game_state->frame_arena);
-    UIElement* fps_text_element = ui_create_text(fps_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
+    UIElement* debug_text_container =
+        ui_create_container({.padding = 0.25, .child_gap = 0, .opts = UI_ELEMENT_F_CONTAINER_COL});
+    UIElement* fps_text_element = ui_create_text(fps_str, COLOR_WHITE, 0.5);
     ui_push(debug_text_container, fps_text_element);
-    UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, COLOR_WHITE, 0.5, &game_state->frame_arena);
+    UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, COLOR_WHITE, 0.5);
     ui_push(debug_text_container, frame_time_text_element);
 
     Vec2 camera_top_right = {game_state->camera.position.x + (game_state->camera.size.x / 2),

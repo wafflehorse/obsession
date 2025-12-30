@@ -1,7 +1,11 @@
 #include "waffle_lib.h"
+#include "game.h"
 
 static FontData* i_font_data;
 static uint32 i_pixels_per_unit;
+static Arena* i_frame_arena;
+static WorldInput* i_world_input;
+static GameInput* i_game_input;
 
 enum UIPanelSlice {
     UI_PANEL_SLICE_TOP_LEFT,
@@ -16,9 +20,13 @@ enum UIPanelSlice {
     UI_PANEL_SLICE_COUNT
 };
 
-void init_ui(FontData* font_data, uint32 pixels_per_unit) {
+void init_ui(FontData* font_data, uint32 pixels_per_unit, Arena* frame_arena, WorldInput* world_input,
+             GameInput* game_input) {
     i_font_data = font_data;
     i_pixels_per_unit = pixels_per_unit;
+    i_frame_arena = frame_arena;
+    i_world_input = world_input;
+    i_game_input = game_input;
 }
 
 // TODO: this doesn't work with wrapping
@@ -187,6 +195,7 @@ void draw_progress_bar(UI_ProgressBar progress_bar, float pixels_per_unit, Rende
 #define UI_ELEMENT_F_DRAW_TEXT (1 << 2)
 #define UI_ELEMENT_F_DRAW_SPRITE (1 << 3)
 #define UI_ELEMENT_F_DRAW_BACKGROUND (1 << 4)
+#define UI_ELEMENT_F_PRESSABLE (1 << 5)
 
 struct UIElement {
     UIElement* parent;
@@ -218,7 +227,56 @@ struct UIElement {
     Vec4 border_color;
 };
 
+void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_group) {
+    element->position = position; // position is top_left
+    Vec2 element_center_position = w_rect_top_left_to_center(position, element->size);
+
+    if (is_set(element->flags, UI_ELEMENT_F_DRAW_BACKGROUND)) {
+        RenderQuad* quad = get_next_quad(render_group);
+
+        quad->draw_colored_rect = 1;
+        quad->rgba = element->background_rgba;
+        quad->world_size = element->size;
+        quad->world_position = {position.x + (quad->world_size.x / 2), position.y - (quad->world_size.y / 2)};
+    }
+
+    if (is_set(element->flags, UI_ELEMENT_F_DRAW_TEXT)) {
+        UIText ui_text = {.text = element->text,
+                          .position = position,
+                          .font_scale = (float)element->font_scale,
+                          .rgba = element->rgba};
+
+        draw_text(ui_text, render_group);
+    }
+
+    if (is_set(element->flags, UI_ELEMENT_F_DRAW_SPRITE)) {
+        RenderQuad* quad = get_next_quad(render_group);
+
+        // TODO: No supported scaling
+        quad->world_size = element->size;
+        quad->world_position = {position.x + (quad->world_size.x / 2), position.y - (quad->world_size.y / 2)};
+        quad->sprite_position = {element->sprite.x, element->sprite.y};
+        quad->sprite_size = {element->sprite.w, element->sprite.h};
+        quad->texture_unit = TEXTURE_ID_SPRITE;
+    }
+
+    if (element->border_width > 0) {
+        render_borders(element->border_width, element->border_color, element_center_position, element->size,
+                       render_group);
+    }
+
+    UIElement* child = element->child;
+    while (child) {
+        Vec2 child_position = w_vec_add(element->position, child->rel_position);
+        ui_draw_element(child, child_position, render_group);
+        child = child->next;
+    }
+}
+
 struct UIContainerCreateParams {
+    Vec2 position;
+    Vec2 size;
+
     float padding;
     float child_gap;
     Vec2 min_size;
@@ -229,8 +287,8 @@ struct UIContainerCreateParams {
     flags opts;
 };
 
-UIElement* ui_create_container(UIContainerCreateParams params, Arena* arena) {
-    UIElement* container = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
+UIElement* ui_create_container(UIContainerCreateParams params) {
+    UIElement* container = (UIElement*)w_arena_alloc(i_frame_arena, sizeof(UIElement));
 
     ASSERT(is_set(params.opts, UI_ELEMENT_F_CONTAINER_ROW) || is_set(params.opts, UI_ELEMENT_F_CONTAINER_COL),
            "Must set container direction");
@@ -277,8 +335,8 @@ Vec2 ui_container_content_size(UIElement* container) {
     return size;
 }
 
-UIElement* ui_create_sprite(Sprite sprite, Arena* arena) {
-    UIElement* sprite_element = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
+UIElement* ui_create_sprite(Sprite sprite) {
+    UIElement* sprite_element = (UIElement*)w_arena_alloc(i_frame_arena, sizeof(UIElement));
 
     sprite_element->sprite = sprite;
     sprite_element->size = {sprite.w / BASE_PIXELS_PER_UNIT, sprite.h / BASE_PIXELS_PER_UNIT};
@@ -287,8 +345,8 @@ UIElement* ui_create_sprite(Sprite sprite, Arena* arena) {
     return sprite_element;
 }
 
-UIElement* ui_create_text(const char* text, Vec4 rgba, float font_scale, Arena* arena) {
-    UIElement* text_element = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
+UIElement* ui_create_text(const char* text, Vec4 rgba, float font_scale) {
+    UIElement* text_element = (UIElement*)w_arena_alloc(i_frame_arena, sizeof(UIElement));
 
     w_str_copy(text_element->text, text);
     text_element->rgba = rgba;
@@ -299,12 +357,33 @@ UIElement* ui_create_text(const char* text, Vec4 rgba, float font_scale, Arena* 
     return text_element;
 }
 
-UIElement* ui_create_spacer(Vec2 size, Arena* arena) {
-    UIElement* spacer_element = (UIElement*)w_arena_alloc(arena, sizeof(UIElement));
+UIElement* ui_create_spacer(Vec2 size) {
+    UIElement* spacer_element = (UIElement*)w_arena_alloc(i_frame_arena, sizeof(UIElement));
 
     spacer_element->size = size;
 
     return spacer_element;
+}
+
+// Note: draw_position is the top left position of initial node of ui tree
+Vec2 ui_abs_position_get(Vec2 draw_position, UIElement* element) {
+    Vec2 result = element->rel_position;
+
+    UIElement* parent = element->parent;
+    while (parent) {
+        result = w_vec_add(result, parent->rel_position);
+        parent = parent->parent;
+    }
+
+    result = w_vec_add(draw_position, result);
+
+    return result;
+}
+
+Vec2 ui_abs_center_position_get(Vec2 top_parent_position, UIElement* element) {
+    Vec2 top_left_position = ui_abs_position_get(top_parent_position, element);
+    Vec2 center_position = w_rect_top_left_to_center(top_left_position, element->size);
+    return center_position;
 }
 
 void ui_container_size_update(UIElement* container) {
@@ -362,63 +441,48 @@ void ui_push_abs_position(UIElement* parent, UIElement* child, Vec2 rel_position
     parent->last_child = child;
 }
 
-// Note: draw_position is the top left position of initial node of ui tree
-Vec2 ui_abs_position_get(Vec2 draw_position, UIElement* element) {
-    Vec2 result = element->rel_position;
+bool ui_button_hovered(Vec2 top_parent_position, UIElement* button) {
+    Vec2 position_center = ui_abs_center_position_get(top_parent_position, button);
 
-    UIElement* parent = element->parent;
-    while (parent) {
-        result = w_vec_add(result, parent->rel_position);
-        parent = parent->parent;
+    Rect button_rect = {position_center.x, position_center.y, button->size.x, button->size.y};
+
+    bool result = false;
+    if (w_check_point_in_rect(button_rect, i_world_input->mouse_position_world)) {
+        result = true;
     }
-
-    result = w_vec_add(draw_position, result);
 
     return result;
 }
 
-void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_group) {
-    element->position = position; // position is top_left
-    Vec2 element_center_position = w_rect_top_left_to_center(position, element->size);
-
-    if (is_set(element->flags, UI_ELEMENT_F_DRAW_BACKGROUND)) {
-        RenderQuad* quad = get_next_quad(render_group);
-
-        quad->draw_colored_rect = 1;
-        quad->rgba = element->background_rgba;
-        quad->world_size = element->size;
-        quad->world_position = {position.x + (quad->world_size.x / 2), position.y - (quad->world_size.y / 2)};
+bool ui_button_pressed(Vec2 top_parent_position, UIElement* button) {
+    bool result = false;
+    if (ui_button_hovered(top_parent_position, button) &&
+        i_game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+        result = true;
     }
 
-    if (is_set(element->flags, UI_ELEMENT_F_DRAW_TEXT)) {
-        UIText ui_text = {.text = element->text,
-                          .position = position,
-                          .font_scale = (float)element->font_scale,
-                          .rgba = element->rgba};
+    return result;
+}
 
-        draw_text(ui_text, render_group);
+UIElement* ui_create_button(const char* text, Vec2 container_position, UIElement* container) {
+    UIElement* button_container =
+        ui_create_container({.padding = 0.25f,
+                             .background_rgba = COLOR_WHITE,
+                             .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
+
+    UIElement* button_text = ui_create_text("Start", COLOR_BLACK, 0.5);
+
+    ui_push(button_container, button_text);
+    ui_push(container, button_container);
+
+    if (ui_button_hovered(container_position, button_container)) {
+        button_container->background_rgba = COLOR_BLACK;
+        button_container->border_width = 2.0f / 16.0f;
+        button_container->border_color = COLOR_WHITE;
+        button_text->rgba = COLOR_WHITE;
     }
 
-    if (is_set(element->flags, UI_ELEMENT_F_DRAW_SPRITE)) {
-        RenderQuad* quad = get_next_quad(render_group);
+    set(button_container->flags, UI_ELEMENT_F_PRESSABLE);
 
-        // TODO: No supported scaling
-        quad->world_size = element->size;
-        quad->world_position = {position.x + (quad->world_size.x / 2), position.y - (quad->world_size.y / 2)};
-        quad->sprite_position = {element->sprite.x, element->sprite.y};
-        quad->sprite_size = {element->sprite.w, element->sprite.h};
-        quad->texture_unit = TEXTURE_ID_SPRITE;
-    }
-
-    if (element->border_width > 0) {
-        render_borders(element->border_width, element->border_color, element_center_position, element->size,
-                       render_group);
-    }
-
-    UIElement* child = element->child;
-    while (child) {
-        Vec2 child_position = w_vec_add(element->position, child->rel_position);
-        ui_draw_element(child, child_position, render_group);
-        child = child->next;
-    }
+    return button_container;
 }

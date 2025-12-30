@@ -392,6 +392,11 @@ EntityHandle entity_create_robot_gatherer(EntityData* entity_data, Vec2 position
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = MAX_HP_ROBOT_GATHERER;
 
+    entity->inventory.row_count = 3;
+    entity->inventory.col_count = 4;
+
+    set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
+
     entity->brain.type = BRAIN_TYPE_ROBOT_GATHERER;
 
     return entity_to_handle(entity, entity_data);
