@@ -420,7 +420,7 @@ void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, Rend
     UIElement* start_button = ui_create_button("Start", inventory_ui_position, container);
 
     if (ui_button_pressed(inventory_ui_position, start_button)) {
-        printf("button pressed\n");
+        entity->brain.ai_state = AI_STATE_SEARCHING;
     }
 
     ui_draw_element(container, inventory_ui_position, render_group);

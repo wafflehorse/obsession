@@ -115,16 +115,32 @@ struct Collider {
     Vec2 size;
 };
 
-enum AIState { AI_STATE_IDLE, AI_STATE_WANDER, AI_STATE_CHASE, AI_STATE_ATTACK, AI_STATE_DEAD };
+enum AISearchingState { AI_SEARCHING_STATE_STARTING, AI_SEARCHING_STATE_SEARCHING, AI_SEARCHING_STATE_RETURNING };
+
+enum AIState {
+    AI_STATE_IDLE,
+    AI_STATE_WANDER,
+    AI_STATE_CHASE,
+    AI_STATE_ATTACK,
+    AI_STATE_DEAD,
+    AI_STATE_SEARCHING,
+    AI_STATE_HARVESTING
+};
 
 enum BrainType { BRAIN_TYPE_NONE, BRAIN_TYPE_BOAR, BRAIN_TYPE_WARRIOR, BRAIN_TYPE_ROBOT_GATHERER };
 
+#define BRAIN_F_SEARCHING_INITIALIZED (1 << 0)
+
 struct Brain {
+    flags flags;
     BrainType type;
     AIState ai_state;
     float cooldown_s;
     uint32 target_id;
     Vec2 target_position;
+
+    AISearchingState searching_state;
+    Vec2 searching_direction;
 };
 
 enum DecorationType { DECORATION_TYPE_NONE, DECORATION_TYPE_PLANT };

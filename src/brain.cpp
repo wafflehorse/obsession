@@ -1,3 +1,12 @@
+void brain_move_towards_target(Entity* entity, float velocity_mag) {
+    EntityAnimations animations = entity_info[entity->type].animations;
+
+    Vec2 direction = w_vec_norm(w_vec_sub(entity->brain.target_position, entity->position));
+    entity->velocity = w_vec_mult(direction, velocity_mag);
+    entity->facing_direction = w_vec_norm(entity->velocity);
+    entity_play_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
+}
+
 void brain_idle(Entity* entity) {
     Brain* brain = &entity->brain;
     EntityAnimations animations = entity_info[entity->type].animations;
@@ -12,16 +21,12 @@ void brain_idle(Entity* entity) {
 
 void brain_wander(Entity* entity) {
     Brain* brain = &entity->brain;
-    EntityAnimations animations = entity_info[entity->type].animations;
     if (w_euclid_dist(entity->position, brain->target_position) <= 1.0f || brain->cooldown_s <= 0) {
         brain->ai_state = AI_STATE_IDLE;
         brain->cooldown_s = w_random_between(1, 6);
     }
 
-    Vec2 wander_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-    entity->velocity = w_vec_mult(wander_direction, 1.0f);
-    entity->facing_direction = w_vec_norm(entity->velocity);
-    entity_play_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
+    brain_move_towards_target(entity, 1.0f);
 }
 
 void brain_dead(Entity* entity) {
@@ -60,8 +65,7 @@ void brain_update_warrior(Entity* entity, GameState* game_state, float dt_s) {
             brain->ai_state = AI_STATE_ATTACK;
         } else {
             brain->target_position = player->position;
-            Vec2 chase_direction = w_vec_norm(w_vec_sub(brain->target_position, entity->position));
-            entity->velocity = w_vec_mult(chase_direction, 5.0f);
+            brain_move_towards_target(entity, 5.0f);
         }
         entity->facing_direction = w_vec_norm(entity->velocity);
         entity_play_animation_with_direction(animations.move, &entity->anim_state, entity->facing_direction);
@@ -88,6 +92,8 @@ void brain_update_warrior(Entity* entity, GameState* game_state, float dt_s) {
     }
     case AI_STATE_DEAD:
         brain_dead(entity);
+        break;
+    default:
         break;
     }
 }
@@ -118,6 +124,65 @@ void brain_update_robot_gatherer(Entity* entity, GameState* game_state, double d
         break;
     case AI_STATE_DEAD:
         brain_dead(entity);
+        break;
+    case AI_STATE_SEARCHING: {
+        float vision_radius = 4;
+        float searching_dimension = 32;
+        Vec2 search_center = {0, 0};
+        Vec2 search_bounds_x = {search_center.x - searching_dimension, search_center.x + searching_dimension};
+        Vec2 search_bounds_y = {search_center.y - searching_dimension, search_center.y + searching_dimension};
+
+        float distance_to_target = w_euclid_dist(entity->position, brain->target_position);
+
+        if (!is_set(brain->flags, BRAIN_F_SEARCHING_INITIALIZED)) {
+            brain->searching_state = AI_SEARCHING_STATE_STARTING;
+            set(brain->flags, BRAIN_F_SEARCHING_INITIALIZED);
+        }
+
+        switch (brain->searching_state) {
+        case AI_SEARCHING_STATE_STARTING:
+            brain->target_position = {search_bounds_x.x + vision_radius, search_bounds_y.x + vision_radius};
+            if (distance_to_target < 0.1) {
+                brain->searching_direction = {1, 0};
+                brain->target_position = {search_bounds_x.y - vision_radius, search_bounds_y.x + vision_radius};
+                brain->searching_state = AI_SEARCHING_STATE_SEARCHING;
+            }
+            break;
+        case AI_SEARCHING_STATE_SEARCHING:
+            if (brain->searching_direction.y != 0) {
+                if (distance_to_target < 0.1) {
+                    brain->searching_direction.y = 0;
+                    brain->searching_direction.x *= -1;
+                    if (brain->searching_direction.x > 0) {
+                        brain->target_position.x = search_bounds_x.y - vision_radius;
+                    } else {
+                        brain->target_position.x = search_bounds_x.x + vision_radius;
+                    }
+                }
+            } else if (brain->searching_direction.x != 0) {
+                if (distance_to_target < 0.1) {
+                    brain->searching_direction.y = 1;
+                    brain->target_position.y += vision_radius * 2;
+
+                    if (brain->target_position.y > search_bounds_y.y) {
+                        brain->searching_state = AI_SEARCHING_STATE_RETURNING;
+                    }
+                }
+            }
+            break;
+        case AI_SEARCHING_STATE_RETURNING:
+            brain->target_position = search_center;
+            if (distance_to_target < 0.1) {
+                brain->ai_state = AI_STATE_IDLE;
+                unset(brain->flags, BRAIN_F_SEARCHING_INITIALIZED);
+            }
+            break;
+        }
+
+        brain_move_towards_target(entity, 8.0f);
+        break;
+    }
+    case AI_STATE_HARVESTING:
         break;
     default:
         break;

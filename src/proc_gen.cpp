@@ -19,9 +19,9 @@ BiomeSpawnTable biome_spawn_tables[BIOME_COUNT] = {
                              .max_patch_radius = 10},
 
                             {.entity_type = ENTITY_TYPE_PLANT_CORN,
-                             .weight = 0.30f,
+                             .weight = 0.50f,
                              .min_patches = 1,
-                             .max_patches = 2,
+                             .max_patches = 4,
                              .min_nodes_per_patch = 3,
                              .max_nodes_per_patch = 6,
                              .min_patch_radius = 5,
