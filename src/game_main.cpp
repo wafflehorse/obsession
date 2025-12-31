@@ -899,31 +899,52 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         entity->z_pos = w_clamp_min(entity->z_pos, 0);
         entity->z_velocity = entity->z_acceleration * g_sim_dt_s + entity->z_velocity;
 
-        // TODO: is OWNED FLAG needed after stack implementation?
-        if (is_set(entity->flags, ENTITY_F_ITEM) && !is_set(entity->flags, ENTITY_F_OWNED) &&
-            !is_set(entity->flags, ENTITY_F_ITEM_SPAWNING)) {
-            float distance_from_player = w_euclid_dist(game_state->player->position, entity->position);
-            if (distance_from_player < 0.1 &&
-                inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
-                set(entity->flags, ENTITY_F_OWNED);
-                entity->owner_handle = entity_to_handle(game_state->player, &game_state->entity_data);
-                entity->velocity = {};
-                entity->acceleration = {};
-                inventory_add_entity_item(&game_state->hotbar.inventory, entity, &game_state->entity_data);
-            } else if (distance_from_player < ITEM_PICKUP_RANGE &&
-                       inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
-                Vec2 player_offset = w_vec_sub(game_state->player->position, entity->position);
-                Vec2 player_direction_norm = w_vec_norm(player_offset);
-                float current_velocity_mag = w_vec_length(entity->velocity);
-                if (current_velocity_mag == 0) {
-                    current_velocity_mag = 3;
+        if (is_set(entity->flags, ENTITY_F_ITEM) && !is_set(entity->flags, ENTITY_F_OWNED)) {
+            Entity* collector = NULL;
+            float distance_from_collector = ITEM_PICKUP_RANGE;
+
+            for (int i = 0; i < game_state->entity_data.entity_count; i++) {
+                Entity* possible_collector = &game_state->entity_data.entities[i];
+
+                if (is_set(possible_collector->flags, ENTITY_F_COLLECTS_ITEMS)) {
+                    float distance = w_euclid_dist(possible_collector->position, entity->position);
+
+                    if (distance <= distance_from_collector) {
+                        distance_from_collector = distance;
+                        collector = possible_collector;
+                    }
                 }
-                entity->velocity = w_vec_mult(player_direction_norm, current_velocity_mag);
-                entity->acceleration = w_vec_mult(player_direction_norm, 15.0f);
             }
 
-            entity->item_floating_anim_timer_s += g_sim_dt_s;
-            entity->z_pos = w_anim_sine(entity->item_floating_anim_timer_s, 4.0f, 0.10f);
+            if (collector) {
+                if (distance_from_collector < 0.1 &&
+                    inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
+                    set(entity->flags, ENTITY_F_OWNED);
+                    entity->owner_handle = entity_to_handle(game_state->player, &game_state->entity_data);
+                    entity->velocity = {};
+                    entity->acceleration = {};
+                    Inventory* target_inventory = &collector->inventory;
+                    if (collector->type == ENTITY_TYPE_PLAYER) {
+                        target_inventory = &game_state->hotbar.inventory;
+                    }
+                    inventory_add_entity_item(target_inventory, entity, &game_state->entity_data);
+                } else if (distance_from_collector < ITEM_PICKUP_RANGE &&
+                           inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
+                    Vec2 collector_offset = w_vec_sub(collector->position, entity->position);
+                    Vec2 collector_direction_norm = w_vec_norm(collector_offset);
+                    float current_velocity_mag = w_vec_length(entity->velocity);
+                    if (current_velocity_mag == 0) {
+                        current_velocity_mag = 3;
+                    }
+                    entity->velocity = w_vec_mult(collector_direction_norm, current_velocity_mag);
+                    entity->acceleration = w_vec_mult(collector_direction_norm, 15.0f);
+                }
+            }
+
+            if (!is_set(entity->flags, ENTITY_F_ITEM_SPAWNING)) {
+                entity->item_floating_anim_timer_s += g_sim_dt_s;
+                entity->z_pos = w_anim_sine(entity->item_floating_anim_timer_s, 4.0f, 0.10f);
+            }
         }
 
         if (is_set(entity->flags, ENTITY_F_ITEM_SPAWNING) && entity->z_pos == 0) {

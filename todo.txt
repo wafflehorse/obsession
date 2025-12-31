@@ -1,10 +1,3 @@
-[] Add food gathering robot
-	[x] Add food gathering robot animations and sprites
-	[x] Add food gathering robot entity
-	[] Add gatherer brain
-		[]	
-	[] How does the player interact with it? And tell it where to go? 
-
 [] Make it easier to add new entities
 	[x] Should collider be an entity_info concept and we look up the collider info during collision?
 	[] Is it possible to consolidate entity creation to a single entity_create function?
@@ -35,6 +28,11 @@
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 
+[x] Add food gathering robot
+	[x] Add food gathering robot animations and sprites
+	[x] Add food gathering robot entity
+	[x] Add gatherer brain
+	[x] How does the player interact with it? And tell it where to go? 
 [x] Update RenderQuad struct to remove Rect
 [x] Add basic tilemap
 [x] Create a base resolution in the game and allow for window resizing that scales quads to the right resolution

@@ -25,11 +25,13 @@
 #define MAX_HP_BOAR 2
 #define MAX_HP_PLAYER 10
 #define MAX_HP_WARRIOR 4
-#define MAX_HP_PLANT_CORN 2
+#define MAX_HP_PLANT_CORN 5
 #define MAX_HP_ROBOT_GATHERER 10
 
 #define MAX_HUNGER_PLAYER 10
 #define HUNGER_TICK_COOLDOWN_S 30
+
+#define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.5f
 
 #define ATTACK_ID_MAX_IDS 512
 #define ATTACK_ID_START (MAX_ENTITIES - 1)
@@ -115,6 +117,11 @@ struct Collider {
     Vec2 size;
 };
 
+struct EntityHandle {
+    uint32 id;
+    int generation;
+};
+
 enum AISearchingState { AI_SEARCHING_STATE_STARTING, AI_SEARCHING_STATE_SEARCHING, AI_SEARCHING_STATE_RETURNING };
 
 enum AIState {
@@ -131,16 +138,20 @@ enum BrainType { BRAIN_TYPE_NONE, BRAIN_TYPE_BOAR, BRAIN_TYPE_WARRIOR, BRAIN_TYP
 
 #define BRAIN_F_SEARCHING_INITIALIZED (1 << 0)
 
+#define BRAIN_HARVESTING_COOLDOWN_S 1.0f;
+
 struct Brain {
     flags flags;
     BrainType type;
     AIState ai_state;
     float cooldown_s;
-    uint32 target_id;
+    EntityHandle target_handle;
     Vec2 target_position;
 
     AISearchingState searching_state;
     Vec2 searching_direction;
+    Vec2 searching_target_position;
+    float harvesting_cooldown_s;
 };
 
 enum DecorationType { DECORATION_TYPE_NONE, DECORATION_TYPE_PLANT };
@@ -157,11 +168,6 @@ struct DecorationData {
 
 struct EntityLookup {
     uint32 idx;
-    int generation;
-};
-
-struct EntityHandle {
-    uint32 id;
     int generation;
 };
 
@@ -188,8 +194,7 @@ struct Inventory {
 #define ENTITY_F_ITEM_SPAWNING (1 << 8)
 #define ENTITY_F_PLAYER_INTERACTABLE (1 << 9)
 #define ENTITY_F_GETS_HUNGERY (1 << 10)
-
-#define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.25f
+#define ENTITY_F_COLLECTS_ITEMS (1 << 11)
 
 struct Entity {
     flags flags;

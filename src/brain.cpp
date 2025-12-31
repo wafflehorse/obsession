@@ -132,58 +132,103 @@ void brain_update_robot_gatherer(Entity* entity, GameState* game_state, double d
         Vec2 search_bounds_x = {search_center.x - searching_dimension, search_center.x + searching_dimension};
         Vec2 search_bounds_y = {search_center.y - searching_dimension, search_center.y + searching_dimension};
 
-        float distance_to_target = w_euclid_dist(entity->position, brain->target_position);
-
         if (!is_set(brain->flags, BRAIN_F_SEARCHING_INITIALIZED)) {
             brain->searching_state = AI_SEARCHING_STATE_STARTING;
             set(brain->flags, BRAIN_F_SEARCHING_INITIALIZED);
         }
 
+        brain->target_position = brain->searching_target_position;
+
         switch (brain->searching_state) {
-        case AI_SEARCHING_STATE_STARTING:
-            brain->target_position = {search_bounds_x.x + vision_radius, search_bounds_y.x + vision_radius};
+        case AI_SEARCHING_STATE_STARTING: {
+            brain->searching_target_position = {search_bounds_x.x + vision_radius, search_bounds_y.x + vision_radius};
+            float distance_to_target = w_euclid_dist(entity->position, brain->target_position);
+
             if (distance_to_target < 0.1) {
                 brain->searching_direction = {1, 0};
-                brain->target_position = {search_bounds_x.y - vision_radius, search_bounds_y.x + vision_radius};
+                brain->searching_target_position = {search_bounds_x.y - vision_radius,
+                                                    search_bounds_y.x + vision_radius};
                 brain->searching_state = AI_SEARCHING_STATE_SEARCHING;
             }
             break;
-        case AI_SEARCHING_STATE_SEARCHING:
+        }
+        case AI_SEARCHING_STATE_SEARCHING: {
+            float distance_to_target = w_euclid_dist(entity->position, brain->target_position);
             if (brain->searching_direction.y != 0) {
                 if (distance_to_target < 0.1) {
                     brain->searching_direction.y = 0;
                     brain->searching_direction.x *= -1;
                     if (brain->searching_direction.x > 0) {
-                        brain->target_position.x = search_bounds_x.y - vision_radius;
+                        brain->searching_target_position.x = search_bounds_x.y - vision_radius;
                     } else {
-                        brain->target_position.x = search_bounds_x.x + vision_radius;
+                        brain->searching_target_position.x = search_bounds_x.x + vision_radius;
                     }
                 }
             } else if (brain->searching_direction.x != 0) {
                 if (distance_to_target < 0.1) {
                     brain->searching_direction.y = 1;
-                    brain->target_position.y += vision_radius * 2;
+                    brain->searching_target_position.y += vision_radius * 2;
 
-                    if (brain->target_position.y > search_bounds_y.y) {
+                    if (brain->searching_target_position.y > search_bounds_y.y) {
                         brain->searching_state = AI_SEARCHING_STATE_RETURNING;
                     }
                 }
             }
             break;
-        case AI_SEARCHING_STATE_RETURNING:
+        }
+        case AI_SEARCHING_STATE_RETURNING: {
             brain->target_position = search_center;
+            float distance_to_target = w_euclid_dist(entity->position, brain->target_position);
             if (distance_to_target < 0.1) {
                 brain->ai_state = AI_STATE_IDLE;
                 unset(brain->flags, BRAIN_F_SEARCHING_INITIALIZED);
             }
             break;
         }
+        }
 
-        brain_move_towards_target(entity, 8.0f);
+        brain_move_towards_target(entity, 4.0f);
+
+        float min_corn_distance = vision_radius;
+        for (int i = 0; i < game_state->entity_data.entity_count; i++) {
+            Entity* ent = &game_state->entity_data.entities[i];
+
+            if (ent->type == ENTITY_TYPE_PLANT_CORN) {
+                float distance_from_robot = w_euclid_dist(entity->position, ent->position);
+                if (distance_from_robot < min_corn_distance) {
+                    min_corn_distance = distance_from_robot;
+                    brain->target_handle = entity_to_handle(ent, &game_state->entity_data);
+                    brain->ai_state = AI_STATE_HARVESTING;
+                }
+            }
+        }
+
         break;
     }
-    case AI_STATE_HARVESTING:
+    case AI_STATE_HARVESTING: {
+        Entity* target = entity_find(brain->target_handle, &game_state->entity_data);
+
+        brain->harvesting_cooldown_s = w_clamp_min(brain->harvesting_cooldown_s - g_sim_dt_s, 0);
+
+        if (target) {
+            float distance_to_target = w_euclid_dist(entity->position, target->position);
+            if (distance_to_target < 0.5) {
+                entity->velocity = {0, 0};
+                if (brain->harvesting_cooldown_s <= 0) {
+                    entity_deal_damage(target, 1, game_state);
+                    brain->harvesting_cooldown_s = BRAIN_HARVESTING_COOLDOWN_S;
+                }
+            } else {
+                brain->target_position = target->position;
+                brain_move_towards_target(entity, 4.0f);
+            }
+        } else {
+            brain->ai_state = AI_STATE_SEARCHING;
+            brain->harvesting_cooldown_s = 0;
+        }
+
         break;
+    }
     default:
         break;
     }

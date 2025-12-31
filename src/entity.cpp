@@ -320,6 +320,7 @@ EntityHandle entity_create_player(EntityData* entity_data, Vec2 position) {
     entity->hunger = MAX_HUNGER_PLAYER;
     entity->hunger_cooldown_s = HUNGER_TICK_COOLDOWN_S;
     set(entity->flags, ENTITY_F_GETS_HUNGERY);
+    set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
 
     return entity_to_handle(entity, entity_data);
 }
@@ -396,6 +397,7 @@ EntityHandle entity_create_robot_gatherer(EntityData* entity_data, Vec2 position
     entity->inventory.col_count = 4;
 
     set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
+    set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
 
     entity->brain.type = BRAIN_TYPE_ROBOT_GATHERER;
 
