@@ -16,11 +16,13 @@ struct EntityAnimations {
 
 struct EntityInfo {
     flags flags;
+    uint32 instance_flags;
     EntityAnimations animations;
     SpriteID default_sprite;
     char type_name_string[256];
     uint32 hunger_gain;
     Collider collider;
+    char description[512];
 };
 
 EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
@@ -149,14 +151,19 @@ void entity_init() {
         .default_sprite = SPRITE_ROBOT_GATHERER_IDLE_0,
         .collider = entity_collider_from_sprite(SPRITE_ROBOT_GATHERER_IDLE_0, {.size_y = -0.6f, .offset_y = 0.5f})};
 
-    {
+    entity_info[ENTITY_TYPE_LANDING_POD_YELLOW] = {
+        .instance_flags = ENTITY_F_PLAYER_INTERACTABLE | ENTITY_F_BLOCKER,
+        .type_name_string = "Yellow Landing Pod",
+        .default_sprite = SPRITE_LANDING_POD_YELLOW,
+        .collider = entity_collider_from_sprite(SPRITE_LANDING_POD_YELLOW,
+                                                {.size_x = -2.2, .size_y = -2.7, .offset_x = -.01f, .offset_y = 0.5f})};
 
-        entity_info[ENTITY_TYPE_LANDING_POD_YELLOW] = {
-            .type_name_string = "Yellow Landing Pod",
-            .default_sprite = SPRITE_LANDING_POD_YELLOW,
-            .collider = entity_collider_from_sprite(
-                SPRITE_LANDING_POD_YELLOW, {.size_x = -2.2, .size_y = -2.7, .offset_x = -.01f, .offset_y = 0.5f})};
-    }
+    entity_info[ENTITY_TYPE_ROBOTICS_FACTORY] = {
+        .type_name_string = "Robotics Factory",
+        .description = "A factory for pumping out sick ass mechs.",
+        .default_sprite = SPRITE_ROBOTICS_FACTORY,
+        .instance_flags = ENTITY_F_PLAYER_INTERACTABLE | ENTITY_F_BLOCKER,
+    };
 }
 
 Collider entity_get_collider(Entity* entity) {
@@ -678,14 +685,21 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
     case ENTITY_TYPE_ROBOT_GATHERER:
         entity_create_robot_gatherer(entity_data, position);
         break;
-    case ENTITY_TYPE_LANDING_POD_YELLOW:
-        entity_create_blocker(entity_data, ENTITY_TYPE_LANDING_POD_YELLOW, position, SPRITE_LANDING_POD_YELLOW);
-    default:
-        // TODO: this is probably a debug only function, so this assertion is kind of annoying
-        // cause it will force me to not call this with ineligible entities. So commenting out
-        // for now
-        // ASSERT(false, "entity_create does not support this entity type");
+    default: {
+        Entity* entity = entity_new(entity_data);
+
+        EntityInfo* e_info = &entity_info[type];
+
+        entity->type = type;
+        entity->position = position;
+        entity->sprite_id = e_info->default_sprite;
+
+        set(entity->flags, e_info->instance_flags);
+        set(entity->flags, opts);
+        entity_handle = entity_to_handle(entity, entity_data);
+
         break;
+    }
     }
 
     return entity_handle;

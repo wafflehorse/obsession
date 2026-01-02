@@ -1,5 +1,9 @@
+[] Add robotics crafter entity 
+[] Add command center UI
+	[] Substructure crafting and placement
+	[] Storage UI
+
 [] Make it easier to add new entities
-	[x] Should collider be an entity_info concept and we look up the collider info during collision?
 	[] Is it possible to consolidate entity creation to a single entity_create function?
 		- Could we just use entity_info as a way to activate code paths in the create method and everything needed
 		to create new entities would live in entity info? Might be worth exploring. 
@@ -8,14 +12,11 @@
 [] Food item consumption with input holding, item animation, and sound effect
 [] Update controls so player inventory can be open while player moves
 [] Bug: items that persist as entities don't spew from chest when chest is destroyed
-[] Projectile collider seems off
-[] Randomly spawn enemies around the map
 [] Add mech entity
 [] Add mech AI
 	- How should the player control the mech?
 [] Add warrior aggro when shot
 [] Add workbench
-
 [] Add centering to container elements (centering children)
 [] Add support for sprite scaling
 [] Add boar sleeping
@@ -28,6 +29,8 @@
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 
+[x] Randomly spawn enemies around the map
+[x] Should collider be an entity_info concept and we look up the collider info during collision?
 [x] Add food gathering robot
 	[x] Add food gathering robot animations and sprites
 	[x] Add food gathering robot entity

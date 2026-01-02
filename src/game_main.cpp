@@ -350,6 +350,9 @@ struct CraftingRecipe {
 CraftingRecipe crafting_recipes[ENTITY_TYPE_COUNT] = {
     {.entity_type = ENTITY_TYPE_CHEST_IRON, .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 4}}}};
 
+CraftingRecipe command_center_recipes[ENTITY_TYPE_COUNT] = {
+    {.entity_type = ENTITY_TYPE_ROBOTICS_FACTORY, .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 20}}}};
+
 CraftingRecipe* crafting_recipe_find(EntityType entity_type) {
     CraftingRecipe* recipe = NULL;
 
@@ -395,6 +398,94 @@ void crafting_craft_item(EntityData* entity_data, EntityType entity_type, HotBar
         inventory_add_item(&hotbar->inventory, entity_type, 1);
     }
 }
+
+Inventory recipes_to_inventory(CraftingRecipe* recipes, int row_count, int col_count) {
+    ASSERT(row_count != 0 && col_count != 0, "recipes_to_inventory - row_cound and col_count must be non-zero");
+
+    Inventory inventory = {};
+
+    for (int i = 0; i < ENTITY_TYPE_COUNT; i++) {
+        CraftingRecipe recipe = recipes[i];
+
+        if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
+            inventory.items[i].entity_type = recipe.entity_type;
+            inventory.items[i].stack_size = 1;
+        }
+    }
+
+    inventory.row_count = row_count;
+    inventory.col_count = col_count;
+
+    ASSERT(inventory.row_count * inventory.col_count < ENTITY_TYPE_COUNT,
+           "crafting inventory size must be less than entity type count");
+
+    return inventory;
+}
+
+void crafting_recipe_info_render(UIElement* container, Vec2 container_size, CraftingRecipe recipe) {
+    if (recipe.entity_type == ENTITY_TYPE_UNKNOWN) {
+        return;
+    }
+
+    EntityInfo* e_info = &entity_info[recipe.entity_type];
+
+    UIElement* title =
+        ui_create_text(e_info->type_name_string, {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x});
+    UIElement* description =
+        ui_create_text(e_info->description, {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x});
+
+    ui_push(container, title);
+    ui_push(container, description);
+
+    for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe.ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN; i++) {
+        CraftingIngredient ingredient = recipe.ingredients[i];
+
+        UIElement* ingredient_container =
+            ui_create_container({.child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW});
+        UIElement* ingredient_sprite_element = ui_create_sprite(entity_get_default_sprite(ingredient.entity_type));
+
+        const char* entity_name_string = entity_info[ingredient.entity_type].type_name_string;
+        char ingredient_text[64] = {};
+        snprintf(ingredient_text, 64, "%i %s", ingredient.quantity, entity_name_string);
+        UIElement* ingredient_text_element = ui_create_text(ingredient_text, {.rgba = COLOR_WHITE, .font_scale = 1});
+
+        ui_push(ingredient_container, ingredient_sprite_element);
+        ui_push(ingredient_container, ingredient_text_element);
+
+        ui_push(container, ingredient_container);
+    }
+}
+
+void entity_command_center_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
+                                     GameInput* game_input) {
+    Vec2 inventory_ui_size = {12, 16};
+    Vec2 inventory_ui_position = game_state->camera.position;
+    inventory_ui_position.x += game_state->camera.size.x / 4;
+    inventory_ui_position = w_rect_center_to_top_left(inventory_ui_position, inventory_ui_size);
+
+    UIElement* container = ui_create_container({.min_size = inventory_ui_size,
+                                                .max_size = inventory_ui_size,
+                                                .padding = pixels_to_units(8),
+                                                .child_gap = pixels_to_units(8),
+                                                .background_rgba = COLOR_BLACK,
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
+
+    Inventory structure_inventory = recipes_to_inventory(command_center_recipes, 2, 4);
+
+    InventoryInput inventory_input =
+        inventory_render(container, inventory_ui_position, &structure_inventory, game_state, game_input,
+                         {.scale = 2, .slot_gap = pixels_to_units(4), .background_rgba = COLOR_GRAY});
+
+    if (inventory_input.idx_clicked >= 0) {
+
+    } else if (inventory_input.idx_hovered >= 0) {
+        CraftingRecipe recipe = command_center_recipes[inventory_input.idx_hovered];
+        crafting_recipe_info_render(container, inventory_ui_size, recipe);
+    }
+
+    ui_draw_element(container, inventory_ui_position, render_group);
+};
+
 void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
                                      GameInput* game_input) {
     float padding = pixels_to_units(16);
@@ -477,25 +568,10 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
                                                 .background_rgba = COLOR_BLACK,
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    UIElement* title = ui_create_text("Crafting", COLOR_WHITE, 1.0f);
+    UIElement* title = ui_create_text("Crafting", {.rgba = COLOR_WHITE, .font_scale = 1.0f});
     ui_push(container, title);
 
-    Inventory inventory = {};
-
-    for (int i = 0; i < ENTITY_TYPE_COUNT; i++) {
-        CraftingRecipe recipe = crafting_recipes[i];
-
-        if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
-            inventory.items[i].entity_type = recipe.entity_type;
-            inventory.items[i].stack_size = 1;
-        }
-    }
-
-    inventory.row_count = 2;
-    inventory.col_count = 6;
-
-    ASSERT(inventory.row_count * inventory.col_count < ENTITY_TYPE_COUNT,
-           "crafting inventory size must be less than entity type count");
+    Inventory inventory = recipes_to_inventory(crafting_recipes, 2, 6);
 
     InventoryInput inventory_input =
         inventory_render(container, crafting_menu_position, &inventory, game_state, game_input,
@@ -505,24 +581,7 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
 
     if (inventory_input.idx_hovered > -1) {
         CraftingRecipe recipe = crafting_recipes[inventory_input.idx_hovered];
-
-        for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe.ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN; i++) {
-            CraftingIngredient ingredient = recipe.ingredients[i];
-
-            UIElement* ingredient_container =
-                ui_create_container({.child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW});
-            UIElement* ingredient_sprite_element = ui_create_sprite(entity_get_default_sprite(ingredient.entity_type));
-
-            const char* entity_name_string = entity_info[ingredient.entity_type].type_name_string;
-            char ingredient_text[64] = {};
-            snprintf(ingredient_text, 64, "%i %s", ingredient.quantity, entity_name_string);
-            UIElement* ingredient_text_element = ui_create_text(ingredient_text, COLOR_WHITE, 1);
-
-            ui_push(ingredient_container, ingredient_sprite_element);
-            ui_push(ingredient_container, ingredient_text_element);
-
-            ui_push(container, ingredient_container);
-        }
+        crafting_recipe_info_render(container, crafting_menu_size, recipe);
     }
 
     if (inventory_input.idx_clicked > -1) {
@@ -1144,6 +1203,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         unset(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
         if (player_interacted_entity->type == ENTITY_TYPE_ROBOT_GATHERER) {
             entity_robot_interact_ui_render(player_interacted_entity, game_state, &render_group_ui, game_input);
+        } else if (player_interacted_entity->type == ENTITY_TYPE_LANDING_POD_YELLOW) {
+            entity_command_center_ui_render(player_interacted_entity, game_state, &render_group_ui, game_input);
         } else {
             entity_inventory_render(player_interacted_entity, game_state, &render_group_ui, game_input);
         }
@@ -1232,9 +1293,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
     UIElement* debug_text_container =
         ui_create_container({.padding = 0.25, .child_gap = 0, .opts = UI_ELEMENT_F_CONTAINER_COL});
-    UIElement* fps_text_element = ui_create_text(fps_str, COLOR_WHITE, 0.5);
+    UIElement* fps_text_element = ui_create_text(fps_str, {.rgba = COLOR_WHITE, .font_scale = 0.5});
     ui_push(debug_text_container, fps_text_element);
-    UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, COLOR_WHITE, 0.5);
+    UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, {.rgba = COLOR_WHITE, .font_scale = 0.5});
     ui_push(debug_text_container, frame_time_text_element);
 
     Vec2 camera_top_right = {game_state->camera.position.x + (game_state->camera.size.x / 2),

@@ -29,18 +29,18 @@ void init_ui(FontData* font_data, uint32 pixels_per_unit, Arena* frame_arena, Wo
     i_game_input = game_input;
 }
 
-// TODO: this doesn't work with wrapping
-Vec2 get_text_size(const char* text, float scale) {
+Vec2 get_text_size(const char* text, float scale, float max_width) {
     int i = 0;
     float pos_x = 0;
     float pos_y = 0;
     float line_height = (i_font_data->baked_pixel_size + i_font_data->line_gap + 4) * scale;
     uint32 line_count = 1;
+    float max_width_px = max_width * i_pixels_per_unit * scale;
 
     stbtt_aligned_quad quad;
     float max_quad_x1 = 0;
     while (text[i] != '\0') {
-        if (text[i] != '\n') {
+        if (text[i] != '\n' && (max_width_px == 0 || pos_x <= max_width_px)) {
             uint32 char_idx = (int)text[i] - 32;
 
             stbtt_GetPackedQuad(i_font_data->char_data, i_font_data->texture_dimensions.x,
@@ -56,6 +56,10 @@ Vec2 get_text_size(const char* text, float scale) {
     }
 
     return (Vec2){.x = (max_quad_x1 * scale) / i_pixels_per_unit, .y = (line_count * line_height) / i_pixels_per_unit};
+}
+
+Vec2 get_text_size(const char* text, float scale) {
+    return get_text_size(text, scale, 0);
 }
 
 struct UIText {
@@ -102,7 +106,6 @@ DrawTextResult draw_text(UIText text_ui, RenderGroup* render_group) {
                             i_font_data->texture_dimensions.y, char_index, &pos_x, &pos_y, &quad, 0);
 
         RenderQuad* render_quad = get_next_quad(render_group);
-        ;
 
         float world_quad_x0 = (quad.x0 * text_ui.font_scale) / i_pixels_per_unit;
         float world_quad_x1 = (quad.x1 * text_ui.font_scale) / i_pixels_per_unit;
@@ -142,7 +145,7 @@ DrawTextResult draw_text(UIText text_ui, RenderGroup* render_group) {
                 stbtt_GetPackedQuad(i_font_data->char_data, i_font_data->texture_dimensions.x,
                                     i_font_data->texture_dimensions.y, char_idx, &tmp_pos_x, &tmp_pos_y, &test_quad, 0);
 
-                if ((text_start_pos.x + (test_quad.x1 * text_ui.font_scale / i_pixels_per_unit)) > text_ui.max_x) {
+                if ((test_quad.x1 * text_ui.font_scale / i_pixels_per_unit) > text_ui.max_x) {
                     // NOTE: We divide by the font_scale here because stbtt_GetPackedQuad is expecting everything to be
                     // the baked font size
                     pos_y += i_font_data->baked_pixel_size + i_font_data->line_gap + 4;
@@ -244,7 +247,9 @@ void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_grou
         UIText ui_text = {.text = element->text,
                           .position = position,
                           .font_scale = (float)element->font_scale,
-                          .rgba = element->rgba};
+                          .rgba = element->rgba,
+                          .max_x = element->max_size.x,
+                          .wrap = element->max_size.x > 0};
 
         draw_text(ui_text, render_group);
     }
@@ -335,24 +340,45 @@ Vec2 ui_container_content_size(UIElement* container) {
     return size;
 }
 
-UIElement* ui_create_sprite(Sprite sprite) {
+struct UICreateSpriteOpts {
+    Vec2 size;
+};
+
+UIElement* ui_create_sprite(Sprite sprite, UICreateSpriteOpts opts) {
     UIElement* sprite_element = (UIElement*)w_arena_alloc(i_frame_arena, sizeof(UIElement));
 
     sprite_element->sprite = sprite;
-    sprite_element->size = {sprite.w / BASE_PIXELS_PER_UNIT, sprite.h / BASE_PIXELS_PER_UNIT};
+    if (w_vec_length(opts.size) == 0) {
+        sprite_element->size = {sprite.w / BASE_PIXELS_PER_UNIT, sprite.h / BASE_PIXELS_PER_UNIT};
+    } else {
+        sprite_element->size = opts.size;
+    }
     sprite_element->flags = UI_ELEMENT_F_DRAW_SPRITE;
 
     return sprite_element;
 }
 
-UIElement* ui_create_text(const char* text, Vec4 rgba, float font_scale) {
+UIElement* ui_create_sprite(Sprite sprite) {
+    return ui_create_sprite(sprite, {});
+}
+
+struct UICreateTextOptions {
+    Vec4 rgba;
+    float font_scale;
+    float max_width;
+};
+
+UIElement* ui_create_text(const char* text, UICreateTextOptions opts) {
     UIElement* text_element = (UIElement*)w_arena_alloc(i_frame_arena, sizeof(UIElement));
 
+    ASSERT(opts.font_scale != 0, "font scale must be greater than 0");
+
     w_str_copy(text_element->text, text);
-    text_element->rgba = rgba;
-    text_element->font_scale = font_scale;
-    text_element->size = get_text_size(text, font_scale);
+    text_element->rgba = opts.rgba;
+    text_element->font_scale = opts.font_scale;
+    text_element->size = get_text_size(text, opts.font_scale, opts.max_width);
     text_element->flags = UI_ELEMENT_F_DRAW_TEXT;
+    text_element->max_size.x = opts.max_width;
 
     return text_element;
 }
@@ -470,7 +496,7 @@ UIElement* ui_create_button(const char* text, Vec2 container_position, UIElement
                              .background_rgba = COLOR_WHITE,
                              .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    UIElement* button_text = ui_create_text("Start", COLOR_BLACK, 0.5);
+    UIElement* button_text = ui_create_text("Start", {.rgba = COLOR_BLACK, .font_scale = 0.5});
 
     ui_push(button_container, button_text);
     ui_push(container, button_container);

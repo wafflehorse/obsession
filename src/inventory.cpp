@@ -219,13 +219,17 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
 
             if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
                 Sprite sprite = entity_get_default_sprite(item->entity_type);
-                UIElement* item_sprite = ui_create_sprite(sprite);
+                Vec2 sprite_world_size = {.x = pixels_to_units(sprite.w), .y = pixels_to_units(sprite.h)};
+                Vec2 sprite_size = w_scale_to_fit(sprite_world_size, slot_size);
+
+                UIElement* item_sprite = ui_create_sprite(sprite, {.size = sprite_size});
                 ui_push_centered(item_slot, item_sprite);
 
                 if (item->stack_size > 1) {
                     char stack_size_str[3] = {};
                     snprintf(stack_size_str, 3, "%i", item->stack_size);
-                    UIElement* stack_size_element = ui_create_text(stack_size_str, COLOR_WHITE, 0.5);
+                    UIElement* stack_size_element =
+                        ui_create_text(stack_size_str, {.rgba = COLOR_WHITE, .font_scale = 0.5});
 
                     Vec2 stack_size_rel_position = {item_slot->size.x - stack_size_element->size.x - pixels_to_units(2),
                                                     -stack_size_element->size.y / 2};

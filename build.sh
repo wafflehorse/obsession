@@ -81,6 +81,7 @@ if [[ "$OS" == $MAC ]]; then
 	PLATFORM_CLANG_CMD="clang++ -std=c++14 $SILENCED_WARNINGS $FLAGS $DEBUG_PLAT_DEPENDENCIES ./src/platform_main.cpp -o $BUILD_DIR/platform_main -L$BUILD_DIR -lSDL3 -Wl,-rpath,@loader_path -I./lib/glad/include -I./lib -I./lib/imgui -I./lib/imgui/backends $LIB_DIR/glad.o"
 
 	mkdir -p $LIB_DIR
+	mkdir -p $BUILD_DIR
 	cp $LIB_DIR/*.dylib $BUILD_DIR
 
 	# Want to ensure that we have fresh debug, I found that on re-run the dSYMs were

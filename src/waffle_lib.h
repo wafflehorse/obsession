@@ -305,6 +305,31 @@ Vec2 w_rect_top_left_to_center(Vec2 top_left, Vec2 size) {
     return result;
 }
 
+Vec2 w_rect_center_to_top_left(Vec2 center, Vec2 size) {
+    Vec2 result = center;
+
+    result.x -= size.x / 2;
+    result.y += size.y / 2;
+
+    return result;
+}
+
+Vec2 w_scale_to_fit(Vec2 subject, Vec2 bounds) {
+    float scale_factor = 1;
+
+    Vec2 diff = w_vec_sub(bounds, subject);
+
+    if (diff.x < 0 || diff.y < 0) {
+        if (diff.x < diff.y) {
+            scale_factor = 1 - w_abs(diff.x / subject.x);
+        } else {
+            scale_factor = 1 - w_abs(diff.y / subject.y);
+        }
+    }
+
+    return w_vec_mult(subject, scale_factor);
+}
+
 int w_str_len(const char* str) {
     int result = 0;
     while (str[result] != '\0') {
