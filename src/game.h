@@ -295,8 +295,28 @@ struct WorldInit {
     uint32 entity_init_count;
 };
 
+enum UIState {
+    UI_STATE_NONE,
+    UI_STATE_PLAYER_INVENTORY,
+    UI_STATE_ENTITY_UI,
+    UI_STATE_STRUCTURE_PLACEMENT,
+    UI_STATE_COUNT
+};
+
+#define UI_MODE_F_INVENTORY_ACTIVE (1 << 0)
+#define UI_MODE_F_CAMERA_OVERRIDE (1 << 1)
+
+struct UIMode {
+    flags flags;
+    UIState state;
+    EntityHandle entity_handle;
+
+    // For UI_STATE_STRUCTURE_PLACEMENT
+    EntityType placing_structure_type;
+    Vec2 camera_position;
+};
+
 #define GAME_STATE_F_INITIALIZED (1 << 0)
-#define GAME_STATE_F_INVENTORY_OPEN (1 << 1)
 
 struct GameState {
     flags flags;
@@ -318,14 +338,14 @@ struct GameState {
     CollisionRule* collision_rule_free_list;
     Entity* player;
     HotBar hotbar;
-    EntityHandle player_interacted_entity;
     EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
     uint32 attack_id_next;
     WorldGenContext world_gen_context;
     DecorationData decoration_data;
     TextureInfo sprite_texture_info;
     TextureInfo font_texture_info;
-    Tools tools;
     ChunkSpawn chunk_spawn;
     uint32 chunk_spawn_state_count;
+    UIMode ui_mode;
+    Tools tools;
 };

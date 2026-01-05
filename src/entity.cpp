@@ -599,7 +599,7 @@ RenderQuad* entity_render(Entity* entity, RenderGroup* render_group) {
                                                         is_set(opts, RENDER_SPRITE_OPT_FLIP_X));
 
     quad = render_sprite(sprite_position, sprite_id, render_group,
-                         {.rotation_rads = entity->rotation_rads, .z_index = entity->z_index, .opts = opts});
+                         {.rotation_rads = entity->rotation_rads, .z_index = entity->z_index, .flags = opts});
 
     if (entity->damage_taken_tint_cooldown_s > 0) {
         float normalized_elapsed =

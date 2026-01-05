@@ -253,7 +253,8 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
             }
 
             Vec2 sprite_position = entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
-            render_sprite(sprite_position, sprite_id, render_group, {.tint = tint, .opts = RENDER_SPRITE_OPT_TINT_SET});
+            render_sprite(sprite_position, sprite_id, render_group,
+                          {.tint = tint, .flags = RENDER_SPRITE_OPT_TINT_SET});
         }
     }
 

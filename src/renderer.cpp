@@ -58,15 +58,3 @@ void render_borders(float border_width, Vec4 border_color, Vec2 world_subject_po
     right->draw_colored_rect = 1;
     right->rgba = border_color;
 }
-
-// TODO: are we going to use this?
-RenderQuad* render_sprite(Vec2 sprite_position, Vec2 sprite_size, Vec2 position, Vec2 size, RenderGroup* render_group) {
-    RenderQuad* quad = get_next_quad(render_group);
-
-    quad->world_position = position;
-    quad->world_size = size;
-    quad->sprite_position = sprite_position;
-    quad->sprite_size = sprite_size;
-
-    return quad;
-}

@@ -57,16 +57,13 @@ void hotbar_render_item(GameState* game_state, Vec2 player_aim_vec, RenderGroup*
 }
 
 void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* render_group) {
-
     float padding = 0.5f;
 
     UIElement* container =
         ui_create_container({.padding = padding, .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    Entity* player_interacted_entity = entity_find(game_state->player_interacted_entity, &game_state->entity_data);
-
     flags inventory_render_option_flags = 0;
-    if (!player_interacted_entity) {
+    if (!is_set(game_state->ui_mode.flags, UI_MODE_F_INVENTORY_ACTIVE)) {
         inventory_render_option_flags |= INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED;
     }
 
@@ -84,13 +81,15 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
     InventoryInput inventory_input = inventory_render(container, container_top_left, &game_state->hotbar.inventory,
                                                       game_state, game_input, inventory_opts);
 
-    // TODO: we'll need to know if interacted with entity should be able to take items or not
-    if (player_interacted_entity && inventory_input.idx_clicked != -1) {
+    if (is_set(game_state->ui_mode.flags, UI_MODE_F_INVENTORY_ACTIVE) && inventory_input.idx_clicked != -1) {
         InventoryItem* item = &game_state->hotbar.inventory.items[inventory_input.idx_clicked];
+        Entity* entity_with_open_inventory = entity_find(game_state->ui_mode.entity_handle, &game_state->entity_data);
+
+        ASSERT(entity_with_open_inventory, "entity_handle must point to entity if inventory is active");
 
         if (item->entity_type != ENTITY_TYPE_UNKNOWN) {
             inventory_move_items(inventory_input.idx_clicked, item->stack_size, &game_state->hotbar.inventory,
-                                 &player_interacted_entity->inventory, &game_state->entity_data);
+                                 &entity_with_open_inventory->inventory, &game_state->entity_data);
         }
     }
 

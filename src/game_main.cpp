@@ -40,16 +40,18 @@ struct PlayerInputWorld {
     Vec2 aim_vec;
     PlayerInputAction use_held_item;
     PlayerInputAction interact;
+    PlayerInputAction open_inventory;
     bool drop_item;
 };
 
-struct PlayerInputInventory {
-    bool select;
+struct PlayerInputUI {
+    PlayerInputAction select;
+    PlayerInputAction close;
 };
 
 struct PlayerInput {
     PlayerInputWorld world;
-    PlayerInputInventory inventory;
+    PlayerInputUI ui;
 };
 
 Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
@@ -63,25 +65,37 @@ Vec2 random_point_near_position(Vec2 position, float x_range, float y_range) {
 #define RENDER_SPRITE_OPT_FLIP_X (1 << 0)
 #define RENDER_SPRITE_OPT_TINT_SET (1 << 1)
 
-// TODO: remove this interface and replace with params version
-RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, Vec4 tint,
-                          float rotation_rads, float z_index, uint32 opts) {
+struct RenderSpriteOptions {
+    Vec4 tint;
+    float rotation_rads;
+    float z_index;
+    Vec2 size;
+    flags flags;
+};
+
+RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group,
+                          RenderSpriteOptions opts) {
     ASSERT(sprite_id != SPRITE_UNKNOWN, "sprite unknown passed to render sprite");
     RenderQuad* quad = get_next_quad(render_group);
     quad->world_position = world_position;
     Sprite sprite = sprite_table[sprite_id];
 
-    quad->world_size = w_vec_mult((Vec2){sprite.w, sprite.h}, 1.0 / BASE_PIXELS_PER_UNIT);
-    quad->sprite_position = {sprite.x, sprite.y};
-    quad->sprite_size = {sprite.w, sprite.h};
-    quad->rotation_rads = rotation_rads;
-    quad->z_index = z_index;
-
-    if (is_set(opts, RENDER_SPRITE_OPT_TINT_SET)) {
-        quad->tint = tint;
+    Vec2 world_size = opts.size;
+    if (w_vec_length(world_size) == 0) {
+        world_size = w_vec_mult((Vec2){sprite.w, sprite.h}, 1.0 / BASE_PIXELS_PER_UNIT);
     }
 
-    if (is_set(opts, RENDER_SPRITE_OPT_FLIP_X)) {
+    quad->world_size = world_size;
+    quad->sprite_position = {sprite.x, sprite.y};
+    quad->sprite_size = {sprite.w, sprite.h};
+    quad->rotation_rads = opts.rotation_rads;
+    quad->z_index = opts.z_index;
+
+    if (is_set(opts.flags, RENDER_SPRITE_OPT_TINT_SET)) {
+        quad->tint = opts.tint;
+    }
+
+    if (is_set(opts.flags, RENDER_SPRITE_OPT_FLIP_X)) {
         quad->flip_x = 1;
     }
 
@@ -89,20 +103,7 @@ RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* 
 }
 
 RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group, float z_index) {
-    return render_sprite(world_position, sprite_id, render_group, {1, 1, 1, 1}, 0, z_index, 0);
-}
-
-struct RenderSpriteParams {
-    uint32 opts;
-    float rotation_rads;
-    float z_index;
-    Vec4 tint;
-};
-
-RenderQuad* render_sprite(Vec2 world_position, SpriteID sprite_id, RenderGroup* render_group,
-                          RenderSpriteParams params) {
-    return render_sprite(world_position, sprite_id, render_group, params.tint, params.rotation_rads, params.z_index,
-                         params.opts);
+    return render_sprite(world_position, sprite_id, render_group, {.z_index = z_index});
 }
 
 Vec2 get_mouse_world_position(Camera* camera, GameInput* game_input, Vec2 window_size_px) {
@@ -204,11 +205,6 @@ void init_entity_data(EntityData* entity_data) {
     }
 }
 
-bool inventory_ui_open(GameState* game_state) {
-    return is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN) ||
-           entity_find(game_state->player_interacted_entity, &game_state->entity_data);
-}
-
 void player_action_update_from_input(PlayerInputAction* action, KeyInputState key_input_state, float sim_dt_s) {
     if (key_input_state.is_held) {
         action->held_duration_s += sim_dt_s;
@@ -221,66 +217,76 @@ void player_action_update_from_input(PlayerInputAction* action, KeyInputState ke
     action->was_released = key_input_state.is_released;
 }
 
-PlayerInput player_input_get(GameInput* game_input, GameState* game_state, float sim_dt_s) {
-    PlayerInput input = {};
-    bool inventory_ui_is_open = inventory_ui_open(game_state);
+void update_player_input_no_ui(GameInput* game_input, GameState* game_state, float sim_dt_s, PlayerInput* input) {
     if (game_input->active_input_type == INPUT_TYPE_KEYBOARD_MOUSE) {
         KeyInputState* key_input_states = game_input->key_input_states;
-        if (!inventory_ui_is_open) {
-            Vec2 movement_vec = {};
-            if (key_input_states[KEY_W].is_held) {
-                movement_vec.y = 1;
-            }
-            if (key_input_states[KEY_A].is_held) {
-                movement_vec.x = -1;
-            }
-            if (key_input_states[KEY_S].is_held) {
-                movement_vec.y = -1;
-            }
+        Vec2 movement_vec = {};
+        if (key_input_states[KEY_W].is_held) {
+            movement_vec.y = 1;
+        }
 
-            if (key_input_states[KEY_D].is_held) {
-                movement_vec.x = 1;
-            }
+        if (key_input_states[KEY_A].is_held) {
+            movement_vec.x = -1;
+        }
 
-            for (int i = KEY_1; i < KEY_9; i++) {
-                if (key_input_states[i].is_pressed) {
-                    int hotbar_idx = i - KEY_1;
-                    game_state->hotbar.active_item_idx = hotbar_idx;
-                }
-            }
+        if (key_input_states[KEY_S].is_held) {
+            movement_vec.y = -1;
+        }
 
-            if (key_input_states[KEY_G].is_pressed) {
-                input.world.drop_item = true;
-            }
+        if (key_input_states[KEY_D].is_held) {
+            movement_vec.x = 1;
+        }
 
-            input.world.movement_vec = w_vec_norm(movement_vec);
+        for (int i = KEY_1; i < KEY_9; i++) {
+            if (key_input_states[i].is_pressed) {
+                int hotbar_idx = i - KEY_1;
+                game_state->hotbar.active_item_idx = hotbar_idx;
+            }
+        }
+
+        if (key_input_states[KEY_G].is_pressed) {
+            input->world.drop_item = true;
+        }
+
+        input->world.movement_vec = w_vec_norm(movement_vec);
 
 #ifdef DEBUG
-            if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
-                player_action_update_from_input(&input.world.use_held_item,
-                                                game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON], sim_dt_s);
-            }
+        if (!is_set(game_state->tools.flags, TOOLS_F_CAPTURING_MOUSE_INPUT)) {
+            player_action_update_from_input(&input->world.use_held_item,
+                                            game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON], sim_dt_s);
+        }
 #else
-            player_action_update_from_input(&input.world.use_held_item,
-                                            game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON]);
+        player_action_update_from_input(&input->world.use_held_item,
+                                        game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON]);
 #endif
 
-            Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
-            Vec2 player_position = game_state->player->position;
-            input.world.aim_vec = w_vec_norm(
-                {mouse_world_position.x - player_position.x, mouse_world_position.y - (player_position.y + 0.5f)});
-        }
+        Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
+        Vec2 player_position = game_state->player->position;
+        input->world.aim_vec = w_vec_norm(
+            {mouse_world_position.x - player_position.x, mouse_world_position.y - (player_position.y + 0.5f)});
 
-        player_action_update_from_input(&input.world.interact, key_input_states[KEY_E], sim_dt_s);
-
-        if (key_input_states[KEY_I].is_pressed) {
-            toggle(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
-        }
-
+        player_action_update_from_input(&input->world.interact, key_input_states[KEY_E], sim_dt_s);
+        player_action_update_from_input(&input->world.open_inventory, key_input_states[KEY_I], sim_dt_s);
     } else if (game_input->active_input_type == INPUT_TYPE_GAMEPAD) {
         GamepadState* gamepad_state = &game_input->gamepad_state;
-        input.world.movement_vec = w_vec_norm(
+        input->world.movement_vec = w_vec_norm(
             {gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_X], -gamepad_state->axes[GAMEPAD_AXIS_LEFT_STICK_Y]});
+    }
+}
+
+void update_player_input_ui(GameInput* game_input, PlayerInput* input, float sim_dt_s) {
+    KeyInputState* key_input_states = game_input->key_input_states;
+    player_action_update_from_input(&input->ui.select, game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON],
+                                    sim_dt_s);
+    player_action_update_from_input(&input->ui.close, key_input_states[KEY_E], sim_dt_s);
+}
+
+PlayerInput player_input_get(GameInput* game_input, GameState* game_state, float sim_dt_s) {
+    PlayerInput input = {};
+    if (game_state->ui_mode.state == UI_STATE_NONE) {
+        update_player_input_no_ui(game_input, game_state, sim_dt_s, &input);
+    } else {
+        update_player_input_ui(game_input, &input, sim_dt_s);
     }
 
     return input;
@@ -477,7 +483,11 @@ void entity_command_center_ui_render(Entity* entity, GameState* game_state, Rend
                          {.scale = 2, .slot_gap = pixels_to_units(4), .background_rgba = COLOR_GRAY});
 
     if (inventory_input.idx_clicked >= 0) {
-
+        EntityType selected_entity_type = structure_inventory.items[inventory_input.idx_clicked].entity_type;
+        if (selected_entity_type != ENTITY_TYPE_UNKNOWN) {
+            game_state->ui_mode.placing_structure_type = selected_entity_type;
+            game_state->ui_mode.state = UI_STATE_STRUCTURE_PLACEMENT;
+        }
     } else if (inventory_input.idx_hovered >= 0) {
         CraftingRecipe recipe = command_center_recipes[inventory_input.idx_hovered];
         crafting_recipe_info_render(container, inventory_ui_size, recipe);
@@ -485,6 +495,19 @@ void entity_command_center_ui_render(Entity* entity, GameState* game_state, Rend
 
     ui_draw_element(container, inventory_ui_position, render_group);
 };
+
+void entity_command_center_placement_ui_update_render(GameState* game_state, RenderGroup* render_group) {
+    UIMode* ui_mode = &game_state->ui_mode;
+    set(ui_mode->flags, UI_MODE_F_CAMERA_OVERRIDE);
+    Entity* command_center = entity_find(ui_mode->entity_handle, &game_state->entity_data);
+    ui_mode->camera_position = command_center->position;
+
+    Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
+    SpriteID structure_sprite_id = entity_info[ui_mode->placing_structure_type].default_sprite;
+
+    render_sprite(mouse_world_position, structure_sprite_id, render_group,
+                  {.tint = {1, 1, 1, 0.3}, .flags = RENDER_SPRITE_OPT_TINT_SET});
+}
 
 void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
                                      GameInput* game_input) {
@@ -766,7 +789,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         init_entity_data(&game_state->entity_data);
-        game_state->player_interacted_entity = entity_null_handle;
         hotbar_init(&game_state->hotbar);
 
         game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
@@ -1186,31 +1208,39 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    if (player_input.world.interact.was_pressed) {
-        Entity* player_interacted_entity = entity_find(game_state->player_interacted_entity, &game_state->entity_data);
-        if (!player_interacted_entity && closest_interactable_entity) {
-            game_state->player_interacted_entity =
-                entity_to_handle(closest_interactable_entity, &game_state->entity_data);
-        } else {
-            game_state->player_interacted_entity = entity_null_handle;
-        }
-    }
-
     proc_gen_update_chunk_states(game_state->player->position, game_state, g_sim_dt_s);
 
-    Entity* player_interacted_entity = entity_find(game_state->player_interacted_entity, &game_state->entity_data);
-    if (player_interacted_entity) {
-        unset(game_state->flags, GAME_STATE_F_INVENTORY_OPEN);
-        if (player_interacted_entity->type == ENTITY_TYPE_ROBOT_GATHERER) {
-            entity_robot_interact_ui_render(player_interacted_entity, game_state, &render_group_ui, game_input);
-        } else if (player_interacted_entity->type == ENTITY_TYPE_LANDING_POD_YELLOW) {
-            entity_command_center_ui_render(player_interacted_entity, game_state, &render_group_ui, game_input);
-        } else {
-            entity_inventory_render(player_interacted_entity, game_state, &render_group_ui, game_input);
-        }
+    unset(game_state->ui_mode.flags, UI_MODE_F_INVENTORY_ACTIVE);
+    unset(game_state->ui_mode.flags, UI_MODE_F_CAMERA_OVERRIDE);
+
+    if (player_input.world.open_inventory.was_pressed) {
+        game_state->ui_mode.state = UI_STATE_PLAYER_INVENTORY;
+        game_state->ui_mode.entity_handle = entity_to_handle(game_state->player, &game_state->entity_data);
+    } else if (player_input.world.interact.was_pressed && closest_interactable_entity) {
+        game_state->ui_mode.state = UI_STATE_ENTITY_UI;
+        game_state->ui_mode.entity_handle = entity_to_handle(closest_interactable_entity, &game_state->entity_data);
     }
 
-    if (is_set(game_state->flags, GAME_STATE_F_INVENTORY_OPEN)) {
+    if (player_input.ui.close.was_pressed) {
+        game_state->ui_mode.state = UI_STATE_NONE;
+        game_state->ui_mode.entity_handle = entity_null_handle;
+    }
+
+    if (game_state->ui_mode.state == UI_STATE_ENTITY_UI) {
+        Entity* ui_entity = entity_find(game_state->ui_mode.entity_handle, &game_state->entity_data);
+        if (ui_entity->inventory.row_count > 0 && ui_entity->inventory.col_count > 0) {
+            set(game_state->ui_mode.flags, UI_MODE_F_INVENTORY_ACTIVE);
+        }
+        if (ui_entity->type == ENTITY_TYPE_ROBOT_GATHERER) {
+            entity_robot_interact_ui_render(ui_entity, game_state, &render_group_ui, game_input);
+        } else if (ui_entity->type == ENTITY_TYPE_LANDING_POD_YELLOW) {
+            entity_command_center_ui_render(ui_entity, game_state, &render_group_ui, game_input);
+        } else {
+            entity_inventory_render(ui_entity, game_state, &render_group_ui, game_input);
+        }
+    } else if (game_state->ui_mode.state == UI_STATE_STRUCTURE_PLACEMENT) {
+        entity_command_center_placement_ui_update_render(game_state, &render_group_ui);
+    } else if (game_state->ui_mode.state == UI_STATE_PLAYER_INVENTORY) {
         player_inventory_render(game_state, &render_group_ui, game_input);
     }
 
