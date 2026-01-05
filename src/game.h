@@ -31,6 +31,8 @@
 #define MAX_HUNGER_PLAYER 10
 #define HUNGER_TICK_COOLDOWN_S 30
 
+#define ITEM_DROP_PICKUP_COOLDOWN_S 1.0f
+
 #define ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S 0.5f
 
 #define ATTACK_ID_MAX_IDS 512
@@ -224,6 +226,7 @@ struct Entity {
     uint32 hunger;
     float hunger_cooldown_s;
     float damage_taken_tint_cooldown_s;
+    float item_drop_pickup_cooldown_s;
     uint32 attack_id;
 
     float item_floating_anim_timer_s;

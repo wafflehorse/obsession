@@ -733,6 +733,7 @@ void entity_inventory_spawn_world_item(InventoryItem* item, Vec3 source_position
 
     item_entity->velocity = w_vec_mult(velocity_direction, velocity_mag);
 
+    item_entity->item_drop_pickup_cooldown_s = ITEM_DROP_PICKUP_COOLDOWN_S;
     item_entity->z_pos = 0.0001;
     item_entity->z_velocity = 10;
     item_entity->z_acceleration = -40;

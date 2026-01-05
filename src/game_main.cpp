@@ -980,7 +980,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         entity->z_pos = w_clamp_min(entity->z_pos, 0);
         entity->z_velocity = entity->z_acceleration * g_sim_dt_s + entity->z_velocity;
 
-        if (is_set(entity->flags, ENTITY_F_ITEM) && !is_set(entity->flags, ENTITY_F_OWNED)) {
+        if (is_set(entity->flags, ENTITY_F_ITEM) && !is_set(entity->flags, ENTITY_F_OWNED) &&
+            entity->item_drop_pickup_cooldown_s <= 0) {
             Entity* collector = NULL;
             float distance_from_collector = ITEM_PICKUP_RANGE;
 
@@ -1119,6 +1120,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
+        entity->item_drop_pickup_cooldown_s = w_clamp_min(entity->item_drop_pickup_cooldown_s - g_sim_dt_s, 0);
 
         if (is_set(entity->flags, ENTITY_F_GETS_HUNGERY) && !game_state->tools.disable_hunger) {
             entity->hunger_cooldown_s = w_clamp_min(entity->hunger_cooldown_s - g_sim_dt_s, 0);

@@ -1,6 +1,6 @@
 [] Add robotics crafter entity 
 [] Add command center UI
-	[] Substructure crafting and placement
+	[x] Substructure crafting and placement
 	[] Storage UI
 
 [] Make it easier to add new entities
@@ -29,6 +29,9 @@
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 
+[x] Fix bug where player picks up item right after dropping
+[x] Unify ui rendering and input handling
+	- Added a ui_mode concept to game_state which manages the current state of UIs
 [x] Randomly spawn enemies around the map
 [x] Should collider be an entity_info concept and we look up the collider info during collision?
 [x] Add food gathering robot
