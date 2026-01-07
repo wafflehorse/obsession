@@ -317,6 +317,7 @@ struct UIMode {
     // For UI_STATE_STRUCTURE_PLACEMENT
     EntityType placing_structure_type;
     Vec2 camera_position;
+    float camera_zoom;
 };
 
 #define GAME_STATE_F_INITIALIZED (1 << 0)

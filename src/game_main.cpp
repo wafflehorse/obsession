@@ -179,6 +179,7 @@ void create_decoration(DecorationData* decoration_data, DecorationType type, Vec
 #include "hotbar.cpp"
 #include "brain.cpp"
 #include "proc_gen.cpp"
+#include "crafting.cpp"
 
 #ifdef DEBUG
 #include "engine_tools.cpp"
@@ -341,127 +342,6 @@ void debug_render_entity_colliders(Entity* entity, bool has_collided) {
 #endif
 }
 
-#define CRAFTING_MAX_INGREDIENTS 8
-
-struct CraftingIngredient {
-    EntityType entity_type;
-    uint32 quantity;
-};
-
-struct CraftingRecipe {
-    EntityType entity_type;
-    CraftingIngredient ingredients[CRAFTING_MAX_INGREDIENTS];
-};
-
-CraftingRecipe crafting_recipes[ENTITY_TYPE_COUNT] = {
-    {.entity_type = ENTITY_TYPE_CHEST_IRON, .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 4}}}};
-
-CraftingRecipe command_center_recipes[ENTITY_TYPE_COUNT] = {
-    {.entity_type = ENTITY_TYPE_ROBOTICS_FACTORY, .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 20}}}};
-
-CraftingRecipe* crafting_recipe_find(EntityType entity_type) {
-    CraftingRecipe* recipe = NULL;
-
-    for (int i = 0; i < ENTITY_TYPE_COUNT; i++) {
-        if (crafting_recipes[i].entity_type == entity_type) {
-            recipe = &crafting_recipes[i];
-        }
-    }
-
-    return recipe;
-}
-
-bool crafting_can_craft_item(EntityType entity_type, HotBar* hotbar) {
-    CraftingRecipe* recipe = crafting_recipe_find(entity_type);
-
-    if (!recipe) {
-        return false;
-    }
-
-    for (int i = 0; i < CRAFTING_MAX_INGREDIENTS; i++) {
-        CraftingIngredient* ingredient = &recipe->ingredients[i];
-        if (ingredient->entity_type != ENTITY_TYPE_UNKNOWN &&
-            !inventory_contains_item(&hotbar->inventory, ingredient->entity_type, ingredient->quantity)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void crafting_craft_item(EntityData* entity_data, EntityType entity_type, HotBar* hotbar) {
-    CraftingRecipe* recipe = crafting_recipe_find(entity_type);
-
-    ASSERT(recipe, "Attempting to craft an item without a recipe");
-
-    if (inventory_space_for_item(entity_type, 1, &hotbar->inventory) && crafting_can_craft_item(entity_type, hotbar)) {
-        for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe->ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN;
-             i++) {
-            CraftingIngredient ingredient = recipe->ingredients[i];
-            inventory_remove_items(&hotbar->inventory, ingredient.entity_type, ingredient.quantity);
-        }
-
-        inventory_add_item(&hotbar->inventory, entity_type, 1);
-    }
-}
-
-Inventory recipes_to_inventory(CraftingRecipe* recipes, int row_count, int col_count) {
-    ASSERT(row_count != 0 && col_count != 0, "recipes_to_inventory - row_cound and col_count must be non-zero");
-
-    Inventory inventory = {};
-
-    for (int i = 0; i < ENTITY_TYPE_COUNT; i++) {
-        CraftingRecipe recipe = recipes[i];
-
-        if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
-            inventory.items[i].entity_type = recipe.entity_type;
-            inventory.items[i].stack_size = 1;
-        }
-    }
-
-    inventory.row_count = row_count;
-    inventory.col_count = col_count;
-
-    ASSERT(inventory.row_count * inventory.col_count < ENTITY_TYPE_COUNT,
-           "crafting inventory size must be less than entity type count");
-
-    return inventory;
-}
-
-void crafting_recipe_info_render(UIElement* container, Vec2 container_size, CraftingRecipe recipe) {
-    if (recipe.entity_type == ENTITY_TYPE_UNKNOWN) {
-        return;
-    }
-
-    EntityInfo* e_info = &entity_info[recipe.entity_type];
-
-    UIElement* title =
-        ui_create_text(e_info->type_name_string, {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x});
-    UIElement* description =
-        ui_create_text(e_info->description, {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x});
-
-    ui_push(container, title);
-    ui_push(container, description);
-
-    for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe.ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN; i++) {
-        CraftingIngredient ingredient = recipe.ingredients[i];
-
-        UIElement* ingredient_container =
-            ui_create_container({.child_gap = pixels_to_units(8), .opts = UI_ELEMENT_F_CONTAINER_ROW});
-        UIElement* ingredient_sprite_element = ui_create_sprite(entity_get_default_sprite(ingredient.entity_type));
-
-        const char* entity_name_string = entity_info[ingredient.entity_type].type_name_string;
-        char ingredient_text[64] = {};
-        snprintf(ingredient_text, 64, "%i %s", ingredient.quantity, entity_name_string);
-        UIElement* ingredient_text_element = ui_create_text(ingredient_text, {.rgba = COLOR_WHITE, .font_scale = 1});
-
-        ui_push(ingredient_container, ingredient_sprite_element);
-        ui_push(ingredient_container, ingredient_text_element);
-
-        ui_push(container, ingredient_container);
-    }
-}
-
 void entity_command_center_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
                                      GameInput* game_input) {
     Vec2 inventory_ui_size = {12, 16};
@@ -476,27 +356,39 @@ void entity_command_center_ui_render(Entity* entity, GameState* game_state, Rend
                                                 .background_rgba = COLOR_BLACK,
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    Inventory structure_inventory = recipes_to_inventory(command_center_recipes, 2, 4);
+    Inventory structure_inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_STRUCTURES, 2, 4);
 
     InventoryInput inventory_input =
         inventory_render(container, inventory_ui_position, &structure_inventory, game_state, game_input,
-                         {.scale = 2, .slot_gap = pixels_to_units(4), .background_rgba = COLOR_GRAY});
+                         {.scale = 2,
+                          .slot_gap = pixels_to_units(4),
+                          .background_rgba = COLOR_GRAY,
+                          .recipe_book_type = CRAFTING_RECIPE_BOOK_STRUCTURES,
+                          .flags = INVENTORY_RENDER_F_FOR_CRAFTING});
 
     if (inventory_input.idx_clicked >= 0) {
         EntityType selected_entity_type = structure_inventory.items[inventory_input.idx_clicked].entity_type;
-        if (selected_entity_type != ENTITY_TYPE_UNKNOWN) {
+        if (selected_entity_type != ENTITY_TYPE_UNKNOWN &&
+            crafting_can_craft_item(CRAFTING_RECIPE_BOOK_STRUCTURES, selected_entity_type,
+                                    &game_state->hotbar.inventory)) {
             game_state->ui_mode.placing_structure_type = selected_entity_type;
             game_state->ui_mode.state = UI_STATE_STRUCTURE_PLACEMENT;
+            game_state->ui_mode.camera_position = entity->position;
+            game_state->ui_mode.camera_zoom = 0.5f;
+            set(game_state->ui_mode.flags, UI_MODE_F_CAMERA_OVERRIDE);
         }
-    } else if (inventory_input.idx_hovered >= 0) {
-        CraftingRecipe recipe = command_center_recipes[inventory_input.idx_hovered];
-        crafting_recipe_info_render(container, inventory_ui_size, recipe);
+    }
+
+    if (inventory_input.idx_hovered >= 0) {
+        crafting_recipe_info_render(container, inventory_ui_size, CRAFTING_RECIPE_BOOK_STRUCTURES,
+                                    inventory_input.idx_hovered);
     }
 
     ui_draw_element(container, inventory_ui_position, render_group);
 };
 
-void entity_command_center_placement_ui_update_render(GameState* game_state, RenderGroup* render_group) {
+void entity_command_center_placement_ui_update_render(GameState* game_state, PlayerInput* player_input,
+                                                      RenderGroup* render_group) {
     UIMode* ui_mode = &game_state->ui_mode;
     set(ui_mode->flags, UI_MODE_F_CAMERA_OVERRIDE);
     Entity* command_center = entity_find(ui_mode->entity_handle, &game_state->entity_data);
@@ -504,9 +396,47 @@ void entity_command_center_placement_ui_update_render(GameState* game_state, Ren
 
     Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
     SpriteID structure_sprite_id = entity_info[ui_mode->placing_structure_type].default_sprite;
+    Sprite structure_sprite = sprite_table[structure_sprite_id];
+
+    bool valid_placement = true;
+    Collider subject_collider = entity_get_collider(ui_mode->placing_structure_type);
+
+    Rect subject_rect = {.x = mouse_world_position.x,
+                         .y = mouse_world_position.y,
+                         .w = subject_collider.size.x,
+                         .h = subject_collider.size.y};
+
+    for (int i = 0; i < game_state->entity_data.entity_count; i++) {
+        Entity* entity = &game_state->entity_data.entities[i];
+        WorldCollider target_collider = entity_get_world_collider(entity);
+
+        Rect target_rect = {.x = target_collider.position.x,
+                            .y = target_collider.position.y,
+                            .w = target_collider.size.x,
+                            .h = target_collider.size.y};
+
+        if (w_check_aabb_overlap(subject_rect, target_rect)) {
+            valid_placement = false;
+        }
+    }
+
+    Vec4 tint = {1, 1, 1, 0.3};
+
+    if (!valid_placement) {
+        tint.x += 3;
+    }
 
     render_sprite(mouse_world_position, structure_sprite_id, render_group,
-                  {.tint = {1, 1, 1, 0.3}, .flags = RENDER_SPRITE_OPT_TINT_SET});
+                  {.tint = tint, .flags = RENDER_SPRITE_OPT_TINT_SET});
+
+    if (player_input->ui.select.was_pressed && valid_placement &&
+        crafting_can_craft_item(CRAFTING_RECIPE_BOOK_STRUCTURES, ui_mode->placing_structure_type,
+                                &game_state->hotbar.inventory)) {
+        crafting_consume_ingredients(&game_state->hotbar.inventory, CRAFTING_RECIPE_BOOK_STRUCTURES,
+                                     ui_mode->placing_structure_type);
+        entity_create(&game_state->entity_data, ui_mode->placing_structure_type,
+                      {mouse_world_position.x, mouse_world_position.y - (pixels_to_units(structure_sprite.h) / 2)});
+    }
 }
 
 void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
@@ -594,23 +524,28 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
     UIElement* title = ui_create_text("Crafting", {.rgba = COLOR_WHITE, .font_scale = 1.0f});
     ui_push(container, title);
 
-    Inventory inventory = recipes_to_inventory(crafting_recipes, 2, 6);
+    Inventory inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_GENERAL, 2, 6);
 
     InventoryInput inventory_input =
         inventory_render(container, crafting_menu_position, &inventory, game_state, game_input,
-                         {.scale = 1, .slot_gap = pixels_to_units(8), .background_rgba = COLOR_GRAY});
+                         {.scale = 1,
+                          .slot_gap = pixels_to_units(8),
+                          .background_rgba = COLOR_GRAY,
+                          .recipe_book_type = CRAFTING_RECIPE_BOOK_GENERAL,
+                          .flags = INVENTORY_RENDER_F_FOR_CRAFTING});
 
     ui_container_size_update(container);
 
     if (inventory_input.idx_hovered > -1) {
-        CraftingRecipe recipe = crafting_recipes[inventory_input.idx_hovered];
-        crafting_recipe_info_render(container, crafting_menu_size, recipe);
+        crafting_recipe_info_render(container, crafting_menu_size, CRAFTING_RECIPE_BOOK_GENERAL,
+                                    inventory_input.idx_hovered);
     }
 
     if (inventory_input.idx_clicked > -1) {
-        CraftingRecipe recipe = crafting_recipes[inventory_input.idx_hovered];
-        if (recipe.entity_type != ENTITY_TYPE_UNKNOWN) {
-            crafting_craft_item(&game_state->entity_data, recipe.entity_type, &game_state->hotbar);
+        CraftingRecipe* recipe = crafting_recipe_find(CRAFTING_RECIPE_BOOK_GENERAL, inventory_input.idx_clicked);
+        if (recipe) {
+            crafting_craft_item(&game_state->entity_data, recipe->entity_type, CRAFTING_RECIPE_BOOK_GENERAL,
+                                &game_state->hotbar.inventory);
         }
     }
 
@@ -694,6 +629,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     w_init_waffle_lib(g_base_path);
     w_init_animation(animation_table);
     entity_init();
+    crafting_init();
 
     // TODO: should background just be merged with decorations?
     RenderGroup background_render_group = {};
@@ -1226,6 +1162,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     if (player_input.ui.close.was_pressed) {
         game_state->ui_mode.state = UI_STATE_NONE;
         game_state->ui_mode.entity_handle = entity_null_handle;
+        game_state->ui_mode.camera_position = {};
+        game_state->ui_mode.camera_zoom = 1.0f;
+        game_state->ui_mode.placing_structure_type = ENTITY_TYPE_UNKNOWN;
     }
 
     if (game_state->ui_mode.state == UI_STATE_ENTITY_UI) {
@@ -1241,7 +1180,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             entity_inventory_render(ui_entity, game_state, &render_group_ui, game_input);
         }
     } else if (game_state->ui_mode.state == UI_STATE_STRUCTURE_PLACEMENT) {
-        entity_command_center_placement_ui_update_render(game_state, &render_group_ui);
+        entity_command_center_placement_ui_update_render(game_state, &player_input, &render_group_ui);
     } else if (game_state->ui_mode.state == UI_STATE_PLAYER_INVENTORY) {
         player_inventory_render(game_state, &render_group_ui, game_input);
     }
@@ -1279,12 +1218,22 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
-    Vec2 camera_to_player_offset = w_vec_sub(game_state->player->position, game_state->camera.position);
+    Vec2 camera_target_position = game_state->player->position;
+    float camera_target_zoom = 1.0f;
+
+    if (is_set(game_state->ui_mode.flags, UI_MODE_F_CAMERA_OVERRIDE)) {
+        camera_target_position = game_state->ui_mode.camera_position;
+        camera_target_zoom = game_state->ui_mode.camera_zoom;
+    }
 
     float smoothing_factor = 8;
-    Vec2 camera_delta = w_vec_mult(camera_to_player_offset, smoothing_factor);
+    Vec2 camera_to_target_offset = w_vec_sub(camera_target_position, game_state->camera.position);
+    Vec2 camera_delta = w_vec_mult(camera_to_target_offset, smoothing_factor);
     camera_delta = w_vec_mult(camera_delta, g_sim_dt_s);
     game_state->camera.position = w_vec_add(game_state->camera.position, camera_delta);
+
+    float camera_zoom_offset = camera_target_zoom - game_state->camera.zoom;
+    game_state->camera.zoom += camera_zoom_offset * smoothing_factor * g_sim_dt_s;
 
     hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
     hotbar_render(game_state, game_input, &render_group_ui);

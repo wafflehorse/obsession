@@ -1,4 +1,5 @@
 #include "game.h"
+#include "crafting.h"
 
 #define INVENTORY_BASE_SLOT_DIMENSION 1
 
@@ -170,12 +171,14 @@ struct InventoryInput {
 };
 
 #define INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED (1 << 0)
+#define INVENTORY_RENDER_F_FOR_CRAFTING (1 << 1)
 
 struct InventoryRenderOptions {
     flags flags;
     float scale;
     float slot_gap;
     Vec4 background_rgba;
+    CraftingRecipeBook recipe_book_type;
 };
 
 // NOTE: There is some ui hackiness going on here.
@@ -188,6 +191,11 @@ struct InventoryRenderOptions {
 // easily attribute the ui element to an inventory item.
 InventoryInput inventory_render(UIElement* container, Vec2 container_position, Inventory* inventory,
                                 GameState* game_state, GameInput* game_input, InventoryRenderOptions opts) {
+
+    ASSERT(!is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) ||
+               opts.recipe_book_type != CRAFTING_RECIPE_BOOK_UNKNOWN,
+           "Must specify a recipe book if inventory render is for crafting");
+
     InventoryInput input = {-1, -1};
     Vec2 slot_size = {1, 1};
     slot_size = w_vec_mult(slot_size, opts.scale);
@@ -222,7 +230,15 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                 Vec2 sprite_world_size = {.x = pixels_to_units(sprite.w), .y = pixels_to_units(sprite.h)};
                 Vec2 sprite_size = w_scale_to_fit(sprite_world_size, slot_size);
 
-                UIElement* item_sprite = ui_create_sprite(sprite, {.size = sprite_size});
+                UICreateSpriteOpts sprite_opts = {.size = sprite_size};
+
+                if (is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) &&
+                    !crafting_can_craft_item(opts.recipe_book_type, item->entity_type, &game_state->hotbar.inventory)) {
+                    set(sprite_opts.flags, UI_CREATE_SPRITE_OPTS_F_APPLY_TINT);
+                    sprite_opts.tint = {1, 1, 1, 0.4};
+                }
+
+                UIElement* item_sprite = ui_create_sprite(sprite, sprite_opts);
                 ui_push_centered(item_slot, item_sprite);
 
                 if (item->stack_size > 1) {

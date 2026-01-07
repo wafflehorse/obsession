@@ -163,11 +163,12 @@ void entity_init() {
         .description = "A factory for pumping out sick ass mechs.",
         .default_sprite = SPRITE_ROBOTICS_FACTORY,
         .instance_flags = ENTITY_F_PLAYER_INTERACTABLE | ENTITY_F_BLOCKER,
-    };
+        .collider = entity_collider_from_sprite(SPRITE_ROBOTICS_FACTORY,
+                                                {.size_x = -2.5, .size_y = -4, .offset_x = -0.7, .offset_y = 0.25})};
 }
 
-Collider entity_get_collider(Entity* entity) {
-    EntityInfo* e_info = &entity_info[entity->type];
+Collider entity_get_collider(EntityType type) {
+    EntityInfo* e_info = &entity_info[type];
     Collider result = e_info->collider;
 
     if (result.size.x == 0 || result.size.y == 0) {
@@ -178,7 +179,7 @@ Collider entity_get_collider(Entity* entity) {
 }
 
 WorldCollider entity_get_world_collider(Entity* entity) {
-    Collider entity_collider = entity_get_collider(entity);
+    Collider entity_collider = entity_get_collider(entity->type);
 
     WorldCollider world_collider;
     world_collider.shape = entity_collider.shape;

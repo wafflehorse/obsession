@@ -208,55 +208,61 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
 
     tools_update_input(game_input, game_state);
 
-    Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
-    WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
-    int hovered_over_entity_init = -1;
+    if (game_state->tools.is_panel_open) {
+        Vec2 mouse_world_position = game_state->world_input.mouse_position_world;
+        WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
+        int hovered_over_entity_init = -1;
 
-    if (!imgui_io->WantCaptureMouse) {
-        for (int i = 0; i < game_state->world_init.entity_init_count; i++) {
-            SpriteID sprite_id = entity_info[entity_inits[i].type].default_sprite;
-            Vec2 target_position = entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
-            Sprite sprite = entity_get_default_sprite(entity_inits[i].type);
-            Rect target = {target_position.x, target_position.y, pixels_to_units(sprite.w), pixels_to_units(sprite.h)};
-            if (w_check_point_in_rect(target, mouse_world_position)) {
-                hovered_over_entity_init = i;
-                break;
-            }
-        }
-
-        if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
-            if (game_state->tools.entity_palette_should_add_to_init) {
-                if (hovered_over_entity_init != -1) {
-                    if (entity_inits[hovered_over_entity_init].type != ENTITY_TYPE_PLAYER) {
-                        entity_inits[hovered_over_entity_init] =
-                            entity_inits[game_state->world_init.entity_init_count-- - 1];
-                    }
-                } else if (game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN) {
-                    entity_inits[game_state->world_init.entity_init_count++] = {
-                        .type = game_state->tools.selected_entity, .position = mouse_world_position};
+        if (!imgui_io->WantCaptureMouse) {
+            for (int i = 0; i < game_state->world_init.entity_init_count; i++) {
+                SpriteID sprite_id = entity_info[entity_inits[i].type].default_sprite;
+                Vec2 target_position = entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
+                Sprite sprite = entity_get_default_sprite(entity_inits[i].type);
+                Rect target = {target_position.x, target_position.y, pixels_to_units(sprite.w),
+                               pixels_to_units(sprite.h)};
+                if (w_check_point_in_rect(target, mouse_world_position)) {
+                    hovered_over_entity_init = i;
+                    break;
                 }
-            } else {
-                // NOTE: for now I want this to create the item version of entities as the default. I don't know if this
-                // is a long term solution to this problem. We might want a toggle for item vs. placed entities?
-                entity_create(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position,
-                              ENTITY_CREATE_F_ITEM);
-            }
-        }
-    }
-
-    if (game_state->tools.entity_palette_should_add_to_init) {
-        for (int i = 0; i < game_state->world_init.entity_init_count; i++) {
-            SpriteID sprite_id = entity_info[entity_inits[i].type].default_sprite;
-            Vec4 tint = {1, 1, 1, 0.3};
-            if (hovered_over_entity_init == i) {
-                tint.x = 4;
             }
 
-            Vec2 sprite_position = entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
-            render_sprite(sprite_position, sprite_id, render_group,
-                          {.tint = tint, .flags = RENDER_SPRITE_OPT_TINT_SET});
+            if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+                if (game_state->tools.entity_palette_should_add_to_init) {
+                    if (hovered_over_entity_init != -1) {
+                        if (entity_inits[hovered_over_entity_init].type != ENTITY_TYPE_PLAYER) {
+                            entity_inits[hovered_over_entity_init] =
+                                entity_inits[game_state->world_init.entity_init_count-- - 1];
+                        }
+                    } else if (game_state->tools.selected_entity != ENTITY_TYPE_UNKNOWN) {
+                        entity_inits[game_state->world_init.entity_init_count++] = {
+                            .type = game_state->tools.selected_entity, .position = mouse_world_position};
+                    }
+                } else {
+                    // NOTE: for now I want this to create the item version of entities as the default. I don't know if
+                    // this is a long term solution to this problem. We might want a toggle for item vs. placed
+                    // entities?
+                    entity_create(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position,
+                                  ENTITY_CREATE_F_ITEM);
+                }
+            }
         }
-    }
 
-    tools_render_panel(game_memory, game_state, game_input);
+        if (game_state->tools.entity_palette_should_add_to_init) {
+            for (int i = 0; i < game_state->world_init.entity_init_count; i++) {
+                SpriteID sprite_id = entity_info[entity_inits[i].type].default_sprite;
+                Vec4 tint = {1, 1, 1, 0.3};
+                if (hovered_over_entity_init == i) {
+                    tint.x = 4;
+                }
+
+                Vec2 sprite_position = entity_sprite_world_position(sprite_id, entity_inits[i].position, 0, false);
+                render_sprite(sprite_position, sprite_id, render_group,
+                              {.tint = tint, .flags = RENDER_SPRITE_OPT_TINT_SET});
+            }
+        }
+
+        tools_render_panel(game_memory, game_state, game_input);
+    } else {
+        game_state->tools.selected_entity = ENTITY_TYPE_UNKNOWN;
+    }
 }

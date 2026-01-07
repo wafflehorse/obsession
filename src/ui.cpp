@@ -199,6 +199,7 @@ void draw_progress_bar(UI_ProgressBar progress_bar, float pixels_per_unit, Rende
 #define UI_ELEMENT_F_DRAW_SPRITE (1 << 3)
 #define UI_ELEMENT_F_DRAW_BACKGROUND (1 << 4)
 #define UI_ELEMENT_F_PRESSABLE (1 << 5)
+#define UI_ELEMENT_F_APPLY_TINT (1 << 6)
 
 struct UIElement {
     UIElement* parent;
@@ -220,6 +221,7 @@ struct UIElement {
     float font_scale;
 
     Sprite sprite;
+    Vec4 tint;
 
     Vec4 background_rgba;
 
@@ -263,6 +265,10 @@ void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_grou
         quad->sprite_position = {element->sprite.x, element->sprite.y};
         quad->sprite_size = {element->sprite.w, element->sprite.h};
         quad->texture_unit = TEXTURE_ID_SPRITE;
+
+        if (is_set(element->flags, UI_ELEMENT_F_APPLY_TINT)) {
+            quad->tint = element->tint;
+        }
     }
 
     if (element->border_width > 0) {
@@ -340,8 +346,12 @@ Vec2 ui_container_content_size(UIElement* container) {
     return size;
 }
 
+#define UI_CREATE_SPRITE_OPTS_F_APPLY_TINT (1 << 0)
+
 struct UICreateSpriteOpts {
+    flags flags;
     Vec2 size;
+    Vec4 tint;
 };
 
 UIElement* ui_create_sprite(Sprite sprite, UICreateSpriteOpts opts) {
@@ -353,7 +363,13 @@ UIElement* ui_create_sprite(Sprite sprite, UICreateSpriteOpts opts) {
     } else {
         sprite_element->size = opts.size;
     }
-    sprite_element->flags = UI_ELEMENT_F_DRAW_SPRITE;
+
+    set(sprite_element->flags, UI_ELEMENT_F_DRAW_SPRITE);
+
+    if (is_set(opts.flags, UI_CREATE_SPRITE_OPTS_F_APPLY_TINT)) {
+        set(sprite_element->flags, UI_ELEMENT_F_APPLY_TINT);
+        sprite_element->tint = opts.tint;
+    }
 
     return sprite_element;
 }
