@@ -77,6 +77,7 @@ enum RenderGroupID {
     RENDER_GROUP_ID_UI,
     RENDER_GROUP_ID_DECORATIONS,
     RENDER_GROUP_ID_TOOLS,
+    RENDER_GROUP_ID_HUD,
     RENDER_GROUP_ID_COUNT
 };
 
@@ -279,6 +280,7 @@ struct Tools {
     bool draw_entity_positions;
     bool draw_hitboxes;
     bool disable_hunger;
+    float camera_zoom;
 };
 
 struct GameInit {
@@ -320,6 +322,10 @@ struct UIMode {
     float camera_zoom;
 };
 
+struct RenderGroups {
+    RenderGroup hud;
+};
+
 #define GAME_STATE_F_INITIALIZED (1 << 0)
 
 struct GameState {
@@ -352,4 +358,5 @@ struct GameState {
     uint32 chunk_spawn_state_count;
     UIMode ui_mode;
     Tools tools;
+    RenderGroups render_groups;
 };

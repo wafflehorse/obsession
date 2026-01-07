@@ -1,6 +1,10 @@
 #include "imgui.h"
 #include "game.h"
 
+void tools_init(Tools* tools) {
+    tools->camera_zoom = 1.0f;
+}
+
 void sprite_to_uv_coordinates(SpriteID sprite_id, Vec2 texture_size, Vec2* uv0, Vec2* uv1) {
     Sprite sprite = sprite_table[sprite_id];
 
@@ -20,15 +24,15 @@ void tools_update_input(GameInput* game_input, GameState* game_state) {
         }
 
         if (key_input_states[KEY_MINUS].is_pressed) {
-            game_state->camera.zoom = w_max(game_state->camera.zoom * 0.90f, 0.1f);
+            game_state->tools.camera_zoom = w_max(game_state->tools.camera_zoom * 0.90f, 0.1f);
         }
 
         if (key_input_states[KEY_EQUALS].is_pressed) {
-            game_state->camera.zoom = w_min(game_state->camera.zoom * 1.10f, 1.0f);
+            game_state->tools.camera_zoom = w_min(game_state->tools.camera_zoom * 1.10f, 1.0f);
         }
 
         if (key_input_states[KEY_0].is_pressed) {
-            game_state->camera.zoom = 1.0f;
+            game_state->tools.camera_zoom = 1.0f;
         }
     }
 }

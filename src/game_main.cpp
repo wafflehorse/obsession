@@ -631,22 +631,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     entity_init();
     crafting_init();
 
-    // TODO: should background just be merged with decorations?
-    RenderGroup background_render_group = {};
-    background_render_group.id = RENDER_GROUP_ID_BACKGROUND;
-    RenderGroup render_group_decorations = {};
-    render_group_decorations.id = RENDER_GROUP_ID_DECORATIONS;
-    RenderGroup main_render_group = {};
-    main_render_group.id = RENDER_GROUP_ID_MAIN;
-    RenderGroup render_group_ui = {};
-    render_group_ui.id = RENDER_GROUP_ID_UI;
-#ifdef DEBUG
-    RenderGroup render_group_tools = {};
-    render_group_tools.id = RENDER_GROUP_ID_TOOLS;
-    RenderGroup debug_render_group = {};
-    debug_render_group.id = RENDER_GROUP_ID_DEBUG;
-#endif
-
     if (!is_set(game_state->flags, GAME_STATE_F_INITIALIZED)) {
         set(game_state->flags, GAME_STATE_F_INITIALIZED);
 
@@ -725,6 +709,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         init_entity_data(&game_state->entity_data);
+        tools_init(&game_state->tools);
         hotbar_init(&game_state->hotbar);
 
         game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
@@ -761,11 +746,32 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         proc_gen_plants(&game_state->decoration_data, &game_state->world_gen_context.plant_fbm_context);
     }
 
-    game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
     init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT, &game_state->frame_arena, &game_state->world_input,
             game_input);
     game_state->frame_arena.next = game_state->frame_arena.data;
     game_state->frame_flags = 0;
+
+    memset(&game_state->render_groups, 0, sizeof(RenderGroups));
+    game_state->render_groups.hud.id = RENDER_GROUP_ID_HUD;
+    game_state->render_groups.hud.size = 250;
+    game_state->render_groups.hud.quads =
+        (RenderQuad*)w_arena_alloc(&game_state->frame_arena, game_state->render_groups.hud.size * sizeof(RenderQuad));
+
+    // TODO: should background just be merged with decorations?
+    RenderGroup background_render_group = {};
+    background_render_group.id = RENDER_GROUP_ID_BACKGROUND;
+    RenderGroup render_group_decorations = {};
+    render_group_decorations.id = RENDER_GROUP_ID_DECORATIONS;
+    RenderGroup main_render_group = {};
+    main_render_group.id = RENDER_GROUP_ID_MAIN;
+    RenderGroup render_group_ui = {};
+    render_group_ui.id = RENDER_GROUP_ID_UI;
+#ifdef DEBUG
+    RenderGroup render_group_tools = {};
+    render_group_tools.id = RENDER_GROUP_ID_TOOLS;
+    RenderGroup debug_render_group = {};
+    debug_render_group.id = RENDER_GROUP_ID_DEBUG;
+#endif
 
     background_render_group.size = DEFAULT_WORLD_WIDTH * DEFAULT_WORLD_HEIGHT;
     background_render_group.quads =
@@ -1224,6 +1230,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     if (is_set(game_state->ui_mode.flags, UI_MODE_F_CAMERA_OVERRIDE)) {
         camera_target_position = game_state->ui_mode.camera_position;
         camera_target_zoom = game_state->ui_mode.camera_zoom;
+    } else {
+#ifdef DEBUG
+        camera_target_zoom = game_state->tools.camera_zoom;
+#endif
     }
 
     float smoothing_factor = 8;
@@ -1236,8 +1246,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     game_state->camera.zoom += camera_zoom_offset * smoothing_factor * g_sim_dt_s;
 
     hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
-    hotbar_render(game_state, game_input, &render_group_ui);
-    render_player_health_ui(game_state->player, game_state->camera, &render_group_ui, &game_state->frame_arena);
+    hotbar_render(game_state, game_input, &game_state->render_groups.hud);
+    render_player_health_ui(game_state->player, game_state->camera, &game_state->render_groups.hud,
+                            &game_state->frame_arena);
     game_memory->push_audio_samples(&game_state->audio_player);
 
     sort_render_group(&main_render_group);
@@ -1245,12 +1256,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     Vec2 shake_offset = update_and_get_camera_shake(&game_state->camera.shake, g_sim_dt_s);
     Vec2 rendered_camera_position = w_vec_add(game_state->camera.position, shake_offset);
 
+    game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
+
     game_memory->push_render_group(background_render_group.quads, background_render_group.count,
                                    rendered_camera_position, background_render_group.opts);
     game_memory->push_render_group(render_group_decorations.quads, render_group_decorations.count,
                                    rendered_camera_position, render_group_decorations.opts);
     game_memory->push_render_group(main_render_group.quads, main_render_group.count, rendered_camera_position,
                                    main_render_group.opts);
+
     game_memory->push_render_group(render_group_ui.quads, render_group_ui.count, game_state->camera.position,
                                    render_group_ui.opts);
 
@@ -1284,11 +1298,16 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
     Vec2 debug_text_container_position = {camera_top_right.x - debug_text_container->size.x, camera_top_right.y};
 
-    ui_draw_element(debug_text_container, debug_text_container_position, &debug_render_group);
+    // Note: technically, maybe this shouldn't be in hud? Maybe we should have a debug hud or something?
+    ui_draw_element(debug_text_container, debug_text_container_position, &game_state->render_groups.hud);
 
     game_memory->push_render_group(render_group_tools.quads, render_group_tools.count, game_state->camera.position,
                                    render_group_tools.opts);
     game_memory->push_render_group(debug_render_group.quads, debug_render_group.count, game_state->camera.position,
                                    debug_render_group.opts);
 #endif
+    game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, 1.0f);
+
+    game_memory->push_render_group(game_state->render_groups.hud.quads, game_state->render_groups.hud.size,
+                                   game_state->camera.position, game_state->render_groups.hud.opts);
 }
