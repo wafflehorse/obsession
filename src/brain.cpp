@@ -197,7 +197,7 @@ void brain_update_robot_gatherer(Entity* entity, GameState* game_state, double d
                 float distance_from_robot = w_euclid_dist(entity->position, ent->position);
                 if (distance_from_robot < min_corn_distance) {
                     min_corn_distance = distance_from_robot;
-                    brain->target_handle = entity_to_handle(ent, &game_state->entity_data);
+                    brain->target_handle = entity_to_handle(ent);
                     brain->ai_state = AI_STATE_HARVESTING;
                 }
             }
@@ -206,7 +206,7 @@ void brain_update_robot_gatherer(Entity* entity, GameState* game_state, double d
         break;
     }
     case AI_STATE_HARVESTING: {
-        Entity* target = entity_find(brain->target_handle, &game_state->entity_data);
+        Entity* target = entity_find(brain->target_handle);
 
         brain->harvesting_cooldown_s = w_clamp_min(brain->harvesting_cooldown_s - g_sim_dt_s, 0);
 

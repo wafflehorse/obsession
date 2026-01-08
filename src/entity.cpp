@@ -29,6 +29,8 @@ EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
 
 EntityHandle entity_null_handle = {.generation = -1};
 
+static EntityData* i_entity_data = NULL;
+
 struct ColliderAdjustments {
     float offset_x;
     float offset_y;
@@ -57,7 +59,9 @@ Collider entity_collider_from_sprite(SpriteID sprite_id) {
     return entity_collider_from_sprite(sprite_id, {});
 }
 
-void entity_init() {
+void entity_init(EntityData* entity_data) {
+    i_entity_data = entity_data;
+
     entity_info[ENTITY_TYPE_UNKNOWN] = {
         .type_name_string = "Unknown",
     };
@@ -193,14 +197,14 @@ Sprite entity_get_default_sprite(EntityType type) {
     return sprite_table[entity_info[type].default_sprite];
 }
 
-Entity* entity_new(EntityData* entity_data) {
-    uint32 idx = entity_data->entity_count;
-    Entity* entity = &entity_data->entities[entity_data->entity_count++];
+Entity* entity_new() {
+    uint32 idx = i_entity_data->entity_count;
+    Entity* entity = &i_entity_data->entities[i_entity_data->entity_count++];
     memset(entity, 0, sizeof(Entity));
 
-    ASSERT(entity_data->entity_count < MAX_ENTITIES, "MAX_ENTITIES has been reached!");
+    ASSERT(i_entity_data->entity_count < MAX_ENTITIES, "MAX_ENTITIES has been reached!");
 
-    entity->id = entity_data->entity_ids[idx];
+    entity->id = i_entity_data->entity_ids[idx];
     entity->z_index = 1;
     entity->facing_direction = {1, 0};
     entity->owner_handle.generation = -1;
@@ -213,28 +217,28 @@ Entity* entity_new(EntityData* entity_data) {
     return entity;
 }
 
-Entity* entity_find_first_of_type(EntityData* entity_data, EntityType type) {
-    for (int i = 0; i < entity_data->entity_count; i++) {
-        if (entity_data->entities[i].type == type) {
-            return &entity_data->entities[i];
+Entity* entity_find_first_of_type(EntityType type) {
+    for (int i = 0; i < i_entity_data->entity_count; i++) {
+        if (i_entity_data->entities[i].type == type) {
+            return &i_entity_data->entities[i];
         }
     }
 
     return NULL;
 }
 
-void entity_free(uint32 id, EntityData* entity_data) {
-    EntityLookup* freed_lookup = &entity_data->entity_lookups[id];
+void entity_free(uint32 id) {
+    EntityLookup* freed_lookup = &i_entity_data->entity_lookups[id];
 
-    uint32 last_idx = entity_data->entity_count - 1;
-    Entity* last_entity = &entity_data->entities[last_idx];
+    uint32 last_idx = i_entity_data->entity_count - 1;
+    Entity* last_entity = &i_entity_data->entities[last_idx];
     if (last_entity->id != id) {
-        entity_data->entities[freed_lookup->idx] = *last_entity;
+        i_entity_data->entities[freed_lookup->idx] = *last_entity;
 
-        entity_data->entity_ids[freed_lookup->idx] = last_entity->id;
-        entity_data->entity_ids[last_idx] = id;
+        i_entity_data->entity_ids[freed_lookup->idx] = last_entity->id;
+        i_entity_data->entity_ids[last_idx] = id;
 
-        EntityLookup* last_lookup = &entity_data->entity_lookups[last_entity->id];
+        EntityLookup* last_lookup = &i_entity_data->entity_lookups[last_entity->id];
         last_lookup->idx = freed_lookup->idx;
 
         freed_lookup->idx = last_idx;
@@ -242,27 +246,27 @@ void entity_free(uint32 id, EntityData* entity_data) {
 
     freed_lookup->generation++;
 
-    entity_data->entity_count--;
+    i_entity_data->entity_count--;
 }
 
-Entity* entity_find(EntityHandle handle, EntityData* entity_data) {
+Entity* entity_find(EntityHandle handle) {
     ASSERT(handle.id < MAX_ENTITIES, "Entity handle has id greater than max entities");
     Entity* entity = NULL;
 
-    EntityLookup lookup = entity_data->entity_lookups[handle.id];
+    EntityLookup lookup = i_entity_data->entity_lookups[handle.id];
     if (lookup.generation == handle.generation) {
-        entity = &entity_data->entities[lookup.idx];
+        entity = &i_entity_data->entities[lookup.idx];
     }
 
     return entity;
 }
 
-EntityHandle entity_to_handle(Entity* entity, EntityData* entity_data) {
+EntityHandle entity_to_handle(Entity* entity) {
     EntityHandle handle;
 
     if (entity) {
         handle.id = entity->id;
-        handle.generation = entity_data->entity_lookups[entity->id].generation;
+        handle.generation = i_entity_data->entity_lookups[entity->id].generation;
     } else {
         handle.generation = -1;
     }
@@ -274,8 +278,8 @@ bool entity_same(EntityHandle entity_a, EntityHandle entity_b) {
     return entity_a.id == entity_b.id && entity_a.generation == entity_b.generation;
 }
 
-EntityHandle entity_create_blocker(EntityData* entity_data, EntityType type, Vec2 position, SpriteID sprite_id) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_blocker(EntityType type, Vec2 position, SpriteID sprite_id) {
+    Entity* entity = entity_new();
 
     entity->type = type;
     entity->position = position;
@@ -283,12 +287,11 @@ EntityHandle entity_create_blocker(EntityData* entity_data, EntityType type, Vec
 
     set(entity->flags, ENTITY_F_BLOCKER);
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_resource(EntityData* entity_data, EntityType entity_type, Vec2 position, SpriteID sprite_id,
-                                    uint32 hp, flags opts) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_resource(EntityType entity_type, Vec2 position, SpriteID sprite_id, uint32 hp, flags opts) {
+    Entity* entity = entity_new();
 
     entity->type = entity_type;
     entity->position = position;
@@ -297,12 +300,11 @@ EntityHandle entity_create_resource(EntityData* entity_data, EntityType entity_t
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = hp;
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_ore_deposit(EntityData* entity_data, EntityType entity_type, Vec2 position,
-                                       SpriteID sprite_id) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_ore_deposit(EntityType entity_type, Vec2 position, SpriteID sprite_id) {
+    Entity* entity = entity_new();
 
     ASSERT(entity_type == ENTITY_TYPE_IRON_DEPOSIT, "Ore deposit entity must have supported type");
 
@@ -313,11 +315,11 @@ EntityHandle entity_create_ore_deposit(EntityData* entity_data, EntityType entit
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = 1000000;
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_player(EntityData* entity_data, Vec2 position) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_player(Vec2 position) {
+    Entity* entity = entity_new();
 
     entity->type = ENTITY_TYPE_PLAYER;
     entity->position = position;
@@ -330,11 +332,11 @@ EntityHandle entity_create_player(EntityData* entity_data, Vec2 position) {
     set(entity->flags, ENTITY_F_GETS_HUNGERY);
     set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags opts) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_chest(Vec2 position, flags opts) {
+    Entity* entity = entity_new();
 
     SpriteID sprite_id = entity_info[ENTITY_TYPE_CHEST_IRON].default_sprite;
 
@@ -350,11 +352,11 @@ EntityHandle entity_create_chest(EntityData* entity_data, Vec2 position, flags o
     set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
     set(entity->flags, ENTITY_F_KILLABLE);
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_gun(EntityData* entity_data, Vec2 position) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_gun(Vec2 position) {
+    Entity* entity = entity_new();
 
     entity->type = ENTITY_TYPE_GUN;
     entity->position = position;
@@ -362,11 +364,11 @@ EntityHandle entity_create_gun(EntityData* entity_data, Vec2 position) {
     set(entity->flags, ENTITY_F_ITEM);
     entity->sprite_id = SPRITE_GUN_GREEN;
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_boar(EntityData* entity_data, Vec2 position) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_boar(Vec2 position) {
+    Entity* entity = entity_new();
 
     entity->type = ENTITY_TYPE_BOAR;
     entity->position = position;
@@ -376,11 +378,11 @@ EntityHandle entity_create_boar(EntityData* entity_data, Vec2 position) {
 
     entity->brain.type = BRAIN_TYPE_BOAR;
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_warrior(EntityData* entity_data, Vec2 position) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_warrior(Vec2 position) {
+    Entity* entity = entity_new();
 
     entity->type = ENTITY_TYPE_WARRIOR;
     w_play_animation(ANIM_WARRIOR_IDLE, &entity->anim_state);
@@ -390,11 +392,11 @@ EntityHandle entity_create_warrior(EntityData* entity_data, Vec2 position) {
 
     entity->brain.type = BRAIN_TYPE_WARRIOR;
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_robot_gatherer(EntityData* entity_data, Vec2 position) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_robot_gatherer(Vec2 position) {
+    Entity* entity = entity_new();
 
     entity->type = ENTITY_TYPE_ROBOT_GATHERER;
     entity->position = position;
@@ -409,11 +411,11 @@ EntityHandle entity_create_robot_gatherer(EntityData* entity_data, Vec2 position
 
     entity->brain.type = BRAIN_TYPE_ROBOT_GATHERER;
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_projectile(EntityData* entity_data, Vec2 position, float rotation_rads, Vec2 velocity) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_projectile(Vec2 position, float rotation_rads, Vec2 velocity) {
+    Entity* entity = entity_new();
 
     entity->type = ENTITY_TYPE_PROJECTILE;
     entity->sprite_id = SPRITE_GREEN_BULLET_STRETCHED_1;
@@ -421,11 +423,11 @@ EntityHandle entity_create_projectile(EntityData* entity_data, Vec2 position, fl
     entity->rotation_rads = rotation_rads;
     entity->velocity = velocity;
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_boar_meat(EntityData* entity_data, Vec2 position) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_boar_meat(Vec2 position) {
+    Entity* entity = entity_new();
 
     entity->type = ENTITY_TYPE_BOAR_MEAT;
     entity->sprite_id = SPRITE_BOAR_MEAT_RAW;
@@ -434,11 +436,11 @@ EntityHandle entity_create_boar_meat(EntityData* entity_data, Vec2 position) {
     set(entity->flags, ENTITY_F_ITEM);
     set(entity->flags, ENTITY_F_NONSPACIAL);
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_item(EntityData* entity_data, EntityType type, Vec2 position) {
-    Entity* entity = entity_new(entity_data);
+EntityHandle entity_create_item(EntityType type, Vec2 position) {
+    Entity* entity = entity_new();
 
     SpriteID sprite_id = entity_info[type].default_sprite;
 
@@ -451,15 +453,15 @@ EntityHandle entity_create_item(EntityData* entity_data, EntityType type, Vec2 p
     set(entity->flags, ENTITY_F_ITEM);
     set(entity->flags, ENTITY_F_NONSPACIAL);
 
-    return entity_to_handle(entity, entity_data);
+    return entity_to_handle(entity);
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~ entity utilities ~~~~~~~~~~~~~~~~~~~~~~~ //
 
 void entity_spawn_item(EntityType entity_type, Vec2 source_position, GameState* game_state) {
-    EntityHandle entity_handle = entity_create_item(&game_state->entity_data, entity_type, source_position);
+    EntityHandle entity_handle = entity_create_item(entity_type, source_position);
 
-    Entity* item = entity_find(entity_handle, &game_state->entity_data);
+    Entity* item = entity_find(entity_handle);
 
     ASSERT(item != NULL, "Tried to spawn invalid item entity");
 
@@ -632,62 +634,61 @@ void entity_player_movement_animation_update(Entity* entity, Vec2 player_movemen
 
 #define ENTITY_CREATE_F_ITEM (1 << 0)
 
-EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 position, flags opts) {
+EntityHandle entity_create(EntityType type, Vec2 position, flags opts) {
     EntityHandle entity_handle;
     switch (type) {
     case ENTITY_TYPE_GUN:
-        entity_create_gun(entity_data, position);
+        entity_create_gun(position);
         break;
     case ENTITY_TYPE_WARRIOR:
-        entity_create_warrior(entity_data, position);
+        entity_create_warrior(position);
         break;
     case ENTITY_TYPE_BLOCK:
-        entity_create_blocker(entity_data, ENTITY_TYPE_BLOCK, position, SPRITE_BLOCK_1);
+        entity_create_blocker(ENTITY_TYPE_BLOCK, position, SPRITE_BLOCK_1);
         break;
     case ENTITY_TYPE_BOAR:
-        entity_create_boar(entity_data, position);
+        entity_create_boar(position);
         break;
     case ENTITY_TYPE_BOAR_MEAT:
-        entity_create_boar_meat(entity_data, position);
+        entity_create_boar_meat(position);
         break;
     case ENTITY_TYPE_IRON_DEPOSIT:
-        entity_create_ore_deposit(entity_data, ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
+        entity_create_ore_deposit(ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
         break;
     case ENTITY_TYPE_PLANT_CORN:
-        entity_create_resource(entity_data, ENTITY_TYPE_PLANT_CORN, position, SPRITE_PLANT_CORN_3, MAX_HP_PLANT_CORN,
-                               0);
+        entity_create_resource(ENTITY_TYPE_PLANT_CORN, position, SPRITE_PLANT_CORN_3, MAX_HP_PLANT_CORN, 0);
         break;
     case ENTITY_TYPE_ITEM_CORN:
-        entity_create_item(entity_data, ENTITY_TYPE_ITEM_CORN, position);
+        entity_create_item(ENTITY_TYPE_ITEM_CORN, position);
         break;
     case ENTITY_TYPE_IRON:
-        entity_create_item(entity_data, ENTITY_TYPE_IRON, position);
+        entity_create_item(ENTITY_TYPE_IRON, position);
         break;
     case ENTITY_TYPE_CHEST_IRON:
         if (is_set(opts, ENTITY_CREATE_F_ITEM)) {
-            entity_create_item(entity_data, type, position);
+            entity_create_item(type, position);
         } else {
-            entity_create_chest(entity_data, position, opts);
+            entity_create_chest(position, opts);
         }
         break;
     case ENTITY_TYPE_PLAYER: {
         bool player_exists = false;
-        for (int i = 0; i < entity_data->entity_count; i++) {
-            if (entity_data->entities[i].type == ENTITY_TYPE_PLAYER) {
+        for (int i = 0; i < i_entity_data->entity_count; i++) {
+            if (i_entity_data->entities[i].type == ENTITY_TYPE_PLAYER) {
                 player_exists = true;
             }
         }
 
         if (!player_exists) {
-            entity_create_player(entity_data, position);
+            entity_create_player(position);
         }
         break;
     }
     case ENTITY_TYPE_ROBOT_GATHERER:
-        entity_create_robot_gatherer(entity_data, position);
+        entity_create_robot_gatherer(position);
         break;
     default: {
-        Entity* entity = entity_new(entity_data);
+        Entity* entity = entity_new();
 
         EntityInfo* e_info = &entity_info[type];
 
@@ -697,7 +698,7 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
 
         set(entity->flags, e_info->instance_flags);
         set(entity->flags, opts);
-        entity_handle = entity_to_handle(entity, entity_data);
+        entity_handle = entity_to_handle(entity);
 
         break;
     }
@@ -708,12 +709,12 @@ EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 positi
 
 // NOTE: this is an odd function for entity.cpp, but entity.cpp doesn't know about inventory.cpp
 void entity_inventory_spawn_world_item(InventoryItem* item, Vec3 source_position, float z_index,
-                                       float facing_direction_x, EntityData* entity_data) {
-    Entity* item_entity = entity_find(item->entity_handle, entity_data);
+                                       float facing_direction_x) {
+    Entity* item_entity = entity_find(item->entity_handle);
     if (!item_entity) {
         Vec2 source_position_2d = {source_position.x, source_position.y};
-        EntityHandle item_entity_handle = entity_create_item(entity_data, item->entity_type, source_position_2d);
-        item_entity = entity_find(item_entity_handle, entity_data);
+        EntityHandle item_entity_handle = entity_create_item(item->entity_type, source_position_2d);
+        item_entity = entity_find(item_entity_handle);
         item_entity->z_pos = source_position.z;
         item_entity->z_index = z_index;
         item_entity->stack_size = item->stack_size;
@@ -746,14 +747,14 @@ void entity_inventory_spawn_world_item(InventoryItem* item, Vec3 source_position
     item->entity_type = ENTITY_TYPE_UNKNOWN;
 }
 
-void entity_death(Entity* entity, EntityData* entity_data) {
+void entity_death(Entity* entity) {
     if (is_set(entity->flags, ENTITY_F_KILLABLE) && entity->hp <= 0 && entity->type != ENTITY_TYPE_PLAYER) {
         uint32 inventory_item_count = entity->inventory.col_count * entity->inventory.row_count;
         for (int i = 0; i < inventory_item_count; i++) {
             InventoryItem* item = &entity->inventory.items[i];
             if (item->entity_type != ENTITY_TYPE_UNKNOWN) {
                 Vec3 position = {entity->position.x, entity->position.y, 0.25f};
-                entity_inventory_spawn_world_item(item, position, entity->z_index, 0, entity_data);
+                entity_inventory_spawn_world_item(item, position, entity->z_index, 0);
             }
         }
 
@@ -761,7 +762,7 @@ void entity_death(Entity* entity, EntityData* entity_data) {
             InventoryItem item = {
                 .entity_type = ENTITY_TYPE_CHEST_IRON, .stack_size = 1, .entity_handle = entity_null_handle};
             Vec3 position = {entity->position.x, entity->position.y, 0.25f};
-            entity_inventory_spawn_world_item(&item, position, entity->z_index, 0, entity_data);
+            entity_inventory_spawn_world_item(&item, position, entity->z_index, 0);
         }
 
         if (entity->brain.type != BRAIN_TYPE_NONE) {
@@ -772,15 +773,15 @@ void entity_death(Entity* entity, EntityData* entity_data) {
     }
 }
 
-EntityHandle entity_create(EntityData* entity_data, EntityType type, Vec2 position) {
-    return entity_create(entity_data, type, position, 0);
+EntityHandle entity_create(EntityType type, Vec2 position) {
+    return entity_create(type, position, 0);
 }
 
-Entity* entity_closest_player_interactable(EntityData* entity_data, Entity* player) {
+Entity* entity_closest_player_interactable(Entity* player) {
     Entity* closest_interactable_entity = NULL;
     float closest_distance = 1.1;
-    for (int i = 0; i < entity_data->entity_count; i++) {
-        Entity* entity = &entity_data->entities[i];
+    for (int i = 0; i < i_entity_data->entity_count; i++) {
+        Entity* entity = &i_entity_data->entities[i];
         if (is_set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE)) {
             float distance = w_euclid_dist(player->position, entity->position);
             if (distance <= closest_distance) {

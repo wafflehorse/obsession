@@ -88,12 +88,12 @@ void inventory_add_item(Inventory* inventory, EntityType entity_type, uint32 qua
     open_slot->stack_size += quantity;
 }
 
-void inventory_add_entity_item(Inventory* inventory, Entity* entity, EntityData* entity_data) {
+void inventory_add_entity_item(Inventory* inventory, Entity* entity) {
     InventoryItem* open_slot = inventory_find_available_slot(inventory, entity->type, 1);
 
     if (open_slot) {
         if (inventory_should_persist_entity(entity->type)) {
-            open_slot->entity_handle = entity_to_handle(entity, entity_data);
+            open_slot->entity_handle = entity_to_handle(entity);
         } else {
             set(entity->flags, ENTITY_F_MARK_FOR_DELETION);
         }
@@ -138,11 +138,11 @@ bool inventory_move_items(uint32 index, uint32 quantity, Inventory* source_inven
         inventory_remove_items_by_index(source_inventory, index, quantity);
 
         if (inventory_item_is_entity(item)) {
-            Entity* entity = entity_find(item.entity_handle, entity_data);
+            Entity* entity = entity_find(item.entity_handle);
 
             ASSERT(entity, "entity in inventory does not exist");
 
-            inventory_add_entity_item(dest_inventory, entity, entity_data);
+            inventory_add_entity_item(dest_inventory, entity);
         } else {
             inventory_add_item(dest_inventory, item.entity_type, quantity);
         }

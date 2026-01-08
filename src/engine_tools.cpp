@@ -245,8 +245,7 @@ void tools_update_and_render(GameMemory* game_memory, GameState* game_state, Gam
                     // NOTE: for now I want this to create the item version of entities as the default. I don't know if
                     // this is a long term solution to this problem. We might want a toggle for item vs. placed
                     // entities?
-                    entity_create(&game_state->entity_data, game_state->tools.selected_entity, mouse_world_position,
-                                  ENTITY_CREATE_F_ITEM);
+                    entity_create(game_state->tools.selected_entity, mouse_world_position, ENTITY_CREATE_F_ITEM);
                 }
             }
         }

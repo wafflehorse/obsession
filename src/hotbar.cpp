@@ -40,7 +40,7 @@ void hotbar_render_item(GameState* game_state, Vec2 player_aim_vec, RenderGroup*
 
     InventoryItem* slot = &hotbar->inventory.items[hotbar->active_item_idx];
 
-    Entity* slot_entity = entity_find(slot->entity_handle, &game_state->entity_data);
+    Entity* slot_entity = entity_find(slot->entity_handle);
     if (!slot_entity && slot->stack_size > 0) {
         float z_pos, z_index;
         Vec2 item_position = entity_held_item_position(player, &z_pos, &z_index);
@@ -83,7 +83,7 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
 
     if (is_set(game_state->ui_mode.flags, UI_MODE_F_INVENTORY_ACTIVE) && inventory_input.idx_clicked != -1) {
         InventoryItem* item = &game_state->hotbar.inventory.items[inventory_input.idx_clicked];
-        Entity* entity_with_open_inventory = entity_find(game_state->ui_mode.entity_handle, &game_state->entity_data);
+        Entity* entity_with_open_inventory = entity_find(game_state->ui_mode.entity_handle);
 
         ASSERT(entity_with_open_inventory, "entity_handle must point to entity if inventory is active");
 

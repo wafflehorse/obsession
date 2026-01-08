@@ -150,7 +150,7 @@ void proc_gen_spawn_resources_for_chunk(ChunkSpawnState* state, GameState* game_
                         Vec2 item_position = w_vec_add(patch_position, offset);
 
                         if (w_check_point_in_rect(chunk_bounds, item_position)) {
-                            entity_create(&game_state->entity_data, spawn_entry.entity_type, item_position);
+                            entity_create(spawn_entry.entity_type, item_position);
                         }
                     }
                 }
@@ -221,7 +221,7 @@ void proc_gen_update_chunk_states(Vec2 player_position, GameState* game_state, d
                             state, &spawn_position, game_state->player->position, chunk_coord);
 
                         if (spawn_position_found) {
-                            entity_create(&game_state->entity_data, spawn_entry.entity_type, spawn_position);
+                            entity_create(spawn_entry.entity_type, spawn_position);
                         }
                     }
 
