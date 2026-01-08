@@ -716,15 +716,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         tools_init(&game_state->tools);
         hotbar_init(&game_state->hotbar);
 
-        game_state->entity_item_spawn_info[ENTITY_TYPE_IRON_DEPOSIT] = {
-            .spawned_entity_type = ENTITY_TYPE_IRON, .damage_required_to_spawn = 3.0f, .spawn_chance = 0.5f};
-        game_state->entity_item_spawn_info[ENTITY_TYPE_BOAR] = {.spawned_entity_type = ENTITY_TYPE_BOAR_MEAT,
-                                                                .damage_required_to_spawn = MAX_HP_BOAR,
-                                                                .spawn_chance = 1.0f};
-        game_state->entity_item_spawn_info[ENTITY_TYPE_PLANT_CORN] = {.spawned_entity_type = ENTITY_TYPE_ITEM_CORN,
-                                                                      .damage_required_to_spawn = MAX_HP_PLANT_CORN,
-                                                                      .spawn_chance = 1.0f};
-
         {
             WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
             for (int i = 0; i < game_state->world_init.entity_init_count; i++) {

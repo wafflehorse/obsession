@@ -1,7 +1,18 @@
-[] Add robotics crafter entity 
+Biome 1 stage 1
+[x] Add coal resource
+[x] Add coal to robotics factory cost
+[] Have player inventory unload on death
+[] More enemy types
+[] Better enemy behavior
+
+Biome 1 state 2
+[] Command center inventory
 [] Add command center UI
 	[x] Substructure crafting and placement
 	[] Storage UI
+[] Add storage module structure to increase command center capacity?
+[] Add cooking station
+[] Add cooked versions of food (boar and corn)
 
 [] Make it easier to add new entities
 	[] Is it possible to consolidate entity creation to a single entity_create function?
@@ -16,7 +27,6 @@
 [] Add mech AI
 	- How should the player control the mech?
 [] Add warrior aggro when shot
-[] Add workbench
 [] Add centering to container elements (centering children)
 [] Add support for sprite scaling
 [] Add boar sleeping
@@ -29,6 +39,7 @@
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 
+[x] Add robotics crafter entity 
 [x] Fix bug where player picks up item right after dropping
 [x] Unify ui rendering and input handling
 	- Added a ui_mode concept to game_state which manages the current state of UIs

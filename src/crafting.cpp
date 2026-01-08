@@ -25,7 +25,8 @@ void crafting_init() {
     CraftingRecipe* structure_recipes = crafting_recipe_books[CRAFTING_RECIPE_BOOK_STRUCTURES];
     uint32 structure_recipes_count = 0;
     structure_recipes[structure_recipes_count++] = {.entity_type = ENTITY_TYPE_ROBOTICS_FACTORY,
-                                                    .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 20}}};
+                                                    .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 20},
+                                                                    {.entity_type = ENTITY_TYPE_COAL, .quantity = 40}}};
 
     ASSERT(structure_recipes_count < ENTITY_TYPE_COUNT, "too many structure recipes");
 };

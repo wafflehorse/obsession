@@ -1,6 +1,9 @@
 #include "waffle_lib.h"
 #include "game.h"
 
+#define BASE_HP_COAL_DEPOSIT 100
+#define BASE_HP_IRON_DEPOSIT 100
+
 struct EntityAnimations {
     AnimationID idle;
     AnimationID move;
@@ -14,6 +17,12 @@ struct EntityAnimations {
 #define ENTITY_INFO_F_PLACEABLE (1 << 1)
 #define ENTITY_INFO_F_FOOD (1 << 2)
 
+struct EntityItemSpawnInfo {
+    EntityType spawned_entity_type;
+    uint32 damage_required_to_spawn;
+    float spawn_chance;
+};
+
 struct EntityInfo {
     flags flags;
     uint32 instance_flags;
@@ -23,6 +32,8 @@ struct EntityInfo {
     uint32 hunger_gain;
     Collider collider;
     char description[512];
+    uint32 base_hp;
+    EntityItemSpawnInfo spawn_info;
 };
 
 EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
@@ -114,27 +125,43 @@ void entity_init(EntityData* entity_data) {
                                              .death = ANIM_BOAR_2_DEATH,
                                          },
                                      .default_sprite = SPRITE_BOAR_IDLE_0,
-                                     .collider = entity_collider_from_sprite(SPRITE_BOAR_IDLE_0, {.size_y = -0.25f})};
+                                     .collider = entity_collider_from_sprite(SPRITE_BOAR_IDLE_0, {.size_y = -0.25f}),
+                                     .spawn_info = {.spawned_entity_type = ENTITY_TYPE_BOAR_MEAT,
+                                                    .damage_required_to_spawn = MAX_HP_BOAR,
+                                                    .spawn_chance = 1.0f}};
 
     entity_info[ENTITY_TYPE_BOAR_MEAT] = {
         .type_name_string = "Boar Meat",
         .default_sprite = SPRITE_BOAR_MEAT_RAW,
     };
 
+    entity_info[ENTITY_TYPE_COAL_DEPOSIT] = {
+        .type_name_string = "Coal Deposit",
+        .default_sprite = SPRITE_ORE_COAL_0,
+        .instance_flags = ENTITY_F_KILLABLE | ENTITY_F_BLOCKER,
+        .base_hp = BASE_HP_COAL_DEPOSIT,
+        .spawn_info = {.spawned_entity_type = ENTITY_TYPE_COAL, .damage_required_to_spawn = 3, .spawn_chance = 0.5f}};
+
+    entity_info[ENTITY_TYPE_COAL] = {.type_name_string = "Coal",
+                                     .default_sprite = SPRITE_COAL_1,
+                                     .instance_flags = ENTITY_F_ITEM | ENTITY_F_NONSPACIAL};
+
     entity_info[ENTITY_TYPE_IRON_DEPOSIT] = {
         .type_name_string = "Iron Deposit",
         .default_sprite = SPRITE_ORE_IRON_0,
-    };
+        .instance_flags = ENTITY_F_KILLABLE | ENTITY_F_BLOCKER,
+        .base_hp = BASE_HP_COAL_DEPOSIT,
+        .spawn_info = {.spawned_entity_type = ENTITY_TYPE_IRON, .damage_required_to_spawn = 3, .spawn_chance = 0.5f}};
 
-    entity_info[ENTITY_TYPE_IRON] = {
-        .type_name_string = "Iron",
-        .default_sprite = SPRITE_IRON_1,
-    };
+    entity_info[ENTITY_TYPE_IRON] = {.type_name_string = "Iron",
+                                     .default_sprite = SPRITE_IRON_1,
+                                     .instance_flags = ENTITY_F_ITEM | ENTITY_F_NONSPACIAL};
 
-    entity_info[ENTITY_TYPE_PLANT_CORN] = {
-        .type_name_string = "Corn Plant",
-        .default_sprite = SPRITE_PLANT_CORN_3,
-    };
+    entity_info[ENTITY_TYPE_PLANT_CORN] = {.type_name_string = "Corn Plant",
+                                           .default_sprite = SPRITE_PLANT_CORN_3,
+                                           .spawn_info = {.spawned_entity_type = ENTITY_TYPE_ITEM_CORN,
+                                                          .damage_required_to_spawn = MAX_HP_PLANT_CORN,
+                                                          .spawn_chance = 1.0f}};
 
     entity_info[ENTITY_TYPE_ITEM_CORN] = {
         .flags = ENTITY_INFO_F_FOOD, .type_name_string = "Corn", .default_sprite = SPRITE_ITEM_CORN, .hunger_gain = 3};
@@ -303,21 +330,6 @@ EntityHandle entity_create_resource(EntityType entity_type, Vec2 position, Sprit
     return entity_to_handle(entity);
 }
 
-EntityHandle entity_create_ore_deposit(EntityType entity_type, Vec2 position, SpriteID sprite_id) {
-    Entity* entity = entity_new();
-
-    ASSERT(entity_type == ENTITY_TYPE_IRON_DEPOSIT, "Ore deposit entity must have supported type");
-
-    entity->type = entity_type;
-    entity->position = position;
-    entity->sprite_id = sprite_id;
-    set(entity->flags, ENTITY_F_BLOCKER);
-    set(entity->flags, ENTITY_F_KILLABLE);
-    entity->hp = 1000000;
-
-    return entity_to_handle(entity);
-}
-
 EntityHandle entity_create_player(Vec2 position) {
     Entity* entity = entity_new();
 
@@ -481,7 +493,7 @@ void entity_spawn_item(EntityType entity_type, Vec2 source_position, GameState* 
 void entity_deal_damage(Entity* target, float damage, GameState* game_state) {
     target->hp = w_clamp_min(target->hp - damage, 0);
     target->damage_taken_tint_cooldown_s = ENTITY_DAMAGE_TAKEN_TINT_COOLDOWN_S;
-    EntityItemSpawnInfo spawn_info = game_state->entity_item_spawn_info[target->type];
+    EntityItemSpawnInfo spawn_info = entity_info[target->type].spawn_info;
     target->damage_since_spawn += damage;
     if (spawn_info.spawned_entity_type != ENTITY_TYPE_UNKNOWN &&
         target->damage_since_spawn >= spawn_info.damage_required_to_spawn) {
@@ -652,17 +664,11 @@ EntityHandle entity_create(EntityType type, Vec2 position, flags opts) {
     case ENTITY_TYPE_BOAR_MEAT:
         entity_create_boar_meat(position);
         break;
-    case ENTITY_TYPE_IRON_DEPOSIT:
-        entity_create_ore_deposit(ENTITY_TYPE_IRON_DEPOSIT, position, SPRITE_ORE_IRON_0);
-        break;
     case ENTITY_TYPE_PLANT_CORN:
         entity_create_resource(ENTITY_TYPE_PLANT_CORN, position, SPRITE_PLANT_CORN_3, MAX_HP_PLANT_CORN, 0);
         break;
     case ENTITY_TYPE_ITEM_CORN:
         entity_create_item(ENTITY_TYPE_ITEM_CORN, position);
-        break;
-    case ENTITY_TYPE_IRON:
-        entity_create_item(ENTITY_TYPE_IRON, position);
         break;
     case ENTITY_TYPE_CHEST_IRON:
         if (is_set(opts, ENTITY_CREATE_F_ITEM)) {
@@ -695,6 +701,7 @@ EntityHandle entity_create(EntityType type, Vec2 position, flags opts) {
         entity->type = type;
         entity->position = position;
         entity->sprite_id = e_info->default_sprite;
+        entity->hp = e_info->base_hp;
 
         set(entity->flags, e_info->instance_flags);
         set(entity->flags, opts);

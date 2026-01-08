@@ -254,12 +254,6 @@ struct HotBar {
     uint32 active_item_idx;
 };
 
-struct EntityItemSpawnInfo {
-    EntityType spawned_entity_type;
-    float damage_required_to_spawn;
-    float spawn_chance;
-};
-
 struct WorldGenContext {
     FBMContext plant_fbm_context;
 };
@@ -348,7 +342,6 @@ struct GameState {
     CollisionRule* collision_rule_free_list;
     Entity* player;
     HotBar hotbar;
-    EntityItemSpawnInfo entity_item_spawn_info[ENTITY_TYPE_COUNT];
     uint32 attack_id_next;
     WorldGenContext world_gen_context;
     DecorationData decoration_data;

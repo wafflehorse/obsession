@@ -17,7 +17,6 @@ BiomeSpawnTable biome_spawn_tables[BIOME_COUNT] = {
                              .max_nodes_per_patch = 6,
                              .min_patch_radius = 5,
                              .max_patch_radius = 10},
-
                             {.entity_type = ENTITY_TYPE_PLANT_CORN,
                              .weight = 0.50f,
                              .min_patches = 1,
@@ -26,8 +25,16 @@ BiomeSpawnTable biome_spawn_tables[BIOME_COUNT] = {
                              .max_nodes_per_patch = 6,
                              .min_patch_radius = 5,
                              .max_patch_radius = 10},
+                            {.entity_type = ENTITY_TYPE_COAL_DEPOSIT,
+                             .weight = 0.30f,
+                             .min_patches = 1,
+                             .max_patches = 2,
+                             .min_nodes_per_patch = 3,
+                             .max_nodes_per_patch = 6,
+                             .min_patch_radius = 5,
+                             .max_patch_radius = 10},
                         },
-                    .resource_entry_count = 2,
+                    .resource_entry_count = 3,
                     .max_chunk_population = 16,
                     .spawn_interval_s = 1}
 
