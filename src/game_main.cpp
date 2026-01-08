@@ -656,6 +656,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         game_memory->init_audio(&game_state->audio_player);
         setup_sound_from_wav(SOUND_BACKGROUND_MUSIC, "resources/assets/background_music_1.wav", 0.60,
                              game_state->sounds, &game_state->main_arena);
+        setup_sound_from_wav(SOUND_SONG_JAN_7, "resources/assets/song_jan_7.wav", 0.80, game_state->sounds,
+                             &game_state->main_arena);
         setup_sound_from_wav(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_01.wav", 0.2,
                              game_state->sounds, &game_state->main_arena);
         add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_02.wav", game_state);
@@ -665,6 +667,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_06.wav", game_state);
         add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_07.wav", game_state);
         add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_08.wav", game_state);
+
+        play_sound(&game_state->sounds[SOUND_SONG_JAN_7], &game_state->audio_player);
 
         // TODO: The arena marker / restore interface can be improved. Some way to defer?
         char* arena_marker = w_arena_marker(&game_state->main_arena);
@@ -1307,6 +1311,10 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                                    debug_render_group.opts);
 #endif
     game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, 1.0f);
+    game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, 1.0f);
+
+    game_memory->push_render_group(game_state->render_groups.hud.quads, game_state->render_groups.hud.size,
+                                   game_state->camera.position, game_state->render_groups.hud.opts);
 
     game_memory->push_render_group(game_state->render_groups.hud.quads, game_state->render_groups.hud.size,
                                    game_state->camera.position, game_state->render_groups.hud.opts);
