@@ -1,7 +1,7 @@
 Biome 1 stage 1
 [x] Add coal resource
 [x] Add coal to robotics factory cost
-[] Have player inventory unload on death
+[x] Have player inventory unload on death
 [] More enemy types
 [] Better enemy behavior
 

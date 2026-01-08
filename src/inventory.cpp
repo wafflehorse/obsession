@@ -233,7 +233,8 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                 UICreateSpriteOpts sprite_opts = {.size = sprite_size};
 
                 if (is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) &&
-                    !crafting_can_craft_item(opts.recipe_book_type, item->entity_type, &game_state->hotbar.inventory)) {
+                    !crafting_can_craft_item(opts.recipe_book_type, item->entity_type,
+                                             &game_state->player->inventory)) {
                     set(sprite_opts.flags, UI_CREATE_SPRITE_OPTS_F_APPLY_TINT);
                     sprite_opts.tint = {1, 1, 1, 0.4};
                 }

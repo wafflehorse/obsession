@@ -370,7 +370,7 @@ void entity_command_center_ui_render(Entity* entity, GameState* game_state, Rend
         EntityType selected_entity_type = structure_inventory.items[inventory_input.idx_clicked].entity_type;
         if (selected_entity_type != ENTITY_TYPE_UNKNOWN &&
             crafting_can_craft_item(CRAFTING_RECIPE_BOOK_STRUCTURES, selected_entity_type,
-                                    &game_state->hotbar.inventory)) {
+                                    &game_state->player->inventory)) {
             game_state->ui_mode.placing_structure_type = selected_entity_type;
             game_state->ui_mode.state = UI_STATE_STRUCTURE_PLACEMENT;
             game_state->ui_mode.camera_position = entity->position;
@@ -431,8 +431,8 @@ void entity_command_center_placement_ui_update_render(GameState* game_state, Pla
 
     if (player_input->ui.select.was_pressed && valid_placement &&
         crafting_can_craft_item(CRAFTING_RECIPE_BOOK_STRUCTURES, ui_mode->placing_structure_type,
-                                &game_state->hotbar.inventory)) {
-        crafting_consume_ingredients(&game_state->hotbar.inventory, CRAFTING_RECIPE_BOOK_STRUCTURES,
+                                &game_state->player->inventory)) {
+        crafting_consume_ingredients(&game_state->player->inventory, CRAFTING_RECIPE_BOOK_STRUCTURES,
                                      ui_mode->placing_structure_type);
         entity_create(ui_mode->placing_structure_type,
                       {mouse_world_position.x, mouse_world_position.y - (pixels_to_units(structure_sprite.h) / 2)});
@@ -472,7 +472,7 @@ void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, Rend
     if (input.idx_clicked > -1) {
         InventoryItem slot = entity->inventory.items[input.idx_clicked];
         if (slot.entity_type != ENTITY_TYPE_UNKNOWN) {
-            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->hotbar.inventory,
+            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->player->inventory,
                                  &game_state->entity_data);
         }
     }
@@ -502,7 +502,7 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
     if (input.idx_clicked > -1) {
         InventoryItem slot = entity->inventory.items[input.idx_clicked];
         if (slot.entity_type != ENTITY_TYPE_UNKNOWN) {
-            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->hotbar.inventory,
+            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->player->inventory,
                                  &game_state->entity_data);
         }
     }
@@ -545,7 +545,7 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
         CraftingRecipe* recipe = crafting_recipe_find(CRAFTING_RECIPE_BOOK_GENERAL, inventory_input.idx_clicked);
         if (recipe) {
             crafting_craft_item(&game_state->entity_data, recipe->entity_type, CRAFTING_RECIPE_BOOK_GENERAL,
-                                &game_state->hotbar.inventory);
+                                &game_state->player->inventory);
         }
     }
 
@@ -714,7 +714,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
         init_entity_data(&game_state->entity_data);
         tools_init(&game_state->tools);
-        hotbar_init(&game_state->hotbar);
 
         {
             WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
@@ -822,29 +821,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
         // ~~~~~~~~~~~~~~ Update entity intentions (brain / player input) ~~~~~~~~~~~~~~~~ //
 
-        brain_update(entity, game_state, g_sim_dt_s);
-
-        if (entity->type == ENTITY_TYPE_PLAYER) {
-            if (entity->hp > 0) {
-                entity->facing_direction = w_vec_norm(player_input.world.aim_vec);
-                entity_player_movement_animation_update(entity, player_input.world.movement_vec);
-
-                float acceleration_mag = 30;
-                Vec2 acceleration = w_vec_mult(w_vec_norm(player_input.world.movement_vec), acceleration_mag);
-                entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
-            } else {
-                entity->velocity = {0, 0};
-                EntityAnimations animations = entity_info[entity->type].animations;
-                set(entity->flags, ENTITY_F_NONSPACIAL);
-                w_play_animation(animations.death, &entity->anim_state);
-                if (w_animation_complete(&entity->anim_state, g_sim_dt_s)) {
-                    entity->hp = MAX_HP_PLAYER;
-                    entity->hunger = MAX_HUNGER_PLAYER;
-                    entity->position = {0, 0};
-                    unset(entity->flags, ENTITY_F_NONSPACIAL);
-                }
-            }
-        }
+        brain_update(entity, game_state, &player_input, g_sim_dt_s);
 
         Vec2 starting_position = entity->position;
 
@@ -936,18 +913,18 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
             if (collector) {
                 if (distance_from_collector < 0.1 &&
-                    inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
+                    inventory_space_for_item(entity->type, entity->stack_size, &game_state->player->inventory)) {
                     set(entity->flags, ENTITY_F_OWNED);
                     entity->owner_handle = entity_to_handle(game_state->player);
                     entity->velocity = {};
                     entity->acceleration = {};
                     Inventory* target_inventory = &collector->inventory;
                     if (collector->type == ENTITY_TYPE_PLAYER) {
-                        target_inventory = &game_state->hotbar.inventory;
+                        target_inventory = &game_state->player->inventory;
                     }
                     inventory_add_entity_item(target_inventory, entity);
                 } else if (distance_from_collector < ITEM_PICKUP_RANGE &&
-                           inventory_space_for_item(entity->type, entity->stack_size, &game_state->hotbar.inventory)) {
+                           inventory_space_for_item(entity->type, entity->stack_size, &game_state->player->inventory)) {
                     Vec2 collector_offset = w_vec_sub(collector->position, entity->position);
                     Vec2 collector_direction_norm = w_vec_norm(collector_offset);
                     float current_velocity_mag = w_vec_length(entity->velocity);
@@ -990,7 +967,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         EntityHandle entity_handle = entity_to_handle(entity);
-        InventoryItem* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
+        InventoryItem* active_hotbar_slot =
+            hotbar_active_slot(&game_state->player->inventory, game_state->hotbar.active_item_idx);
 
         if (entity->type == ENTITY_TYPE_PLAYER && player_input.world.drop_item && active_hotbar_slot->stack_size > 0) {
             float z_index;
@@ -1061,7 +1039,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         if (is_set(entity->flags, ENTITY_F_GETS_HUNGERY) && !game_state->tools.disable_hunger) {
             entity->hunger_cooldown_s = w_clamp_min(entity->hunger_cooldown_s - g_sim_dt_s, 0);
             if (entity->hunger_cooldown_s <= 0) {
-                entity->hunger = w_clamp_min(entity->hunger - 1, 0);
+                entity->hunger = w_clamp_min((int)entity->hunger - 1, 0);
                 entity->hunger_cooldown_s = HUNGER_TICK_COOLDOWN_S;
             }
 
@@ -1186,7 +1164,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     }
 
     {
-        InventoryItem* active_hotbar_slot = hotbar_active_slot(&game_state->hotbar);
+        InventoryItem* active_hotbar_slot =
+            hotbar_active_slot(&game_state->player->inventory, game_state->hotbar.active_item_idx);
         EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
         if (player_input.world.use_held_item.is_held) {
             EntityInfo* e_info = &entity_info[active_hotbar_entity_type];
@@ -1194,17 +1173,17 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 Vec2 placement_position =
                     hotbar_placeable_position(game_state->player->position, player_input.world.aim_vec);
                 entity_create(active_hotbar_entity_type, placement_position);
-                inventory_remove_items_by_index(&game_state->hotbar.inventory, game_state->hotbar.active_item_idx, 1);
+                inventory_remove_items_by_index(&game_state->player->inventory, game_state->hotbar.active_item_idx, 1);
             } else if (is_set(e_info->flags, ENTITY_INFO_F_FOOD) && player_input.world.use_held_item.was_pressed) {
                 game_state->player->hunger =
                     w_clamp_max(game_state->player->hunger + e_info->hunger_gain, MAX_HUNGER_PLAYER);
-                inventory_remove_items_by_index(&game_state->hotbar.inventory, game_state->hotbar.active_item_idx, 1);
+                inventory_remove_items_by_index(&game_state->player->inventory, game_state->hotbar.active_item_idx, 1);
             }
         }
     }
 
 #ifdef DEBUG
-    hotbar_validate(&game_state->hotbar);
+    hotbar_validate(&game_state->player->inventory);
 #endif
 
     for (int i = 0; i < game_state->entity_data.entity_count; i++) {

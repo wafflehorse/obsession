@@ -34,6 +34,9 @@ struct EntityInfo {
     char description[512];
     uint32 base_hp;
     EntityItemSpawnInfo spawn_info;
+    uint32 inventory_row_count;
+    uint32 inventory_col_count;
+    BrainType brain_type;
 };
 
 EntityInfo entity_info[ENTITY_TYPE_COUNT] = {};
@@ -87,7 +90,10 @@ void entity_init(EntityData* entity_data) {
                                                .death = ANIM_HERO_DEAD,
                                            },
                                        .default_sprite = SPRITE_HERO_IDLE_0,
-                                       .collider = entity_collider_from_sprite(SPRITE_HERO_IDLE_0, {.size_y = -0.5f})};
+                                       .collider = entity_collider_from_sprite(SPRITE_HERO_IDLE_0, {.size_y = -0.5f}),
+                                       .inventory_row_count = 1,
+                                       .inventory_col_count = HOTBAR_MAX_SLOTS,
+                                       .brain_type = BRAIN_TYPE_PLAYER};
 
     entity_info[ENTITY_TYPE_GUN] = {
         .flags = ENTITY_INFO_F_PERSIST_IN_INVENTORY,
@@ -333,6 +339,8 @@ EntityHandle entity_create_resource(EntityType entity_type, Vec2 position, Sprit
 EntityHandle entity_create_player(Vec2 position) {
     Entity* entity = entity_new();
 
+    EntityInfo* e_info = &entity_info[ENTITY_TYPE_PLAYER];
+
     entity->type = ENTITY_TYPE_PLAYER;
     entity->position = position;
     entity->facing_direction.x = 1;
@@ -343,6 +351,9 @@ EntityHandle entity_create_player(Vec2 position) {
     entity->hunger_cooldown_s = HUNGER_TICK_COOLDOWN_S;
     set(entity->flags, ENTITY_F_GETS_HUNGERY);
     set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
+    entity->inventory.row_count = e_info->inventory_row_count;
+    entity->inventory.col_count = e_info->inventory_col_count;
+    entity->brain.type = e_info->brain_type;
 
     return entity_to_handle(entity);
 }
@@ -755,7 +766,7 @@ void entity_inventory_spawn_world_item(InventoryItem* item, Vec3 source_position
 }
 
 void entity_death(Entity* entity) {
-    if (is_set(entity->flags, ENTITY_F_KILLABLE) && entity->hp <= 0 && entity->type != ENTITY_TYPE_PLAYER) {
+    if (is_set(entity->flags, ENTITY_F_KILLABLE) && entity->hp <= 0) {
         uint32 inventory_item_count = entity->inventory.col_count * entity->inventory.row_count;
         for (int i = 0; i < inventory_item_count; i++) {
             InventoryItem* item = &entity->inventory.items[i];

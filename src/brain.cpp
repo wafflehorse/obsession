@@ -40,6 +40,42 @@ void brain_dead(Entity* entity) {
     }
 }
 
+void brain_update_player(Entity* entity, GameState* game_state, PlayerInput* player_input, float dt_s) {
+    Brain* brain = &entity->brain;
+
+    if (entity->hp > 0) {
+        brain->ai_state = AI_STATE_PLAYER_CONTROLLED;
+    }
+
+    switch (brain->ai_state) {
+    case AI_STATE_PLAYER_CONTROLLED: {
+        entity->facing_direction = w_vec_norm(player_input->world.aim_vec);
+        entity_player_movement_animation_update(entity, player_input->world.movement_vec);
+
+        // TODO: Does it make sense to have this here?
+        float acceleration_mag = 30;
+        Vec2 acceleration = w_vec_mult(w_vec_norm(player_input->world.movement_vec), acceleration_mag);
+        entity->acceleration = w_vec_add(acceleration, w_vec_mult(entity->velocity, -5.0));
+        break;
+    }
+    case AI_STATE_DEAD: {
+        entity->velocity = {0, 0};
+        EntityAnimations animations = entity_info[entity->type].animations;
+        set(entity->flags, ENTITY_F_NONSPACIAL);
+        w_play_animation(animations.death, &entity->anim_state);
+        if (w_animation_complete(&entity->anim_state, g_sim_dt_s)) {
+            entity->hp = MAX_HP_PLAYER;
+            entity->hunger = MAX_HUNGER_PLAYER;
+            entity->position = {0, 0};
+            unset(entity->flags, ENTITY_F_NONSPACIAL);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+};
+
 void brain_update_warrior(Entity* entity, GameState* game_state, float dt_s) {
     Brain* brain = &entity->brain;
     Entity* player = game_state->player;
@@ -234,7 +270,7 @@ void brain_update_robot_gatherer(Entity* entity, GameState* game_state, double d
     }
 }
 
-void brain_update(Entity* entity, GameState* game_state, double dt_s) {
+void brain_update(Entity* entity, GameState* game_state, PlayerInput* player_input, double dt_s) {
     Brain* brain = &entity->brain;
     brain->cooldown_s = w_clamp_min(brain->cooldown_s - dt_s, 0);
 
@@ -247,6 +283,9 @@ void brain_update(Entity* entity, GameState* game_state, double dt_s) {
         break;
     case BRAIN_TYPE_ROBOT_GATHERER:
         brain_update_robot_gatherer(entity, game_state, dt_s);
+        break;
+    case BRAIN_TYPE_PLAYER:
+        brain_update_player(entity, game_state, player_input, dt_s);
         break;
     default:
         break;
