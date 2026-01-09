@@ -66,14 +66,16 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
                                              .background_rgba = COLOR_BLACK,
                                              .flags = inventory_render_option_flags};
 
+    Vec2 hotbar_dimensions = {1, HOTBAR_MAX_SLOTS};
+
     Vec2 hotbar_ui_size =
-        inventory_ui_get_size(player_inventory, padding, inventory_opts.slot_gap, inventory_opts.scale);
+        inventory_ui_get_size(hotbar_dimensions, padding, inventory_opts.slot_gap, inventory_opts.scale);
 
     Vec2 container_top_left = {game_state->camera.position.x - (hotbar_ui_size.x / 2),
                                game_state->camera.position.y - (game_state->camera.size.y / 2) + hotbar_ui_size.y};
 
-    InventoryInput inventory_input =
-        inventory_render(container, container_top_left, player_inventory, game_state, game_input, inventory_opts);
+    InventoryInput inventory_input = inventory_render(container, container_top_left, player_inventory,
+                                                      hotbar_dimensions, game_state, game_input, inventory_opts);
 
     if (is_set(game_state->ui_mode.flags, UI_MODE_F_INVENTORY_ACTIVE) && inventory_input.idx_clicked != -1) {
         InventoryItem* item = &player_inventory->items[inventory_input.idx_clicked];

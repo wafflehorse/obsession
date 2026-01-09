@@ -183,8 +183,7 @@ struct InventoryItem {
 
 struct Inventory {
     InventoryItem items[ENTITY_MAX_INVENTORY_SIZE];
-    uint32 row_count;
-    uint32 col_count;
+    uint32 capacity;
 };
 
 #define ENTITY_F_MARK_FOR_DELETION (1 << 0)

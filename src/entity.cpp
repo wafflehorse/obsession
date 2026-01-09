@@ -34,8 +34,7 @@ struct EntityInfo {
     char description[512];
     uint32 base_hp;
     EntityItemSpawnInfo spawn_info;
-    uint32 inventory_row_count;
-    uint32 inventory_col_count;
+    uint32 inventory_capacity;
     BrainType brain_type;
 };
 
@@ -91,8 +90,7 @@ void entity_init(EntityData* entity_data) {
                                            },
                                        .default_sprite = SPRITE_HERO_IDLE_0,
                                        .collider = entity_collider_from_sprite(SPRITE_HERO_IDLE_0, {.size_y = -0.5f}),
-                                       .inventory_row_count = 1,
-                                       .inventory_col_count = HOTBAR_MAX_SLOTS,
+                                       .inventory_capacity = HOTBAR_MAX_SLOTS,
                                        .brain_type = BRAIN_TYPE_PLAYER};
 
     entity_info[ENTITY_TYPE_GUN] = {
@@ -193,7 +191,8 @@ void entity_init(EntityData* entity_data) {
         .type_name_string = "Yellow Landing Pod",
         .default_sprite = SPRITE_LANDING_POD_YELLOW,
         .collider = entity_collider_from_sprite(SPRITE_LANDING_POD_YELLOW,
-                                                {.size_x = -2.2, .size_y = -2.7, .offset_x = -.01f, .offset_y = 0.5f})};
+                                                {.size_x = -2.2, .size_y = -2.7, .offset_x = -.01f, .offset_y = 0.5f}),
+    };
 
     entity_info[ENTITY_TYPE_ROBOTICS_FACTORY] = {
         .type_name_string = "Robotics Factory",
@@ -351,8 +350,7 @@ EntityHandle entity_create_player(Vec2 position) {
     entity->hunger_cooldown_s = HUNGER_TICK_COOLDOWN_S;
     set(entity->flags, ENTITY_F_GETS_HUNGERY);
     set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
-    entity->inventory.row_count = e_info->inventory_row_count;
-    entity->inventory.col_count = e_info->inventory_col_count;
+    entity->inventory.capacity = e_info->inventory_capacity;
     entity->brain.type = e_info->brain_type;
 
     return entity_to_handle(entity);
@@ -366,8 +364,7 @@ EntityHandle entity_create_chest(Vec2 position, flags opts) {
     entity->type = ENTITY_TYPE_CHEST_IRON;
     entity->position = position;
     entity->sprite_id = sprite_id;
-    entity->inventory.row_count = 4;
-    entity->inventory.col_count = 5;
+    entity->inventory.capacity = 8;
     entity->hp = 5;
 
     set(entity->flags, opts);
@@ -426,8 +423,7 @@ EntityHandle entity_create_robot_gatherer(Vec2 position) {
     set(entity->flags, ENTITY_F_KILLABLE);
     entity->hp = MAX_HP_ROBOT_GATHERER;
 
-    entity->inventory.row_count = 3;
-    entity->inventory.col_count = 4;
+    entity->inventory.capacity = 4;
 
     set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
     set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
@@ -767,8 +763,7 @@ void entity_inventory_spawn_world_item(InventoryItem* item, Vec3 source_position
 
 void entity_death(Entity* entity) {
     if (is_set(entity->flags, ENTITY_F_KILLABLE) && entity->hp <= 0) {
-        uint32 inventory_item_count = entity->inventory.col_count * entity->inventory.row_count;
-        for (int i = 0; i < inventory_item_count; i++) {
+        for (int i = 0; i < entity->inventory.capacity; i++) {
             InventoryItem* item = &entity->inventory.items[i];
             if (item->entity_type != ENTITY_TYPE_UNKNOWN) {
                 Vec3 position = {entity->position.x, entity->position.y, 0.25f};

@@ -356,15 +356,18 @@ void entity_command_center_ui_render(Entity* entity, GameState* game_state, Rend
                                                 .background_rgba = COLOR_BLACK,
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    Inventory structure_inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_STRUCTURES, 2, 4);
+    Vec2 structure_inventory_dimensions = {2, 4};
+    uint32 capacity = structure_inventory_dimensions.x * structure_inventory_dimensions.y;
 
-    InventoryInput inventory_input =
-        inventory_render(container, inventory_ui_position, &structure_inventory, game_state, game_input,
-                         {.scale = 2,
-                          .slot_gap = pixels_to_units(4),
-                          .background_rgba = COLOR_GRAY,
-                          .recipe_book_type = CRAFTING_RECIPE_BOOK_STRUCTURES,
-                          .flags = INVENTORY_RENDER_F_FOR_CRAFTING});
+    Inventory structure_inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_STRUCTURES, capacity);
+
+    InventoryInput inventory_input = inventory_render(container, inventory_ui_position, &structure_inventory,
+                                                      structure_inventory_dimensions, game_state, game_input,
+                                                      {.scale = 2,
+                                                       .slot_gap = pixels_to_units(4),
+                                                       .background_rgba = COLOR_GRAY,
+                                                       .recipe_book_type = CRAFTING_RECIPE_BOOK_STRUCTURES,
+                                                       .flags = INVENTORY_RENDER_F_FOR_CRAFTING});
 
     if (inventory_input.idx_clicked >= 0) {
         EntityType selected_entity_type = structure_inventory.items[inventory_input.idx_clicked].entity_type;
@@ -445,6 +448,10 @@ void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, Rend
     float slot_gap = pixels_to_units(8);
 
     Vec2 inventory_ui_size = {8, 8};
+    Vec2 inventory_dimensions = {2, 2};
+
+    ASSERT(inventory_dimensions.x * inventory_dimensions.y == entity->inventory.capacity,
+           "entity_robot_interact_ui_render dimensions much match capacity");
 
     Vec2 inventory_ui_position = game_state->camera.position;
     inventory_ui_position.x -= (inventory_ui_size.x / 2);
@@ -458,8 +465,8 @@ void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, Rend
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
     InventoryInput input =
-        inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input,
-                         {.scale = 1, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
+        inventory_render(container, inventory_ui_position, &entity->inventory, inventory_dimensions, game_state,
+                         game_input, {.scale = 1, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
 
     UIElement* start_button = ui_create_button("Start", inventory_ui_position, container);
 
@@ -482,7 +489,8 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
     float padding = pixels_to_units(16);
     float slot_gap = pixels_to_units(8);
 
-    Vec2 inventory_ui_size = inventory_ui_get_size(&entity->inventory, padding, slot_gap, 1);
+    Vec2 inventory_dimensions = inventory_get_dimensions_from_capacity(entity->inventory.capacity, 4);
+    Vec2 inventory_ui_size = inventory_ui_get_size(inventory_dimensions, padding, slot_gap, 1);
 
     Vec2 inventory_ui_position = game_state->camera.position;
     inventory_ui_position.x -= (inventory_ui_size.x / 2);
@@ -494,8 +502,8 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
     InventoryInput input =
-        inventory_render(container, inventory_ui_position, &entity->inventory, game_state, game_input,
-                         {.scale = 1, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
+        inventory_render(container, inventory_ui_position, &entity->inventory, inventory_dimensions, game_state,
+                         game_input, {.scale = 1, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
 
     ui_draw_element(container, inventory_ui_position, render_group);
 
@@ -524,10 +532,13 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
     UIElement* title = ui_create_text("Crafting", {.rgba = COLOR_WHITE, .font_scale = 1.0f});
     ui_push(container, title);
 
-    Inventory inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_GENERAL, 2, 6);
+    Vec2 inventory_dimensions = {2, 6};
+    uint32 inventory_capacity = inventory_dimensions.x * inventory_dimensions.y;
+
+    Inventory inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_GENERAL, inventory_capacity);
 
     InventoryInput inventory_input =
-        inventory_render(container, crafting_menu_position, &inventory, game_state, game_input,
+        inventory_render(container, crafting_menu_position, &inventory, inventory_dimensions, game_state, game_input,
                          {.scale = 1,
                           .slot_gap = pixels_to_units(8),
                           .background_rgba = COLOR_GRAY,
@@ -1147,7 +1158,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
     if (game_state->ui_mode.state == UI_STATE_ENTITY_UI) {
         Entity* ui_entity = entity_find(game_state->ui_mode.entity_handle);
-        if (ui_entity->inventory.row_count > 0 && ui_entity->inventory.col_count > 0) {
+        if (ui_entity->inventory.capacity > 0) {
             set(game_state->ui_mode.flags, UI_MODE_F_INVENTORY_ACTIVE);
         }
         if (ui_entity->type == ENTITY_TYPE_ROBOT_GATHERER) {

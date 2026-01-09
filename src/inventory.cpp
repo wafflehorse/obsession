@@ -37,8 +37,7 @@ void inventory_remove_items(Inventory* inventory, EntityType entity_type, uint32
     while (quantity_remaining > 0) {
         InventoryItem* min_stack_size_slot = NULL;
         int min_stack_size_index = -1;
-        uint32 capacity = inventory->row_count * inventory->col_count;
-        for (int i = 0; i < capacity; i++) {
+        for (int i = 0; i < inventory->capacity; i++) {
             InventoryItem* slot = &inventory->items[i];
             if (slot->entity_type == entity_type) {
                 if (!min_stack_size_slot || min_stack_size_slot->stack_size > slot->stack_size) {
@@ -64,8 +63,7 @@ bool inventory_slot_can_take_item(EntityType entity_type, uint32 quantity, Inven
 
 InventoryItem* inventory_find_available_slot(Inventory* inventory, EntityType entity_type, uint32 quantity) {
     InventoryItem* open_slot = NULL;
-    uint32 capacity = inventory->col_count * inventory->row_count;
-    for (int i = 0; i < capacity; i++) {
+    for (int i = 0; i < inventory->capacity; i++) {
         InventoryItem* slot = &inventory->items[i];
         if (inventory_slot_can_take_item(entity_type, quantity, slot)) {
             if (!open_slot || (open_slot->entity_type != entity_type && slot->entity_type == entity_type) ||
@@ -151,15 +149,26 @@ bool inventory_move_items(uint32 index, uint32 quantity, Inventory* source_inven
     return result;
 }
 
-Vec2 inventory_ui_get_size(Inventory* inventory, float padding, float slot_gap, float scale) {
+Vec2 inventory_get_dimensions_from_capacity(uint32 capacity, uint32 num_columns) {
+    Vec2 result = {0, 0};
+
+    if (capacity > 0 && num_columns > 0) {
+        result.x = w_ceilf((float)capacity / (float)num_columns);
+        result.y = num_columns;
+    }
+
+    return result;
+}
+
+Vec2 inventory_ui_get_size(Vec2 dimensions, float padding, float slot_gap, float scale) {
     Vec2 inventory_ui_size;
-    if (inventory->col_count == 0 || inventory->row_count == 0) {
+    if (dimensions.x <= 0 || dimensions.y <= 0) {
         inventory_ui_size = {0, 0};
     } else {
-        inventory_ui_size = {.x = inventory->col_count * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
-                                  (slot_gap * (inventory->col_count - 1)) + (padding * 2),
-                             .y = inventory->row_count * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
-                                  (slot_gap * (inventory->row_count - 1)) + (padding * 2)};
+        inventory_ui_size = {.x = dimensions.y * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
+                                  (slot_gap * (dimensions.y - 1)) + (padding * 2),
+                             .y = dimensions.x * (INVENTORY_BASE_SLOT_DIMENSION * scale) +
+                                  (slot_gap * (dimensions.x - 1)) + (padding * 2)};
     }
 
     return inventory_ui_size;
@@ -189,7 +198,7 @@ struct InventoryRenderOptions {
 // to the right place for the next row of children. We could then more easily avoid having to precompute the size,
 // because we could then just have a second pass through the children to check for mouse interaction and we can more
 // easily attribute the ui element to an inventory item.
-InventoryInput inventory_render(UIElement* container, Vec2 container_position, Inventory* inventory,
+InventoryInput inventory_render(UIElement* container, Vec2 container_position, Inventory* inventory, Vec2 dimensions,
                                 GameState* game_state, GameInput* game_input, InventoryRenderOptions opts) {
 
     ASSERT(!is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) ||
@@ -200,10 +209,10 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
     Vec2 slot_size = {1, 1};
     slot_size = w_vec_mult(slot_size, opts.scale);
 
-    Vec2 row_container_size = {.x = (slot_size.x * inventory->col_count) + ((inventory->col_count - 1) * opts.slot_gap),
+    Vec2 row_container_size = {.x = (slot_size.x * dimensions.y) + ((dimensions.y - 1) * opts.slot_gap),
                                .y = slot_size.y};
 
-    for (int row = 0; row < inventory->row_count; row++) {
+    for (int row = 0; row < dimensions.x; row++) {
         UIElement* item_row_container = ui_create_container({
             .padding = 0,
             .min_size = row_container_size,
@@ -214,64 +223,68 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
 
         ui_push(container, item_row_container);
 
-        for (int col = 0; col < inventory->col_count; col++) {
-            uint32 item_idx = row * inventory->col_count + col;
-            InventoryItem* item = NULL;
-            item = &inventory->items[item_idx];
+        for (int col = 0; col < dimensions.y; col++) {
+            uint32 item_idx = row * dimensions.y + col;
 
-            UIElement* item_slot =
-                ui_create_container({.min_size = slot_size,
-                                     .max_size = slot_size,
-                                     .background_rgba = opts.background_rgba,
-                                     .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND});
+            if (item_idx < inventory->capacity) {
+                InventoryItem* item = NULL;
+                item = &inventory->items[item_idx];
 
-            if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
-                Sprite sprite = entity_get_default_sprite(item->entity_type);
-                Vec2 sprite_world_size = {.x = pixels_to_units(sprite.w), .y = pixels_to_units(sprite.h)};
-                Vec2 sprite_size = w_scale_to_fit(sprite_world_size, slot_size);
+                UIElement* item_slot =
+                    ui_create_container({.min_size = slot_size,
+                                         .max_size = slot_size,
+                                         .background_rgba = opts.background_rgba,
+                                         .opts = UI_ELEMENT_F_CONTAINER_ROW | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-                UICreateSpriteOpts sprite_opts = {.size = sprite_size};
+                if (item && item->entity_type != ENTITY_TYPE_UNKNOWN) {
+                    Sprite sprite = entity_get_default_sprite(item->entity_type);
+                    Vec2 sprite_world_size = {.x = pixels_to_units(sprite.w), .y = pixels_to_units(sprite.h)};
+                    Vec2 sprite_size = w_scale_to_fit(sprite_world_size, slot_size);
 
-                if (is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) &&
-                    !crafting_can_craft_item(opts.recipe_book_type, item->entity_type,
-                                             &game_state->player->inventory)) {
-                    set(sprite_opts.flags, UI_CREATE_SPRITE_OPTS_F_APPLY_TINT);
-                    sprite_opts.tint = {1, 1, 1, 0.4};
+                    UICreateSpriteOpts sprite_opts = {.size = sprite_size};
+
+                    if (is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) &&
+                        !crafting_can_craft_item(opts.recipe_book_type, item->entity_type,
+                                                 &game_state->player->inventory)) {
+                        set(sprite_opts.flags, UI_CREATE_SPRITE_OPTS_F_APPLY_TINT);
+                        sprite_opts.tint = {1, 1, 1, 0.4};
+                    }
+
+                    UIElement* item_sprite = ui_create_sprite(sprite, sprite_opts);
+                    ui_push_centered(item_slot, item_sprite);
+
+                    if (item->stack_size > 1) {
+                        char stack_size_str[3] = {};
+                        snprintf(stack_size_str, 3, "%i", item->stack_size);
+                        UIElement* stack_size_element =
+                            ui_create_text(stack_size_str, {.rgba = COLOR_WHITE, .font_scale = 0.5});
+
+                        Vec2 stack_size_rel_position = {item_slot->size.x - stack_size_element->size.x -
+                                                            pixels_to_units(2),
+                                                        -stack_size_element->size.y / 2};
+
+                        ui_push_abs_position(item_slot, stack_size_element, stack_size_rel_position);
+                    }
                 }
 
-                UIElement* item_sprite = ui_create_sprite(sprite, sprite_opts);
-                ui_push_centered(item_slot, item_sprite);
+                ui_push(item_row_container, item_slot);
 
-                if (item->stack_size > 1) {
-                    char stack_size_str[3] = {};
-                    snprintf(stack_size_str, 3, "%i", item->stack_size);
-                    UIElement* stack_size_element =
-                        ui_create_text(stack_size_str, {.rgba = COLOR_WHITE, .font_scale = 0.5});
+                Vec2 slot_world_position_top_left = ui_abs_position_get(container_position, item_slot);
+                Vec2 slot_world_position_center = w_rect_top_left_to_center(slot_world_position_top_left, slot_size);
 
-                    Vec2 stack_size_rel_position = {item_slot->size.x - stack_size_element->size.x - pixels_to_units(2),
-                                                    -stack_size_element->size.y / 2};
+                Rect slot_rect = {slot_world_position_center.x, slot_world_position_center.y, slot_size.x, slot_size.y};
 
-                    ui_push_abs_position(item_slot, stack_size_element, stack_size_rel_position);
-                }
-            }
+                if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world) &&
+                    !is_set(opts.flags, INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED)) {
+                    item_slot->border_width = pixels_to_units(1);
+                    item_slot->border_color = COLOR_WHITE;
 
-            ui_push(item_row_container, item_slot);
+                    if (item) {
+                        input.idx_hovered = item_idx;
 
-            Vec2 slot_world_position_top_left = ui_abs_position_get(container_position, item_slot);
-            Vec2 slot_world_position_center = w_rect_top_left_to_center(slot_world_position_top_left, slot_size);
-
-            Rect slot_rect = {slot_world_position_center.x, slot_world_position_center.y, slot_size.x, slot_size.y};
-
-            if (w_check_point_in_rect(slot_rect, game_state->world_input.mouse_position_world) &&
-                !is_set(opts.flags, INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED)) {
-                item_slot->border_width = pixels_to_units(1);
-                item_slot->border_color = COLOR_WHITE;
-
-                if (item) {
-                    input.idx_hovered = item_idx;
-
-                    if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
-                        input.idx_clicked = item_idx;
+                        if (game_input->mouse_state.input_states[MOUSE_LEFT_BUTTON].is_pressed) {
+                            input.idx_clicked = item_idx;
+                        }
                     }
                 }
             }

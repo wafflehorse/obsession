@@ -103,9 +103,7 @@ void crafting_craft_item(EntityData* entity_data, EntityType entity_type, Crafti
     }
 }
 
-Inventory recipes_to_inventory(CraftingRecipeBook recipe_book_type, int row_count, int col_count) {
-    ASSERT(row_count != 0 && col_count != 0, "recipes_to_inventory - row_cound and col_count must be non-zero");
-
+Inventory recipes_to_inventory(CraftingRecipeBook recipe_book_type, uint32 capacity) {
     CraftingRecipe* recipes = crafting_recipe_books[recipe_book_type];
     Inventory inventory = {};
 
@@ -118,11 +116,9 @@ Inventory recipes_to_inventory(CraftingRecipeBook recipe_book_type, int row_coun
         }
     }
 
-    inventory.row_count = row_count;
-    inventory.col_count = col_count;
+    inventory.capacity = capacity;
 
-    ASSERT(inventory.row_count * inventory.col_count < ENTITY_TYPE_COUNT,
-           "crafting inventory size must be less than entity type count");
+    ASSERT(inventory.capacity < ENTITY_TYPE_COUNT, "crafting inventory size must be less than entity type count");
 
     return inventory;
 }

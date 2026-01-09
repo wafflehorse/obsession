@@ -6,7 +6,7 @@ Biome 1 stage 1
 [] Better enemy behavior
 
 Biome 1 state 2
-[] Command center inventory
+[-] Command center inventory
 [] Add command center UI
 	[x] Substructure crafting and placement
 	[] Storage UI
@@ -39,6 +39,7 @@ Biome 1 state 2
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 
+[x] Replace inventory row_count and col_count with capacity
 [x] Add robotics crafter entity 
 [x] Fix bug where player picks up item right after dropping
 [x] Unify ui rendering and input handling

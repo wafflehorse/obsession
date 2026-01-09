@@ -193,6 +193,10 @@ float w_floorf(float a) {
     return floorf(a);
 }
 
+float w_ceilf(float a) {
+    return ceilf(a);
+}
+
 float w_abs(float a) {
     return a > 0 ? a : -a;
 }
