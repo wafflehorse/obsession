@@ -23,6 +23,7 @@ Biome 1 state 2
 		make the robots appear in the world
 	[x] Add robot party to entity
 	[x] Robot party UI
+	[] Add Robot creation and inventory UI in robotics factory
 
 [] Add storage module structure to increase command center capacity?
 [] Add cooking station

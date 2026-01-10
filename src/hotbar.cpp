@@ -1,9 +1,5 @@
 #include "game.h"
 
-InventoryItem* hotbar_active_slot(Inventory* inventory, uint32 active_item_idx) {
-    return &inventory->items[active_item_idx];
-}
-
 Vec2 hotbar_placeable_position(Vec2 player_position, Vec2 aim_vec) {
     Vec2 placement_position = player_position;
     float placement_offset = 1.0f;
@@ -21,10 +17,14 @@ Vec2 hotbar_placeable_position(Vec2 player_position, Vec2 aim_vec) {
     return placement_position;
 }
 
-void hotbar_render_placement_indicator(Vec2 player_position, Vec2 aim_vec, RenderGroup* render_group) {
+static void hotbar_render_placement_indicator(Vec2 player_position, Vec2 aim_vec, RenderGroup* render_group) {
     Vec2 placement_position = hotbar_placeable_position(player_position, aim_vec);
     Vec2 placement_indicator_size = {1, 1};
     render_borders(pixels_to_units(1), COLOR_WHITE, placement_position, placement_indicator_size, render_group);
+}
+
+InventoryItem* hotbar_active_slot(Inventory* inventory, uint32 active_item_idx) {
+    return &inventory->items[active_item_idx];
 }
 
 void hotbar_render_item(GameState* game_state, Vec2 player_aim_vec, RenderGroup* render_group) {

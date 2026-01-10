@@ -17,7 +17,11 @@ char* g_base_path;
 char* g_debug_project_dir;
 uint32 g_pixels_per_unit;
 double g_sim_dt_s;
+
+#ifdef DEBUG
 RenderGroup* g_debug_render_group;
+DebugInfo* g_debug_info;
+#endif
 
 #define DEFAULT_WORLD_WIDTH 256
 #define DEFAULT_WORLD_HEIGHT 256
@@ -180,6 +184,7 @@ void create_decoration(DecorationData* decoration_data, DecorationType type, Vec
 #include "brain.cpp"
 #include "proc_gen.cpp"
 #include "crafting.cpp"
+#include "hud.cpp"
 
 #ifdef DEBUG
 #include "engine_tools.cpp"
@@ -291,72 +296,6 @@ PlayerInput player_input_get(GameInput* game_input, GameState* game_state, float
     }
 
     return input;
-}
-
-SpriteID player_hunger_to_ui_sprite[MAX_HUNGER_PLAYER + 1] = {
-    [0] = SPRITE_PLAYER_HUNGER_UI_10, [1] = SPRITE_PLAYER_HUNGER_UI_9, [2] = SPRITE_PLAYER_HUNGER_UI_8,
-    [3] = SPRITE_PLAYER_HUNGER_UI_7,  [4] = SPRITE_PLAYER_HUNGER_UI_6, [5] = SPRITE_PLAYER_HUNGER_UI_5,
-    [6] = SPRITE_PLAYER_HUNGER_UI_4,  [7] = SPRITE_PLAYER_HUNGER_UI_3, [8] = SPRITE_PLAYER_HUNGER_UI_2,
-    [9] = SPRITE_PLAYER_HUNGER_UI_1,  [10] = SPRITE_PLAYER_HUNGER_UI_0};
-
-SpriteID player_hp_to_ui_sprite[MAX_HP_PLAYER + 1] = {
-    [0] = SPRITE_PLAYER_HP_UI_10, [1] = SPRITE_PLAYER_HP_UI_9, [2] = SPRITE_PLAYER_HP_UI_8, [3] = SPRITE_PLAYER_HP_UI_7,
-    [4] = SPRITE_PLAYER_HP_UI_6,  [5] = SPRITE_PLAYER_HP_UI_5, [6] = SPRITE_PLAYER_HP_UI_4, [7] = SPRITE_PLAYER_HP_UI_3,
-    [8] = SPRITE_PLAYER_HP_UI_2,  [9] = SPRITE_PLAYER_HP_UI_1, [10] = SPRITE_PLAYER_HP_UI_0};
-
-void render_player_health_ui(Entity* player, Camera camera, RenderGroup* render_group) {
-    SpriteID hp_sprite_id = player_hp_to_ui_sprite[player->hp];
-    SpriteID hunger_sprite_id = player_hunger_to_ui_sprite[player->hunger];
-    Sprite hp_sprite = sprite_table[hp_sprite_id];
-    Sprite hunger_sprite = sprite_table[hunger_sprite_id];
-
-    Vec2 camera_top_left = {camera.position.x - (camera.size.x / 2), camera.position.y + (camera.size.y / 2)};
-
-    UIElement* container =
-        ui_create_container({.padding = 0.5f, .child_gap = 0.5f, .opts = UI_ELEMENT_F_CONTAINER_COL});
-
-    UIElement* hp_sprite_element = ui_create_sprite(hp_sprite);
-    UIElement* hunger_sprite_element = ui_create_sprite(hunger_sprite);
-
-    ui_push(container, hp_sprite_element);
-    ui_push(container, hunger_sprite_element);
-
-    ui_draw_element(container, camera_top_left, render_group);
-}
-
-void render_player_party_ui(Entity* player, GameState* game_state, GameInput* game_input, RenderGroup* render_group) {
-    Vec2 dimensions = {(float)player->entity_party.capacity, 1};
-    float padding = pixels_to_units(8);
-    float slot_gap = pixels_to_units(8);
-    float scale = 2.0f;
-    Vec2 ui_size = inventory_ui_get_size(dimensions, padding, slot_gap, scale);
-
-    Camera camera = game_state->camera;
-    Vec2 ui_position = {camera.position.x - (camera.size.x / 2), camera.position.y + (ui_size.y / 2)};
-
-    UIElement* container = ui_create_container({.padding = padding,
-                                                .child_gap = slot_gap,
-                                                .min_size = ui_size,
-                                                .max_size = ui_size,
-                                                .opts = UI_ELEMENT_F_CONTAINER_COL});
-
-    Inventory inventory = {};
-    inventory.capacity = player->entity_party.capacity;
-    for (int i = 0; i < inventory.capacity; i++) {
-        Entity* entity = entity_find(player->entity_party.handles[i]);
-        if (entity) {
-            inventory.items[i].entity_type = entity->type;
-            inventory.items[i].stack_size = 1;
-        }
-    }
-
-    InventoryInput input = inventory_render(container, ui_position, &inventory, dimensions, game_state, game_input,
-                                            {.scale = scale,
-                                             .background_rgba = COLOR_BLACK,
-                                             .slot_gap = slot_gap,
-                                             .flags = INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED});
-
-    ui_draw_element(container, ui_position, render_group);
 }
 
 void debug_render_entity_colliders(Entity* entity, bool has_collided) {
@@ -697,6 +636,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     // ~~~~~~~~~~~~~~~~~~ Debug Flags ~~~~~~~~~~~~~~~~~~~~ //
     GameState* game_state = (GameState*)game_memory->memory;
     g_base_path = game_memory->base_path;
+#ifdef DEBUG
+    g_debug_info = &game_memory->debug_info;
+#endif
 
     g_sim_dt_s = frame_dt_s;
 
@@ -1290,6 +1232,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
     }
 
+    hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
+
+    hud_render(game_state, game_input);
+
+    game_memory->push_audio_samples(&game_state->audio_player);
+
+    sort_render_group(&main_render_group);
+
     Vec2 camera_target_position = game_state->player->position;
     float camera_target_zoom = 1.0f;
 
@@ -1311,14 +1261,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
     float camera_zoom_offset = camera_target_zoom - game_state->camera.zoom;
     game_state->camera.zoom += camera_zoom_offset * smoothing_factor * g_sim_dt_s;
 
-    hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
-    hotbar_render(game_state, game_input, &game_state->render_groups.hud);
-    render_player_health_ui(game_state->player, game_state->camera, &game_state->render_groups.hud);
-    render_player_party_ui(game_state->player, game_state, game_input, &game_state->render_groups.hud);
-    game_memory->push_audio_samples(&game_state->audio_player);
-
-    sort_render_group(&main_render_group);
-
     Vec2 shake_offset = update_and_get_camera_shake(&game_state->camera.shake, g_sim_dt_s);
     Vec2 rendered_camera_position = w_vec_add(game_state->camera.position, shake_offset);
 
@@ -1335,48 +1277,13 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                                    render_group_ui.opts);
 
 #ifdef DEBUG
-    DebugInfo* debug_info = &game_memory->debug_info;
-    double avg_rendered_frame_time_s = w_avg(
-        debug_info->rendered_dt_history, w_min(debug_info->rendered_dt_history_count, FRAME_TIME_HISTORY_MAX_COUNT));
-    double fps = 0;
-    if (avg_rendered_frame_time_s != 0) {
-        fps = 1 / avg_rendered_frame_time_s;
-    }
-
-    double avg_preswap_dt_ms = w_avg(debug_info->prebuffer_swap_dt_history,
-                                     w_min(debug_info->prebuffer_swap_dt_history_count, FRAME_TIME_HISTORY_MAX_COUNT)) *
-                               1000;
-
-    char fps_str[32] = {};
-    char avg_preswap_dt_str[32] = {};
-    snprintf(fps_str, 32, "FPS: %.0f", w_round((float)fps));
-    snprintf(avg_preswap_dt_str, 32, "Frame ms: %.3f", avg_preswap_dt_ms);
-
-    UIElement* debug_text_container =
-        ui_create_container({.padding = 0.25, .child_gap = 0, .opts = UI_ELEMENT_F_CONTAINER_COL});
-    UIElement* fps_text_element = ui_create_text(fps_str, {.rgba = COLOR_WHITE, .font_scale = 0.5});
-    ui_push(debug_text_container, fps_text_element);
-    UIElement* frame_time_text_element = ui_create_text(avg_preswap_dt_str, {.rgba = COLOR_WHITE, .font_scale = 0.5});
-    ui_push(debug_text_container, frame_time_text_element);
-
-    Vec2 camera_top_right = {game_state->camera.position.x + (game_state->camera.size.x / 2),
-                             game_state->camera.position.y + (game_state->camera.size.y / 2)};
-
-    Vec2 debug_text_container_position = {camera_top_right.x - debug_text_container->size.x, camera_top_right.y};
-
-    // Note: technically, maybe this shouldn't be in hud? Maybe we should have a debug hud or something?
-    ui_draw_element(debug_text_container, debug_text_container_position, &game_state->render_groups.hud);
-
     game_memory->push_render_group(render_group_tools.quads, render_group_tools.count, game_state->camera.position,
                                    render_group_tools.opts);
     game_memory->push_render_group(debug_render_group.quads, debug_render_group.count, game_state->camera.position,
                                    debug_render_group.opts);
 #endif
-    game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, 1.0f);
-    game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, 1.0f);
 
-    game_memory->push_render_group(game_state->render_groups.hud.quads, game_state->render_groups.hud.size,
-                                   game_state->camera.position, game_state->render_groups.hud.opts);
+    game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, 1.0f);
 
     game_memory->push_render_group(game_state->render_groups.hud.quads, game_state->render_groups.hud.size,
                                    game_state->camera.position, game_state->render_groups.hud.opts);
