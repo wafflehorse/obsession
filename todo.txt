@@ -12,10 +12,23 @@ Biome 1 state 2
 	[x] Storage UI
 [x] Allow building structures from command center inventory
 	- Not sure if it's in addition to the player's inventory or not
+[] Introduce robot party system
+	- Where are your robots stored?
+		- Can just add a UI to landing pod for now
+		- Or should it be the robots factory?
+	- You select a party and then the robots appear around you and move with you
+		- How should they move with you? 
+		- Can I use the flocking system from terminal? Maybe a good place to start.
+		- Can start with a hotbar like UI that shows up on the left side of screen? And placing robots there
+		make the robots appear in the world
+	[x] Add robot party to entity
+	[x] Robot party UI
+
 [] Add storage module structure to increase command center capacity?
 [] Add cooking station
 [] Add cooked versions of food (boar and corn)
 
+[] Bug - Gun's velocity sends it away from player after getting killed?
 [] Make it easier to add new entities
 	[] Is it possible to consolidate entity creation to a single entity_create function?
 		- Could we just use entity_info as a way to activate code paths in the create method and everything needed

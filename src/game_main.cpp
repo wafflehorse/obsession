@@ -304,7 +304,7 @@ SpriteID player_hp_to_ui_sprite[MAX_HP_PLAYER + 1] = {
     [4] = SPRITE_PLAYER_HP_UI_6,  [5] = SPRITE_PLAYER_HP_UI_5, [6] = SPRITE_PLAYER_HP_UI_4, [7] = SPRITE_PLAYER_HP_UI_3,
     [8] = SPRITE_PLAYER_HP_UI_2,  [9] = SPRITE_PLAYER_HP_UI_1, [10] = SPRITE_PLAYER_HP_UI_0};
 
-void render_player_health_ui(Entity* player, Camera camera, RenderGroup* render_group, Arena* frame_arena) {
+void render_player_health_ui(Entity* player, Camera camera, RenderGroup* render_group) {
     SpriteID hp_sprite_id = player_hp_to_ui_sprite[player->hp];
     SpriteID hunger_sprite_id = player_hunger_to_ui_sprite[player->hunger];
     Sprite hp_sprite = sprite_table[hp_sprite_id];
@@ -322,6 +322,41 @@ void render_player_health_ui(Entity* player, Camera camera, RenderGroup* render_
     ui_push(container, hunger_sprite_element);
 
     ui_draw_element(container, camera_top_left, render_group);
+}
+
+void render_player_party_ui(Entity* player, GameState* game_state, GameInput* game_input, RenderGroup* render_group) {
+    Vec2 dimensions = {(float)player->entity_party.capacity, 1};
+    float padding = pixels_to_units(8);
+    float slot_gap = pixels_to_units(8);
+    float scale = 2.0f;
+    Vec2 ui_size = inventory_ui_get_size(dimensions, padding, slot_gap, scale);
+
+    Camera camera = game_state->camera;
+    Vec2 ui_position = {camera.position.x - (camera.size.x / 2), camera.position.y + (ui_size.y / 2)};
+
+    UIElement* container = ui_create_container({.padding = padding,
+                                                .child_gap = slot_gap,
+                                                .min_size = ui_size,
+                                                .max_size = ui_size,
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL});
+
+    Inventory inventory = {};
+    inventory.capacity = player->entity_party.capacity;
+    for (int i = 0; i < inventory.capacity; i++) {
+        Entity* entity = entity_find(player->entity_party.handles[i]);
+        if (entity) {
+            inventory.items[i].entity_type = entity->type;
+            inventory.items[i].stack_size = 1;
+        }
+    }
+
+    InventoryInput input = inventory_render(container, ui_position, &inventory, dimensions, game_state, game_input,
+                                            {.scale = scale,
+                                             .background_rgba = COLOR_BLACK,
+                                             .slot_gap = slot_gap,
+                                             .flags = INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED});
+
+    ui_draw_element(container, ui_position, render_group);
 }
 
 void debug_render_entity_colliders(Entity* entity, bool has_collided) {
@@ -639,7 +674,6 @@ Vec2 update_and_get_camera_shake(CameraShake* shake, double dt_s) {
 }
 
 bool debug_entity_is_penetrating_blocker(Entity* entity, EntityData* entity_data) {
-
     WorldCollider subject_collider = entity_get_world_collider(entity);
     Rect subject = {subject_collider.position.x, subject_collider.position.y, subject_collider.size.x,
                     subject_collider.size.y};
@@ -1279,8 +1313,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
     hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
     hotbar_render(game_state, game_input, &game_state->render_groups.hud);
-    render_player_health_ui(game_state->player, game_state->camera, &game_state->render_groups.hud,
-                            &game_state->frame_arena);
+    render_player_health_ui(game_state->player, game_state->camera, &game_state->render_groups.hud);
+    render_player_party_ui(game_state->player, game_state, game_input, &game_state->render_groups.hud);
     game_memory->push_audio_samples(&game_state->audio_player);
 
     sort_render_group(&main_render_group);

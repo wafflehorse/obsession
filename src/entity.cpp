@@ -246,6 +246,10 @@ Entity* entity_new() {
         entity->inventory.items[i].entity_handle.generation = -1;
     }
 
+    for (int i = 0; i < MAX_ENTITY_PARTY_SIZE; i++) {
+        entity->entity_party.handles[i].generation = -1;
+    }
+
     return entity;
 }
 
@@ -350,8 +354,10 @@ EntityHandle entity_create_player(Vec2 position) {
     entity->hunger_cooldown_s = HUNGER_TICK_COOLDOWN_S;
     set(entity->flags, ENTITY_F_GETS_HUNGERY);
     set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
+    set(entity->flags, ENTITY_F_CONTROLS_PARTY);
     entity->inventory.capacity = e_info->inventory_capacity;
     entity->brain.type = e_info->brain_type;
+    entity->entity_party.capacity = 3;
 
     return entity_to_handle(entity);
 }

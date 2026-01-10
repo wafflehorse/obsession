@@ -285,9 +285,6 @@ void ui_draw_element(UIElement* element, Vec2 position, RenderGroup* render_grou
 }
 
 struct UIContainerCreateParams {
-    Vec2 position;
-    Vec2 size;
-
     float padding;
     float child_gap;
     Vec2 min_size;

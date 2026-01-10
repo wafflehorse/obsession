@@ -175,6 +175,13 @@ struct EntityLookup {
     int generation;
 };
 
+#define MAX_ENTITY_PARTY_SIZE 8
+
+struct EntityParty {
+    EntityHandle handles[MAX_ENTITY_PARTY_SIZE];
+    uint32 capacity;
+};
+
 struct InventoryItem {
     EntityType entity_type;
     EntityHandle entity_handle;
@@ -198,6 +205,7 @@ struct Inventory {
 #define ENTITY_F_PLAYER_INTERACTABLE (1 << 9)
 #define ENTITY_F_GETS_HUNGERY (1 << 10)
 #define ENTITY_F_COLLECTS_ITEMS (1 << 11)
+#define ENTITY_F_CONTROLS_PARTY (1 << 12)
 
 struct Entity {
     flags flags;
@@ -219,6 +227,8 @@ struct Entity {
 
     Vec2 facing_direction;
     EntityHandle owner_handle;
+
+    EntityParty entity_party;
 
     // projectile
     float distance_traveled;
