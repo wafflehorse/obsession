@@ -192,7 +192,7 @@ void entity_init(EntityData* entity_data) {
         .default_sprite = SPRITE_LANDING_POD_YELLOW,
         .collider = entity_collider_from_sprite(SPRITE_LANDING_POD_YELLOW,
                                                 {.size_x = -2.2, .size_y = -2.7, .offset_x = -.01f, .offset_y = 0.5f}),
-    };
+        .inventory_capacity = 8};
 
     entity_info[ENTITY_TYPE_ROBOTICS_FACTORY] = {
         .type_name_string = "Robotics Factory",
@@ -709,6 +709,7 @@ EntityHandle entity_create(EntityType type, Vec2 position, flags opts) {
         entity->position = position;
         entity->sprite_id = e_info->default_sprite;
         entity->hp = e_info->base_hp;
+        entity->inventory.capacity = e_info->inventory_capacity;
 
         set(entity->flags, e_info->instance_flags);
         set(entity->flags, opts);

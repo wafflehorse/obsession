@@ -6,10 +6,12 @@ Biome 1 stage 1
 [] Better enemy behavior
 
 Biome 1 state 2
-[-] Command center inventory
-[] Add command center UI
+[x] Command center inventory
+[x] Add command center UI
 	[x] Substructure crafting and placement
-	[] Storage UI
+	[x] Storage UI
+[x] Allow building structures from command center inventory
+	- Not sure if it's in addition to the player's inventory or not
 [] Add storage module structure to increase command center capacity?
 [] Add cooking station
 [] Add cooked versions of food (boar and corn)

@@ -15,7 +15,7 @@
 #define MAX_PROJECTILE_DISTANCE 80
 #define ENTITY_MAX_Z 100
 
-#define ENTITY_MAX_INVENTORY_SIZE 36
+#define ENTITY_MAX_INVENTORY_SIZE 32
 
 #define HOTBAR_MAX_SLOTS 8
 #define MAX_ITEM_STACK_SIZE 99
@@ -293,6 +293,11 @@ struct WorldInit {
     uint32 entity_init_count;
 };
 
+enum UICommandCenterTab {
+    UI_COMMAND_CENTER_TAB_INVENTORY,
+    UI_COMMAND_CENTER_TAB_STRUCTURES,
+};
+
 enum UIState {
     UI_STATE_NONE,
     UI_STATE_PLAYER_INVENTORY,
@@ -310,6 +315,7 @@ struct UIMode {
     EntityHandle entity_handle;
 
     // For UI_STATE_STRUCTURE_PLACEMENT
+    UICommandCenterTab active_command_center_tab;
     EntityType placing_structure_type;
     Vec2 camera_position;
     float camera_zoom;

@@ -344,10 +344,10 @@ void debug_render_entity_colliders(Entity* entity, bool has_collided) {
 
 void entity_command_center_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
                                      GameInput* game_input) {
-    Vec2 inventory_ui_size = {12, 16};
-    Vec2 inventory_ui_position = game_state->camera.position;
-    inventory_ui_position.x += game_state->camera.size.x / 4;
-    inventory_ui_position = w_rect_center_to_top_left(inventory_ui_position, inventory_ui_size);
+    Vec2 inventory_ui_size = {13, 16};
+    Vec2 ui_position = game_state->camera.position;
+    ui_position.x += game_state->camera.size.x / 4;
+    ui_position = w_rect_center_to_top_left(ui_position, inventory_ui_size);
 
     UIElement* container = ui_create_container({.min_size = inventory_ui_size,
                                                 .max_size = inventory_ui_size,
@@ -356,38 +356,75 @@ void entity_command_center_ui_render(Entity* entity, GameState* game_state, Rend
                                                 .background_rgba = COLOR_BLACK,
                                                 .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    Vec2 structure_inventory_dimensions = {2, 4};
-    uint32 capacity = structure_inventory_dimensions.x * structure_inventory_dimensions.y;
+    UICommandCenterTab active_tab = game_state->ui_mode.active_command_center_tab;
 
-    Inventory structure_inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_STRUCTURES, capacity);
+    UIElement* button_container = ui_create_container({.min_size = {inventory_ui_size.x, 1.25},
+                                                       .max_size = {inventory_ui_size.x, 1.25},
+                                                       .child_gap = pixels_to_units(8),
+                                                       .opts = UI_ELEMENT_F_CONTAINER_ROW});
 
-    InventoryInput inventory_input = inventory_render(container, inventory_ui_position, &structure_inventory,
-                                                      structure_inventory_dimensions, game_state, game_input,
-                                                      {.scale = 2,
-                                                       .slot_gap = pixels_to_units(4),
-                                                       .background_rgba = COLOR_GRAY,
-                                                       .recipe_book_type = CRAFTING_RECIPE_BOOK_STRUCTURES,
-                                                       .flags = INVENTORY_RENDER_F_FOR_CRAFTING});
+    ui_push(container, button_container);
 
-    if (inventory_input.idx_clicked >= 0) {
-        EntityType selected_entity_type = structure_inventory.items[inventory_input.idx_clicked].entity_type;
-        if (selected_entity_type != ENTITY_TYPE_UNKNOWN &&
-            crafting_can_craft_item(CRAFTING_RECIPE_BOOK_STRUCTURES, selected_entity_type,
-                                    &game_state->player->inventory)) {
-            game_state->ui_mode.placing_structure_type = selected_entity_type;
-            game_state->ui_mode.state = UI_STATE_STRUCTURE_PLACEMENT;
-            game_state->ui_mode.camera_position = entity->position;
-            game_state->ui_mode.camera_zoom = 0.5f;
-            set(game_state->ui_mode.flags, UI_MODE_F_CAMERA_OVERRIDE);
+    UIElement* inventory_button = ui_create_button("Inventory", ui_position, button_container);
+    UIElement* structures_button = ui_create_button("Structures", ui_position, button_container);
+
+    if (ui_button_pressed(ui_position, inventory_button)) {
+        game_state->ui_mode.active_command_center_tab = UI_COMMAND_CENTER_TAB_INVENTORY;
+    }
+
+    if (ui_button_pressed(ui_position, structures_button)) {
+        game_state->ui_mode.active_command_center_tab = UI_COMMAND_CENTER_TAB_STRUCTURES;
+    }
+
+    ui_container_size_update(container);
+
+    if (active_tab == UI_COMMAND_CENTER_TAB_INVENTORY) {
+        float slot_gap = pixels_to_units(8);
+        Vec2 inventory_dimensions = inventory_get_dimensions_from_capacity(entity->inventory.capacity, 8);
+        InventoryInput inventory_input =
+            inventory_render(container, ui_position, &entity->inventory, inventory_dimensions, game_state, game_input,
+                             {.scale = 1, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
+
+        if (inventory_input.idx_clicked > -1) {
+            InventoryItem slot = entity->inventory.items[inventory_input.idx_clicked];
+            if (slot.entity_type != ENTITY_TYPE_UNKNOWN) {
+                inventory_move_items(inventory_input.idx_clicked, slot.stack_size, &entity->inventory,
+                                     &game_state->player->inventory);
+            }
+        }
+    } else if (active_tab == UI_COMMAND_CENTER_TAB_STRUCTURES) {
+        uint32 structure_slot_count = 10;
+        Vec2 structure_inventory_dimensions = inventory_get_dimensions_from_capacity(structure_slot_count, 5);
+
+        Inventory structure_inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_STRUCTURES, structure_slot_count);
+
+        InventoryInput inventory_input = inventory_render(container, ui_position, &structure_inventory,
+                                                          structure_inventory_dimensions, game_state, game_input,
+                                                          {.scale = 2,
+                                                           .slot_gap = pixels_to_units(4),
+                                                           .background_rgba = COLOR_GRAY,
+                                                           .recipe_book_type = CRAFTING_RECIPE_BOOK_STRUCTURES,
+                                                           .flags = INVENTORY_RENDER_F_FOR_CRAFTING,
+                                                           .crafting_from_inventory = &entity->inventory});
+
+        if (inventory_input.idx_clicked >= 0) {
+            EntityType selected_entity_type = structure_inventory.items[inventory_input.idx_clicked].entity_type;
+            if (selected_entity_type != ENTITY_TYPE_UNKNOWN &&
+                crafting_can_craft_item(CRAFTING_RECIPE_BOOK_STRUCTURES, selected_entity_type, &entity->inventory)) {
+                game_state->ui_mode.placing_structure_type = selected_entity_type;
+                game_state->ui_mode.state = UI_STATE_STRUCTURE_PLACEMENT;
+                game_state->ui_mode.camera_position = entity->position;
+                game_state->ui_mode.camera_zoom = 0.5f;
+                set(game_state->ui_mode.flags, UI_MODE_F_CAMERA_OVERRIDE);
+            }
+        }
+
+        if (inventory_input.idx_hovered >= 0) {
+            crafting_recipe_info_render(container, inventory_ui_size, CRAFTING_RECIPE_BOOK_STRUCTURES,
+                                        inventory_input.idx_hovered);
         }
     }
-
-    if (inventory_input.idx_hovered >= 0) {
-        crafting_recipe_info_render(container, inventory_ui_size, CRAFTING_RECIPE_BOOK_STRUCTURES,
-                                    inventory_input.idx_hovered);
-    }
-
-    ui_draw_element(container, inventory_ui_position, render_group);
+    ui_draw_element(container, ui_position, render_group);
 };
 
 void entity_command_center_placement_ui_update_render(GameState* game_state, PlayerInput* player_input,
@@ -434,8 +471,8 @@ void entity_command_center_placement_ui_update_render(GameState* game_state, Pla
 
     if (player_input->ui.select.was_pressed && valid_placement &&
         crafting_can_craft_item(CRAFTING_RECIPE_BOOK_STRUCTURES, ui_mode->placing_structure_type,
-                                &game_state->player->inventory)) {
-        crafting_consume_ingredients(&game_state->player->inventory, CRAFTING_RECIPE_BOOK_STRUCTURES,
+                                &command_center->inventory)) {
+        crafting_consume_ingredients(&command_center->inventory, CRAFTING_RECIPE_BOOK_STRUCTURES,
                                      ui_mode->placing_structure_type);
         entity_create(ui_mode->placing_structure_type,
                       {mouse_world_position.x, mouse_world_position.y - (pixels_to_units(structure_sprite.h) / 2)});
@@ -479,8 +516,8 @@ void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, Rend
     if (input.idx_clicked > -1) {
         InventoryItem slot = entity->inventory.items[input.idx_clicked];
         if (slot.entity_type != ENTITY_TYPE_UNKNOWN) {
-            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->player->inventory,
-                                 &game_state->entity_data);
+            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory,
+                                 &game_state->player->inventory);
         }
     }
 }
@@ -510,8 +547,8 @@ void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup*
     if (input.idx_clicked > -1) {
         InventoryItem slot = entity->inventory.items[input.idx_clicked];
         if (slot.entity_type != ENTITY_TYPE_UNKNOWN) {
-            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory, &game_state->player->inventory,
-                                 &game_state->entity_data);
+            inventory_move_items(input.idx_clicked, slot.stack_size, &entity->inventory,
+                                 &game_state->player->inventory);
         }
     }
 }
@@ -543,7 +580,8 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
                           .slot_gap = pixels_to_units(8),
                           .background_rgba = COLOR_GRAY,
                           .recipe_book_type = CRAFTING_RECIPE_BOOK_GENERAL,
-                          .flags = INVENTORY_RENDER_F_FOR_CRAFTING});
+                          .flags = INVENTORY_RENDER_F_FOR_CRAFTING,
+                          .crafting_from_inventory = &game_state->player->inventory});
 
     ui_container_size_update(container);
 
@@ -679,7 +717,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_07.wav", game_state);
         add_sound_variant(SOUND_BASIC_GUN_SHOT, "resources/assets/handgun_sci-fi_a_shot_single_08.wav", game_state);
 
-        play_sound(&game_state->sounds[SOUND_SONG_JAN_7], &game_state->audio_player);
+        // play_sound(&game_state->sounds[SOUND_SONG_JAN_7], &game_state->audio_player);
 
         // TODO: The arena marker / restore interface can be improved. Some way to defer?
         char* arena_marker = w_arena_marker(&game_state->main_arena);
@@ -725,11 +763,15 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
         init_entity_data(&game_state->entity_data);
         tools_init(&game_state->tools);
+        Entity* command_center = NULL;
 
         {
             WorldInitEntity* entity_inits = game_state->world_init.entity_inits;
             for (int i = 0; i < game_state->world_init.entity_init_count; i++) {
-                entity_create(entity_inits[i].type, entity_inits[i].position);
+                EntityHandle handle = entity_create(entity_inits[i].type, entity_inits[i].position);
+                if (entity_inits[i].type == ENTITY_TYPE_LANDING_POD_YELLOW) {
+                    command_center = entity_find(handle);
+                }
             }
         }
 
@@ -749,6 +791,11 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                                                            .seed = w_fmix32(game_state->world_seed ^ SEED_PLANT)};
 
         proc_gen_plants(&game_state->decoration_data, &game_state->world_gen_context.plant_fbm_context);
+
+        if (command_center) {
+            inventory_add_item(&command_center->inventory, ENTITY_TYPE_IRON, 99);
+            inventory_add_item(&command_center->inventory, ENTITY_TYPE_COAL, 99);
+        }
     }
 
     init_ui(&game_state->font_data, BASE_PIXELS_PER_UNIT, &game_state->frame_arena, &game_state->world_input,
@@ -1154,6 +1201,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         game_state->ui_mode.camera_position = {};
         game_state->ui_mode.camera_zoom = 1.0f;
         game_state->ui_mode.placing_structure_type = ENTITY_TYPE_UNKNOWN;
+        game_state->ui_mode.active_command_center_tab = UI_COMMAND_CENTER_TAB_INVENTORY;
     }
 
     if (game_state->ui_mode.state == UI_STATE_ENTITY_UI) {

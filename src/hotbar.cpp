@@ -85,7 +85,7 @@ void hotbar_render(GameState* game_state, GameInput* game_input, RenderGroup* re
 
         if (item->entity_type != ENTITY_TYPE_UNKNOWN) {
             inventory_move_items(inventory_input.idx_clicked, item->stack_size, player_inventory,
-                                 &entity_with_open_inventory->inventory, &game_state->entity_data);
+                                 &entity_with_open_inventory->inventory);
         }
     }
 

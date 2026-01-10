@@ -126,8 +126,7 @@ bool inventory_space_for_item(EntityType entity_type, uint32 quantity, Inventory
     return false;
 }
 
-bool inventory_move_items(uint32 index, uint32 quantity, Inventory* source_inventory, Inventory* dest_inventory,
-                          EntityData* entity_data) {
+bool inventory_move_items(uint32 index, uint32 quantity, Inventory* source_inventory, Inventory* dest_inventory) {
     bool result = false;
 
     InventoryItem item = source_inventory->items[index];
@@ -188,6 +187,7 @@ struct InventoryRenderOptions {
     float slot_gap;
     Vec4 background_rgba;
     CraftingRecipeBook recipe_book_type;
+    Inventory* crafting_from_inventory;
 };
 
 // NOTE: There is some ui hackiness going on here.
@@ -202,7 +202,7 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
                                 GameState* game_state, GameInput* game_input, InventoryRenderOptions opts) {
 
     ASSERT(!is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) ||
-               opts.recipe_book_type != CRAFTING_RECIPE_BOOK_UNKNOWN,
+               (opts.recipe_book_type != CRAFTING_RECIPE_BOOK_UNKNOWN && opts.crafting_from_inventory),
            "Must specify a recipe book if inventory render is for crafting");
 
     InventoryInput input = {-1, -1};
@@ -245,7 +245,7 @@ InventoryInput inventory_render(UIElement* container, Vec2 container_position, I
 
                     if (is_set(opts.flags, INVENTORY_RENDER_F_FOR_CRAFTING) &&
                         !crafting_can_craft_item(opts.recipe_book_type, item->entity_type,
-                                                 &game_state->player->inventory)) {
+                                                 opts.crafting_from_inventory)) {
                         set(sprite_opts.flags, UI_CREATE_SPRITE_OPTS_F_APPLY_TINT);
                         sprite_opts.tint = {1, 1, 1, 0.4};
                     }

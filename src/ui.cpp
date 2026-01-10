@@ -512,7 +512,7 @@ UIElement* ui_create_button(const char* text, Vec2 container_position, UIElement
                              .background_rgba = COLOR_WHITE,
                              .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
 
-    UIElement* button_text = ui_create_text("Start", {.rgba = COLOR_BLACK, .font_scale = 0.5});
+    UIElement* button_text = ui_create_text(text, {.rgba = COLOR_BLACK, .font_scale = 0.5});
 
     ui_push(button_container, button_text);
     ui_push(container, button_container);

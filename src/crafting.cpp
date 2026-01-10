@@ -132,10 +132,12 @@ void crafting_recipe_info_render(UIElement* container, Vec2 container_size, Craf
 
     EntityInfo* e_info = &entity_info[recipe->entity_type];
 
-    UIElement* title =
-        ui_create_text(e_info->type_name_string, {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x});
-    UIElement* description =
-        ui_create_text(e_info->description, {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x});
+    UIElement* title = ui_create_text(
+        e_info->type_name_string,
+        {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x - (container->padding * 2)});
+    UIElement* description = ui_create_text(
+        e_info->description,
+        {.rgba = COLOR_WHITE, .font_scale = 1, .max_width = container_size.x - (container->padding * 2)});
 
     ui_push(container, title);
     ui_push(container, description);
