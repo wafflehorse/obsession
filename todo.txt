@@ -23,7 +23,8 @@ Biome 1 state 2
 		make the robots appear in the world
 	[x] Add robot party to entity
 	[x] Robot party UI
-	[] Add Robot creation and inventory UI in robotics factory
+	[x] Add Robot creation and inventory UI in robotics factory
+	[x] Robot crafting
 
 [] Add storage module structure to increase command center capacity?
 [] Add cooking station
@@ -55,6 +56,7 @@ Biome 1 state 2
 [] lighting
 [] Move sounds out of GameState and into it's own sound table where we can allocate with arena based on num variations per sound and stuff.
 
+[x] Invert entity ownership concept so player owns relationship with gun rather than other way around
 [x] Replace inventory row_count and col_count with capacity
 [x] Add robotics crafter entity 
 [x] Fix bug where player picks up item right after dropping

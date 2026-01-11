@@ -183,8 +183,14 @@ void entity_init(EntityData* entity_data) {
                 .move = ANIM_ROBOT_GATHERER_MOVE,
             },
         .type_name_string = "Gatherer Robot",
+        .description = "I can gather!",
         .default_sprite = SPRITE_ROBOT_GATHERER_IDLE_0,
-        .collider = entity_collider_from_sprite(SPRITE_ROBOT_GATHERER_IDLE_0, {.size_y = -0.6f, .offset_y = 0.5f})};
+        .collider = entity_collider_from_sprite(SPRITE_ROBOT_GATHERER_IDLE_0, {.size_y = -0.6f, .offset_y = 0.5f}),
+        .flags = ENTITY_INFO_F_PERSIST_IN_INVENTORY,
+        .instance_flags = ENTITY_F_KILLABLE | ENTITY_F_COLLECTS_ITEMS | ENTITY_F_PLAYER_INTERACTABLE,
+        .inventory_capacity = 4,
+        .base_hp = MAX_HP_ROBOT_GATHERER,
+        .brain_type = BRAIN_TYPE_ROBOT_GATHERER};
 
     entity_info[ENTITY_TYPE_LANDING_POD_YELLOW] = {
         .instance_flags = ENTITY_F_PLAYER_INTERACTABLE | ENTITY_F_BLOCKER,
@@ -200,7 +206,8 @@ void entity_init(EntityData* entity_data) {
         .default_sprite = SPRITE_ROBOTICS_FACTORY,
         .instance_flags = ENTITY_F_PLAYER_INTERACTABLE | ENTITY_F_BLOCKER,
         .collider = entity_collider_from_sprite(SPRITE_ROBOTICS_FACTORY,
-                                                {.size_x = -2.5, .size_y = -4, .offset_x = -0.7, .offset_y = 0.25})};
+                                                {.size_x = -2.5, .size_y = -4, .offset_x = -0.7, .offset_y = 0.25}),
+        .inventory_capacity = 8};
 }
 
 Collider entity_get_collider(EntityType type) {
@@ -239,7 +246,6 @@ Entity* entity_new() {
     entity->id = i_entity_data->entity_ids[idx];
     entity->z_index = 1;
     entity->facing_direction = {1, 0};
-    entity->owner_handle.generation = -1;
     entity->stack_size = 1;
 
     for (int i = 0; i < ENTITY_MAX_INVENTORY_SIZE; i++) {
@@ -417,24 +423,6 @@ EntityHandle entity_create_warrior(Vec2 position) {
     entity->hp = MAX_HP_WARRIOR;
 
     entity->brain.type = BRAIN_TYPE_WARRIOR;
-
-    return entity_to_handle(entity);
-}
-
-EntityHandle entity_create_robot_gatherer(Vec2 position) {
-    Entity* entity = entity_new();
-
-    entity->type = ENTITY_TYPE_ROBOT_GATHERER;
-    entity->position = position;
-    set(entity->flags, ENTITY_F_KILLABLE);
-    entity->hp = MAX_HP_ROBOT_GATHERER;
-
-    entity->inventory.capacity = 4;
-
-    set(entity->flags, ENTITY_F_PLAYER_INTERACTABLE);
-    set(entity->flags, ENTITY_F_COLLECTS_ITEMS);
-
-    entity->brain.type = BRAIN_TYPE_ROBOT_GATHERER;
 
     return entity_to_handle(entity);
 }
@@ -703,9 +691,6 @@ EntityHandle entity_create(EntityType type, Vec2 position, flags opts) {
         }
         break;
     }
-    case ENTITY_TYPE_ROBOT_GATHERER:
-        entity_create_robot_gatherer(position);
-        break;
     default: {
         Entity* entity = entity_new();
 
@@ -740,8 +725,7 @@ void entity_inventory_spawn_world_item(InventoryItem* item, Vec3 source_position
         item_entity->z_index = z_index;
         item_entity->stack_size = item->stack_size;
     } else {
-        unset(item_entity->flags, ENTITY_F_OWNED);
-        item_entity->owner_handle = entity_null_handle;
+        unset(item_entity->flags, ENTITY_F_IN_INVENTORY);
     }
 
     Vec2 random_point = random_point_near_position(item_entity->position, 1, 1);

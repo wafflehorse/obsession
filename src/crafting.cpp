@@ -29,6 +29,14 @@ void crafting_init() {
                                                                     {.entity_type = ENTITY_TYPE_COAL, .quantity = 40}}};
 
     ASSERT(structure_recipes_count < ENTITY_TYPE_COUNT, "too many structure recipes");
+
+    CraftingRecipe* robot_recipes = crafting_recipe_books[CRAFTING_RECIPE_BOOK_ROBOTS];
+    uint32 robot_recipes_count = 0;
+    robot_recipes[robot_recipes_count++] = {.entity_type = ENTITY_TYPE_ROBOT_GATHERER,
+                                            .ingredients = {{.entity_type = ENTITY_TYPE_IRON, .quantity = 1},
+                                                            {.entity_type = ENTITY_TYPE_COAL, .quantity = 2}}};
+
+    ASSERT(robot_recipes_count < ENTITY_TYPE_COUNT, "too many robot recipes");
 };
 
 CraftingRecipe* crafting_recipe_find(CraftingRecipeBook recipe_book_type, EntityType entity_type) {
@@ -85,22 +93,32 @@ void crafting_consume_ingredients(Inventory* inventory, CraftingRecipeBook recip
     }
 }
 
-void crafting_craft_item(EntityData* entity_data, EntityType entity_type, CraftingRecipeBook recipe_book_type,
-                         Inventory* inventory) {
+void crafting_craft_item(EntityType entity_type, CraftingRecipeBook recipe_book_type, Inventory* source_inventory,
+                         Inventory* destination_inventory) {
     CraftingRecipe* recipe = crafting_recipe_find(recipe_book_type, entity_type);
 
     ASSERT(recipe, "Attempting to craft an item without a recipe");
 
-    if (inventory_space_for_item(entity_type, 1, inventory) &&
-        crafting_can_craft_item(recipe_book_type, entity_type, inventory)) {
+    if (inventory_space_for_item(entity_type, 1, destination_inventory) &&
+        crafting_can_craft_item(recipe_book_type, entity_type, source_inventory)) {
         for (int i = 0; i < CRAFTING_MAX_INGREDIENTS && recipe->ingredients[i].entity_type != ENTITY_TYPE_UNKNOWN;
              i++) {
             CraftingIngredient ingredient = recipe->ingredients[i];
-            inventory_remove_items(inventory, ingredient.entity_type, ingredient.quantity);
+            inventory_remove_items(source_inventory, ingredient.entity_type, ingredient.quantity);
         }
 
-        inventory_add_item(inventory, entity_type, 1);
+        if (inventory_should_persist_entity(entity_type)) {
+            EntityHandle handle = entity_create(entity_type, {});
+            Entity* new_entity = entity_find(handle);
+            inventory_add_entity_item(destination_inventory, new_entity);
+        } else {
+            inventory_add_item(destination_inventory, entity_type, 1);
+        }
     }
+}
+
+void crafting_craft_item(EntityType entity_type, CraftingRecipeBook recipe_book_type, Inventory* inventory) {
+    crafting_craft_item(entity_type, recipe_book_type, inventory, inventory);
 }
 
 Inventory recipes_to_inventory(CraftingRecipeBook recipe_book_type, uint32 capacity) {

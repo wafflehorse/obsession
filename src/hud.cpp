@@ -58,11 +58,31 @@ static void render_player_party_ui(Entity* player, GameState* game_state, GameIn
         }
     }
 
-    InventoryInput input = inventory_render(container, ui_position, &inventory, dimensions, game_state, game_input,
-                                            {.scale = scale,
-                                             .background_rgba = COLOR_BLACK,
-                                             .slot_gap = slot_gap,
-                                             .flags = INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED});
+    Entity* ui_entity = entity_find(game_state->ui_mode.entity_handle);
+    bool robotics_factory_inventory_ui_open =
+        game_state->ui_mode.state == UI_STATE_ENTITY_UI && ui_entity &&
+        ui_entity->type == ENTITY_TYPE_ROBOTICS_FACTORY &&
+        game_state->ui_mode.active_robotics_factory_tab == UI_ROBOTICS_FACTORY_TAB_INVENTORY;
+
+    uint32 inventory_opts = 0;
+
+    if (!robotics_factory_inventory_ui_open) {
+        inventory_opts = INVENTORY_RENDER_F_SLOTS_MOUSE_DISABLED;
+    }
+
+    InventoryInput input = inventory_render(
+        container, ui_position, &inventory, dimensions, game_state, game_input,
+        {.scale = scale, .background_rgba = COLOR_BLACK, .slot_gap = slot_gap, .flags = inventory_opts});
+
+    if (robotics_factory_inventory_ui_open && input.idx_clicked > -1) {
+        EntityType robot_type = inventory.items[input.idx_clicked].entity_type;
+
+        if (robot_type != ENTITY_TYPE_UNKNOWN && inventory_space_for_item(robot_type, 1, &ui_entity->inventory)) {
+            Entity* party_entity = entity_find(player->entity_party.handles[input.idx_clicked]);
+            inventory_add_entity_item(&ui_entity->inventory, party_entity);
+            player->entity_party.handles[input.idx_clicked] = entity_null_handle;
+        }
+    }
 
     ui_draw_element(container, ui_position, render_group);
 }

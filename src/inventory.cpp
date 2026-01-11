@@ -86,18 +86,20 @@ void inventory_add_item(Inventory* inventory, EntityType entity_type, uint32 qua
     open_slot->stack_size += quantity;
 }
 
-void inventory_add_entity_item(Inventory* inventory, Entity* entity) {
-    InventoryItem* open_slot = inventory_find_available_slot(inventory, entity->type, 1);
+// TODO: this should probably take an EntityHandle
+void inventory_add_entity_item(Inventory* inventory, Entity* item) {
+    InventoryItem* open_slot = inventory_find_available_slot(inventory, item->type, 1);
 
     if (open_slot) {
-        if (inventory_should_persist_entity(entity->type)) {
-            open_slot->entity_handle = entity_to_handle(entity);
+        if (inventory_should_persist_entity(item->type)) {
+            open_slot->entity_handle = entity_to_handle(item);
         } else {
-            set(entity->flags, ENTITY_F_MARK_FOR_DELETION);
+            set(item->flags, ENTITY_F_MARK_FOR_DELETION);
         }
 
-        open_slot->entity_type = entity->type;
-        open_slot->stack_size += entity->stack_size;
+        open_slot->entity_type = item->type;
+        open_slot->stack_size += item->stack_size;
+        set(item->flags, ENTITY_F_IN_INVENTORY);
     }
 }
 

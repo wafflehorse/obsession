@@ -496,6 +496,98 @@ void entity_robot_interact_ui_render(Entity* entity, GameState* game_state, Rend
     }
 }
 
+void entity_robotics_factory_ui_render(Entity* entity, GameState* game_state, RenderGroup* render_group,
+                                       GameInput* game_input) {
+    Vec2 inventory_ui_size = {13, 16};
+    Vec2 ui_position = game_state->camera.position;
+    ui_position.x += game_state->camera.size.x / 4;
+    ui_position = w_rect_center_to_top_left(ui_position, inventory_ui_size);
+
+    UIElement* container = ui_create_container({.min_size = inventory_ui_size,
+                                                .max_size = inventory_ui_size,
+                                                .padding = pixels_to_units(8),
+                                                .child_gap = pixels_to_units(8),
+                                                .background_rgba = COLOR_BLACK,
+                                                .opts = UI_ELEMENT_F_CONTAINER_COL | UI_ELEMENT_F_DRAW_BACKGROUND});
+
+    UIRoboticsFactoryTab active_tab = game_state->ui_mode.active_robotics_factory_tab;
+
+    UIElement* button_container = ui_create_container({.min_size = {inventory_ui_size.x, 1.25},
+                                                       .max_size = {inventory_ui_size.x, 1.25},
+                                                       .child_gap = pixels_to_units(8),
+                                                       .opts = UI_ELEMENT_F_CONTAINER_ROW});
+
+    ui_push(container, button_container);
+
+    UIElement* inventory_button = ui_create_button("Inventory", ui_position, button_container);
+    UIElement* build_button = ui_create_button("Build", ui_position, button_container);
+
+    if (ui_button_pressed(ui_position, inventory_button)) {
+        game_state->ui_mode.active_robotics_factory_tab = UI_ROBOTICS_FACTORY_TAB_INVENTORY;
+    }
+
+    if (ui_button_pressed(ui_position, build_button)) {
+        game_state->ui_mode.active_robotics_factory_tab = UI_ROBOTICS_FACTORY_TAB_CRAFTING;
+    }
+
+    ui_container_size_update(container);
+
+    if (active_tab == UI_ROBOTICS_FACTORY_TAB_INVENTORY) {
+        float slot_gap = pixels_to_units(8);
+        Vec2 inventory_dimensions = inventory_get_dimensions_from_capacity(entity->inventory.capacity, 5);
+        InventoryInput inventory_input =
+            inventory_render(container, ui_position, &entity->inventory, inventory_dimensions, game_state, game_input,
+                             {.scale = 2, .slot_gap = slot_gap, .background_rgba = COLOR_GRAY});
+
+        if (inventory_input.idx_clicked > -1) {
+            InventoryItem* robo_item = &entity->inventory.items[inventory_input.idx_clicked];
+            Entity* robot = entity_find(robo_item->entity_handle);
+            if (robot) {
+                Entity* player = game_state->player;
+                for (int i = 0; i < player->entity_party.capacity; i++) {
+                    if (!entity_find(player->entity_party.handles[i])) {
+                        EntityHandle* handle = &player->entity_party.handles[i];
+                        *handle = robo_item->entity_handle;
+
+                        inventory_item_clear(robo_item);
+                    }
+                }
+            }
+        }
+    } else if (active_tab == UI_ROBOTICS_FACTORY_TAB_CRAFTING) {
+        uint32 slot_count = 10;
+        Vec2 robot_inventory_dimensions = inventory_get_dimensions_from_capacity(slot_count, 5);
+
+        Inventory robot_inventory = recipes_to_inventory(CRAFTING_RECIPE_BOOK_ROBOTS, slot_count);
+
+        InventoryInput inventory_input = inventory_render(
+            container, ui_position, &robot_inventory, robot_inventory_dimensions, game_state, game_input,
+            {.scale = 2,
+             .slot_gap = pixels_to_units(4),
+             .background_rgba = COLOR_GRAY,
+             .recipe_book_type = CRAFTING_RECIPE_BOOK_ROBOTS,
+             .flags = INVENTORY_RENDER_F_FOR_CRAFTING,
+             .crafting_from_inventory = &game_state->command_center->inventory});
+
+        if (inventory_input.idx_clicked >= 0) {
+            EntityType selected_entity_type = robot_inventory.items[inventory_input.idx_clicked].entity_type;
+            if (selected_entity_type != ENTITY_TYPE_UNKNOWN &&
+                crafting_can_craft_item(CRAFTING_RECIPE_BOOK_ROBOTS, selected_entity_type,
+                                        &game_state->command_center->inventory)) {
+                crafting_craft_item(selected_entity_type, CRAFTING_RECIPE_BOOK_ROBOTS,
+                                    &game_state->command_center->inventory, &entity->inventory);
+            }
+        }
+
+        if (inventory_input.idx_hovered >= 0) {
+            crafting_recipe_info_render(container, inventory_ui_size, CRAFTING_RECIPE_BOOK_ROBOTS,
+                                        inventory_input.idx_hovered);
+        }
+    }
+
+    ui_draw_element(container, ui_position, render_group);
+}
+
 void entity_inventory_render(Entity* entity, GameState* game_state, RenderGroup* render_group, GameInput* game_input) {
     float padding = pixels_to_units(16);
     float slot_gap = pixels_to_units(8);
@@ -567,8 +659,7 @@ void player_inventory_render(GameState* game_state, RenderGroup* render_group, G
     if (inventory_input.idx_clicked > -1) {
         CraftingRecipe* recipe = crafting_recipe_find(CRAFTING_RECIPE_BOOK_GENERAL, inventory_input.idx_clicked);
         if (recipe) {
-            crafting_craft_item(&game_state->entity_data, recipe->entity_type, CRAFTING_RECIPE_BOOK_GENERAL,
-                                &game_state->player->inventory);
+            crafting_craft_item(recipe->entity_type, CRAFTING_RECIPE_BOOK_GENERAL, &game_state->player->inventory);
         }
     }
 
@@ -754,6 +845,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         game_state->player = entity_find_first_of_type(ENTITY_TYPE_PLAYER);
         ASSERT(game_state->player, "Player must exist at initialization");
 
+        game_state->command_center = entity_find_first_of_type(ENTITY_TYPE_LANDING_POD_YELLOW);
+        ASSERT(game_state->command_center, "command center must exist at initialization");
+
         game_state->world_seed = 12756671;
 
         proc_gen_init_chunk_states({DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT}, &game_state->chunk_spawn,
@@ -850,6 +944,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
     PlayerInput player_input = player_input_get(game_input, game_state, g_sim_dt_s);
 
+    // TODO: maybe don't do all this logic if item is IN_INVENTORY?
     for (int i = 0; i < game_state->entity_data.entity_count; i++) {
         Entity* entity = &game_state->entity_data.entities[i];
 
@@ -927,7 +1022,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         entity->z_pos = w_clamp_min(entity->z_pos, 0);
         entity->z_velocity = entity->z_acceleration * g_sim_dt_s + entity->z_velocity;
 
-        if (is_set(entity->flags, ENTITY_F_ITEM) && !is_set(entity->flags, ENTITY_F_OWNED) &&
+        if (is_set(entity->flags, ENTITY_F_ITEM) && !is_set(entity->flags, ENTITY_F_IN_INVENTORY) &&
             entity->item_drop_pickup_cooldown_s <= 0) {
             Entity* collector = NULL;
             float distance_from_collector = ITEM_PICKUP_RANGE;
@@ -948,14 +1043,9 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             if (collector) {
                 if (distance_from_collector < 0.1 &&
                     inventory_space_for_item(entity->type, entity->stack_size, &game_state->player->inventory)) {
-                    set(entity->flags, ENTITY_F_OWNED);
-                    entity->owner_handle = entity_to_handle(game_state->player);
                     entity->velocity = {};
                     entity->acceleration = {};
                     Inventory* target_inventory = &collector->inventory;
-                    if (collector->type == ENTITY_TYPE_PLAYER) {
-                        target_inventory = &game_state->player->inventory;
-                    }
                     inventory_add_entity_item(target_inventory, entity);
                 } else if (distance_from_collector < ITEM_PICKUP_RANGE &&
                            inventory_space_for_item(entity->type, entity->stack_size, &game_state->player->inventory)) {
@@ -995,62 +1085,76 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             }
         }
 
-        Entity* owner = entity_find(entity->owner_handle);
-        if (is_set(entity->flags, ENTITY_F_OWNED) && owner == NULL) {
-            set(entity->flags, ENTITY_F_MARK_FOR_DELETION);
-        }
+        if (entity->type == ENTITY_TYPE_PLAYER) {
+            InventoryItem* active_hotbar_slot =
+                hotbar_active_slot(&game_state->player->inventory, game_state->hotbar.active_item_idx);
 
-        EntityHandle entity_handle = entity_to_handle(entity);
-        InventoryItem* active_hotbar_slot =
-            hotbar_active_slot(&game_state->player->inventory, game_state->hotbar.active_item_idx);
+            if (player_input.world.drop_item && active_hotbar_slot->stack_size > 0) {
+                float z_index;
+                Vec3 item_position_3d = {};
+                Vec2 item_position = entity_held_item_position(entity, &item_position_3d.z, &z_index);
+                item_position_3d.x = item_position.x;
+                item_position_3d.y = item_position.y;
 
-        if (entity->type == ENTITY_TYPE_PLAYER && player_input.world.drop_item && active_hotbar_slot->stack_size > 0) {
-            float z_index;
-            Vec3 item_position_3d = {};
-            Vec2 item_position = entity_held_item_position(entity, &item_position_3d.z, &z_index);
-            item_position_3d.x = item_position.x;
-            item_position_3d.y = item_position.y;
+                entity_inventory_spawn_world_item(active_hotbar_slot, item_position_3d, z_index,
+                                                  entity->facing_direction.x);
+            }
 
-            entity_inventory_spawn_world_item(active_hotbar_slot, item_position_3d, z_index,
-                                              entity->facing_direction.x);
-        }
+            EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
+            if (player_input.world.use_held_item.is_held) {
+                EntityInfo* e_info = &entity_info[active_hotbar_entity_type];
+                if (is_set(e_info->flags, ENTITY_INFO_F_PLACEABLE) && player_input.world.use_held_item.was_pressed) {
+                    Vec2 placement_position =
+                        hotbar_placeable_position(game_state->player->position, player_input.world.aim_vec);
+                    entity_create(active_hotbar_entity_type, placement_position);
+                    inventory_remove_items_by_index(&game_state->player->inventory, game_state->hotbar.active_item_idx,
+                                                    1);
+                } else if (is_set(e_info->flags, ENTITY_INFO_F_FOOD) && player_input.world.use_held_item.was_pressed) {
+                    game_state->player->hunger =
+                        w_clamp_max(game_state->player->hunger + e_info->hunger_gain, MAX_HUNGER_PLAYER);
+                    inventory_remove_items_by_index(&game_state->player->inventory, game_state->hotbar.active_item_idx,
+                                                    1);
+                }
+            }
 
-        // TODO: hot bar logic will have to be pulled out if we want this to allow for non-player owners
-        bool is_active_hotbar_item = entity_same(entity_handle, active_hotbar_slot->entity_handle);
-        if (is_active_hotbar_item) {
-            if (owner) {
+            Entity* equipped_entity = entity_find(active_hotbar_slot->entity_handle);
+
+            // TODO: hot bar logic will have to be pulled out if we want this to allow for non-player owners
+            if (equipped_entity) {
                 Vec2 aim_vec_rel_owner = player_input.world.aim_vec;
-                entity->z_pos = 0.5f;
+                equipped_entity->z_pos = 0.5f;
                 if (aim_vec_rel_owner.x < 0) {
-                    entity->position = {owner->position.x - 0.3f, owner->position.y};
+                    equipped_entity->position = {entity->position.x - 0.3f, entity->position.y};
                 } else {
-                    entity->position = {owner->position.x + 0.3f, owner->position.y};
+                    equipped_entity->position = {entity->position.x + 0.3f, entity->position.y};
                 }
 
-                if (entity->type == ENTITY_TYPE_GUN) {
+                if (equipped_entity->type == ENTITY_TYPE_GUN) {
                     float rotation_rads = atan2(aim_vec_rel_owner.y, aim_vec_rel_owner.x);
-                    entity->rotation_rads = rotation_rads;
+                    equipped_entity->rotation_rads = rotation_rads;
                     Vec2 pivot = {};
 
                     if (aim_vec_rel_owner.x < 0) {
-                        pivot = {entity->position.x + .25f, entity->position.y};
-                        set(entity->flags, ENTITY_F_SPRITE_FLIP_X);
+                        pivot = {equipped_entity->position.x + .25f, equipped_entity->position.y};
+                        set(equipped_entity->flags, ENTITY_F_SPRITE_FLIP_X);
                         // Note: This fixes gun rotation when rads are negative from negative aim vector x
-                        entity->rotation_rads = M_PI + entity->rotation_rads;
+                        equipped_entity->rotation_rads = M_PI + equipped_entity->rotation_rads;
                     } else {
-                        pivot = {entity->position.x - .25f, entity->position.y};
-                        unset(entity->flags, ENTITY_F_SPRITE_FLIP_X);
+                        pivot = {equipped_entity->position.x - .25f, equipped_entity->position.y};
+                        unset(equipped_entity->flags, ENTITY_F_SPRITE_FLIP_X);
                     }
 
-                    entity->position = w_rotate_around_pivot(entity->position, pivot, entity->rotation_rads);
+                    equipped_entity->position =
+                        w_rotate_around_pivot(equipped_entity->position, pivot, equipped_entity->rotation_rads);
 
                     if (player_input.world.use_held_item.was_pressed) {
                         Vec2 velocity_unit = w_vec_unit_from_radians(rotation_rads);
                         Vec2 velocity = w_vec_mult(velocity_unit, 30.0f);
-                        Vec2 projectile_position = {entity->position.x, entity->position.y + entity->z_pos};
+                        Vec2 projectile_position = {equipped_entity->position.x,
+                                                    equipped_entity->position.y + equipped_entity->z_pos};
                         EntityHandle projectile_handle =
                             entity_create_projectile(projectile_position, rotation_rads, velocity);
-                        add_collision_rule(projectile_handle.id, entity->owner_handle.id, false, game_state);
+                        add_collision_rule(projectile_handle.id, entity->id, false, game_state);
 
                         play_sound_rand(&game_state->sounds[SOUND_BASIC_GUN_SHOT], &game_state->audio_player);
                         start_camera_shake(&game_state->camera, 0.1, 10, 0.08);
@@ -1058,15 +1162,14 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
                 }
 
                 // TODO: maybe the facing_direction should be discrete to begin with?
-                Vec2 owner_facing_direction = entity_discrete_facing_direction_4_directions(owner->facing_direction);
+                Vec2 owner_facing_direction = entity_discrete_facing_direction_4_directions(entity->facing_direction);
                 if (owner_facing_direction.y > 0) {
-                    entity->z_index = owner->z_index - 0.1;
+                    equipped_entity->z_index = entity->z_index - 0.1;
                 } else {
-                    entity->z_index = owner->z_index + 0.1;
+                    equipped_entity->z_index = entity->z_index + 0.1;
                 }
             }
         }
-
         entity->damage_taken_tint_cooldown_s = w_clamp_min(entity->damage_taken_tint_cooldown_s - g_sim_dt_s, 0);
         entity->item_drop_pickup_cooldown_s = w_clamp_min(entity->item_drop_pickup_cooldown_s - g_sim_dt_s, 0);
 
@@ -1137,7 +1240,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         }
 
         bool should_render = true;
-        if (is_set(entity->flags, ENTITY_F_OWNED) && !is_active_hotbar_item) {
+        if (is_set(entity->flags, ENTITY_F_IN_INVENTORY)) {
             should_render = false;
         } else if (is_set(entity->flags, ENTITY_F_MARK_FOR_DELETION)) {
             should_render = false;
@@ -1154,6 +1257,18 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
             if (game_state->tools.draw_colliders) {
                 debug_render_entity_colliders(entity, false);
+            }
+        }
+
+        if (entity->type == ENTITY_TYPE_PLAYER) {
+            InventoryItem* active_hotbar_slot =
+                hotbar_active_slot(&game_state->player->inventory, game_state->hotbar.active_item_idx);
+
+            Entity* equipped_entity = entity_find(active_hotbar_slot->entity_handle);
+            if (equipped_entity) {
+                entity_render(equipped_entity, &main_render_group);
+            } else {
+                hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
             }
         }
     }
@@ -1178,6 +1293,7 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         game_state->ui_mode.camera_zoom = 1.0f;
         game_state->ui_mode.placing_structure_type = ENTITY_TYPE_UNKNOWN;
         game_state->ui_mode.active_command_center_tab = UI_COMMAND_CENTER_TAB_INVENTORY;
+        game_state->ui_mode.active_robotics_factory_tab = UI_ROBOTICS_FACTORY_TAB_INVENTORY;
     }
 
     if (game_state->ui_mode.state == UI_STATE_ENTITY_UI) {
@@ -1189,6 +1305,8 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             entity_robot_interact_ui_render(ui_entity, game_state, &render_group_ui, game_input);
         } else if (ui_entity->type == ENTITY_TYPE_LANDING_POD_YELLOW) {
             entity_command_center_ui_render(ui_entity, game_state, &render_group_ui, game_input);
+        } else if (ui_entity->type == ENTITY_TYPE_ROBOTICS_FACTORY) {
+            entity_robotics_factory_ui_render(ui_entity, game_state, &render_group_ui, game_input);
         } else {
             entity_inventory_render(ui_entity, game_state, &render_group_ui, game_input);
         }
@@ -1196,25 +1314,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
         entity_command_center_placement_ui_update_render(game_state, &player_input, &render_group_ui);
     } else if (game_state->ui_mode.state == UI_STATE_PLAYER_INVENTORY) {
         player_inventory_render(game_state, &render_group_ui, game_input);
-    }
-
-    {
-        InventoryItem* active_hotbar_slot =
-            hotbar_active_slot(&game_state->player->inventory, game_state->hotbar.active_item_idx);
-        EntityType active_hotbar_entity_type = active_hotbar_slot->entity_type;
-        if (player_input.world.use_held_item.is_held) {
-            EntityInfo* e_info = &entity_info[active_hotbar_entity_type];
-            if (is_set(e_info->flags, ENTITY_INFO_F_PLACEABLE) && player_input.world.use_held_item.was_pressed) {
-                Vec2 placement_position =
-                    hotbar_placeable_position(game_state->player->position, player_input.world.aim_vec);
-                entity_create(active_hotbar_entity_type, placement_position);
-                inventory_remove_items_by_index(&game_state->player->inventory, game_state->hotbar.active_item_idx, 1);
-            } else if (is_set(e_info->flags, ENTITY_INFO_F_FOOD) && player_input.world.use_held_item.was_pressed) {
-                game_state->player->hunger =
-                    w_clamp_max(game_state->player->hunger + e_info->hunger_gain, MAX_HUNGER_PLAYER);
-                inventory_remove_items_by_index(&game_state->player->inventory, game_state->hotbar.active_item_idx, 1);
-            }
-        }
     }
 
 #ifdef DEBUG
@@ -1231,14 +1330,6 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
             i--;
         }
     }
-
-    hotbar_render_item(game_state, player_input.world.aim_vec, &main_render_group);
-
-    hud_render(game_state, game_input);
-
-    game_memory->push_audio_samples(&game_state->audio_player);
-
-    sort_render_group(&main_render_group);
 
     Vec2 camera_target_position = game_state->player->position;
     float camera_target_zoom = 1.0f;
@@ -1263,6 +1354,12 @@ extern "C" GAME_UPDATE_AND_RENDER(game_update_and_render) {
 
     Vec2 shake_offset = update_and_get_camera_shake(&game_state->camera.shake, g_sim_dt_s);
     Vec2 rendered_camera_position = w_vec_add(game_state->camera.position, shake_offset);
+
+    sort_render_group(&main_render_group);
+
+    hud_render(game_state, game_input);
+
+    game_memory->push_audio_samples(&game_state->audio_player);
 
     game_memory->set_projection(game_state->camera.size.x, game_state->camera.size.y, game_state->camera.zoom);
 

@@ -194,7 +194,7 @@ struct Inventory {
 };
 
 #define ENTITY_F_MARK_FOR_DELETION (1 << 0)
-#define ENTITY_F_OWNED (1 << 1)
+#define ENTITY_F_IN_INVENTORY (1 << 1)
 #define ENTITY_F_SPRITE_FLIP_X (1 << 2)
 #define ENTITY_F_KILLABLE (1 << 3)
 #define ENTITY_F_NONSPACIAL (1 << 4)
@@ -226,7 +226,6 @@ struct Entity {
     float z_index;
 
     Vec2 facing_direction;
-    EntityHandle owner_handle;
 
     EntityParty entity_party;
 
@@ -308,6 +307,8 @@ enum UICommandCenterTab {
     UI_COMMAND_CENTER_TAB_STRUCTURES,
 };
 
+enum UIRoboticsFactoryTab { UI_ROBOTICS_FACTORY_TAB_INVENTORY, UI_ROBOTICS_FACTORY_TAB_CRAFTING };
+
 enum UIState {
     UI_STATE_NONE,
     UI_STATE_PLAYER_INVENTORY,
@@ -323,6 +324,8 @@ struct UIMode {
     flags flags;
     UIState state;
     EntityHandle entity_handle;
+
+    UIRoboticsFactoryTab active_robotics_factory_tab;
 
     // For UI_STATE_STRUCTURE_PLACEMENT
     UICommandCenterTab active_command_center_tab;
@@ -356,6 +359,7 @@ struct GameState {
     CollisionRule* collision_rule_hash[MAX_COLLISION_RULES];
     CollisionRule* collision_rule_free_list;
     Entity* player;
+    Entity* command_center;
     HotBar hotbar;
     uint32 attack_id_next;
     WorldGenContext world_gen_context;
